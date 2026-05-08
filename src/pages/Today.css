@@ -1,0 +1,329 @@
+/* ── Page ────────────────────────────────── */
+.today-page {
+  min-height: 100vh;
+}
+
+/* ── Sticky Header ───────────────────────── */
+.today-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.header-inner {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px 24px 16px;
+}
+
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.greeting {
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.days-badge {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 13px;
+  border-radius: 999px;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+.today-date-label {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* ── Page Content ────────────────────────── */
+.page-content {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 28px 24px 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Section Label ───────────────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+
+/* ── Card ────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+/* ── Row ─────────────────────────────────── */
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 18px;
+  gap: 16px;
+  min-height: 52px;
+}
+
+.row-label {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.row-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── Divider ─────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin-left: 18px;
+}
+
+/* ── Status Dot ──────────────────────────── */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot--green  { background: var(--green); }
+.dot--orange { background: var(--accent); }
+
+/* ── Time Input ──────────────────────────── */
+.time-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: right;
+  color-scheme: dark;
+  cursor: pointer;
+  padding: 0;
+}
+
+.time-input:focus {
+  outline: none;
+}
+
+/* ── Number Input ────────────────────────── */
+.num-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: right;
+  color-scheme: dark;
+  width: 44px;
+  padding: 0;
+}
+
+.num-input:focus {
+  outline: none;
+}
+
+.num-input::-webkit-inner-spin-button,
+.num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+.unit {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* ── iOS Toggle ──────────────────────────── */
+.toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: #3a3a3c;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.22s ease;
+}
+
+.toggle--on {
+  background: var(--accent);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.22s ease;
+}
+
+.toggle--on .toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* ── Counter ─────────────────────────────── */
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.counter-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-3);
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.12s;
+}
+
+.counter-btn:active {
+  opacity: 0.5;
+}
+
+.counter-val {
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 26px;
+  text-align: center;
+  line-height: 1;
+}
+
+.counter-val--met   { color: var(--green); }
+.counter-val--unmet { color: var(--accent); }
+
+.counter-target {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+/* ── Notes ───────────────────────────────── */
+.notes-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notes-card {
+  padding: 16px 18px;
+}
+
+.notes-sub-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+.notes-area {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  background: transparent;
+  border: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.notes-area::placeholder {
+  color: var(--text-tertiary);
+}
+
+.notes-area:focus {
+  outline: none;
+}
+
+/* ── Save Button ─────────────────────────── */
+.save-btn {
+  width: 100%;
+  height: 52px;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.25s ease, opacity 0.12s;
+}
+
+.save-btn:hover {
+  opacity: 0.9;
+}
+
+.save-btn:active {
+  opacity: 0.75;
+}
+
+.save-btn--saved {
+  background: var(--green);
+}
+
+/* ── Mobile ──────────────────────────────── */
+@media (max-width: 480px) {
+  .greeting {
+    font-size: 24px;
+  }
+
+  .header-inner,
+  .page-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
