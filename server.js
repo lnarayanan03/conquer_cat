@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 const app = express();
@@ -10,6 +11,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 app.use(cors());
 app.use(express.json());
+
+const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  : null;
 
 function buildMentorSystem(daysLeft, totals, dayNum, todayData, mode = "prep", userName = "", startDate = "", interviewDate = "", catResult = "", catPercentile = "") {
   const effortScore = (() => {
@@ -295,6 +300,64 @@ app.post("/api/mentor/greet", async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: "Failed to reach Anthropic" });
+  }
+});
+
+app.post("/api/user/init", async (req, res) => {
+  if (!supabase) return res.json({ ok: true });
+  const { userId, name, startDate, gender, skinTone, hairStyle, hairColor, shirtColor, hasGlasses, hasBeard } = req.body;
+  try {
+    await supabase.from("users").upsert(
+      { id: userId, name, start_date: startDate, gender, skin_tone: skinTone, hair_style: hairStyle, hair_color: hairColor, shirt_color: shirtColor, has_glasses: hasGlasses, has_beard: hasBeard },
+      { onConflict: "id" }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.post("/api/log/save", async (req, res) => {
+  if (!supabase) return res.json({ ok: true });
+  const { userId, date, dayData } = req.body;
+  try {
+    await supabase.from("daily_logs").upsert(
+      { user_id: userId, log_date: date, ...dayData },
+      { onConflict: "user_id,log_date" }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.get("/api/log/all/:userId", async (req, res) => {
+  if (!supabase) return res.json({});
+  try {
+    const { data, error } = await supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("user_id", req.params.userId);
+    if (error) throw error;
+    const formatted = {};
+    (data || []).forEach(row => {
+      const { user_id, log_date, ...rest } = row;
+      formatted[log_date] = rest;
+    });
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.post("/api/user/update", async (req, res) => {
+  if (!supabase) return res.json({ ok: true });
+  const { userId, ...fields } = req.body;
+  try {
+    await supabase.from("users").update(fields).eq("id", userId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "DB error" });
   }
 });
 

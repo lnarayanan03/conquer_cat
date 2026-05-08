@@ -124,7 +124,7 @@ function NavIcon({ id }) {
 }
 
 
-function TodayPage({ date, d, upd, dl, start, mode }) {
+function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
   const [saved, setSaved] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
@@ -286,7 +286,7 @@ function TodayPage({ date, d, upd, dl, start, mode }) {
           </div>
         </div>
 
-        <button className={`save-btn${saved?" saved":""}`} onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }}>
+        <button className={`save-btn${saved?" saved":""}`} onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); onSave && onSave(); }}>
           {saved ? "Saved ✓" : "Save Day"}
         </button>
       </div>
@@ -1423,6 +1423,12 @@ export default function App() {
   );
   const [catResult, setCatResult] = useState(() => localStorage.getItem("cat_result") || null)
   const [catPercentile, setCatPercentile] = useState(() => localStorage.getItem("cat_percentile") || null)
+  const [userId] = useState(() => {
+    let id = localStorage.getItem("conquer_user_id")
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem("conquer_user_id", id) }
+    return id
+  })
+  const [synced, setSynced] = useState(false)
   const avatarGender = localStorage.getItem("cat_avatar_gender") || "male"
   const avatarSkin = localStorage.getItem("cat_avatar_skin") || "medium"
   const avatarHair = localStorage.getItem("cat_avatar_hair") || "wavy"
@@ -1453,6 +1459,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
+    if (!userId) return;
+    fetch(`/api/log/all/${userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(logs => { if (logs) setData(prev => ({ ...logs, ...prev })); setSynced(true); })
+      .catch(() => setSynced(true));
+  }, [userId]);
+  useEffect(() => {
     if (!startDate || mentorGreeted) return;
     const today = new Date().toISOString().split("T")[0];
     const greet = async () => {
@@ -1480,6 +1493,20 @@ export default function App() {
     localStorage.setItem("cat_user_name", name)
     setStartDate(date)
     setUserName(name)
+    fetch("/api/user/init", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId, name, startDate: date,
+        gender: localStorage.getItem("cat_avatar_gender"),
+        skinTone: localStorage.getItem("cat_avatar_skin"),
+        hairStyle: localStorage.getItem("cat_avatar_hair"),
+        hairColor: localStorage.getItem("cat_avatar_hair_color"),
+        shirtColor: localStorage.getItem("cat_avatar_shirt"),
+        hasGlasses: localStorage.getItem("cat_avatar_glasses") === "true",
+        hasBeard: localStorage.getItem("cat_avatar_beard") === "true",
+      })
+    }).catch(() => {})
   }} />
 
   const examPassed = new Date() > new Date("2026-11-29T00:00:00")
@@ -1552,7 +1579,13 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} mode={mode} />}
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} mode={mode} onSave={() => {
+          fetch("/api/log/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId, date: sel, dayData: data[sel] || defaultDay() })
+          }).catch(() => {})
+        }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} />}
         {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} />}
