@@ -312,8 +312,8 @@ select:focus { border-color: #f97316; }
 .onboarding-input:focus { border-color: #f97316; }
 .floating-btn {
   position: fixed;
-  bottom: 88px;
-  right: 20px;
+  bottom: 88px !important;
+  right: 16px !important;
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -410,13 +410,40 @@ select:focus { border-color: #f97316; }
 @media (max-width: 768px) {
   .sidebar { display: none; }
   .bottom-nav { display: flex !important; }
-  .main { padding-bottom: 64px; }
-  .page { padding: 28px 18px 80px; }
   .cal-grid { grid-template-columns: repeat(7, 1fr); }
   .big-num { font-size: 44px; }
-  .page-title { font-size: 24px; }
   .stat-grid { gap: 8px; }
   .stat-num { font-size: 20px; }
+  .page {
+    padding: 20px 16px 120px !important;
+  }
+  .card-row {
+    padding: 16px 14px !important;
+    min-height: 56px;
+  }
+  .sections {
+    gap: 20px !important;
+  }
+  .page-title {
+    font-size: 26px !important;
+  }
+  .row-label {
+    font-size: 15px !important;
+  }
+  .row-sub {
+    font-size: 12px !important;
+  }
+  .main {
+    padding-bottom: 80px !important;
+  }
+  .bottom-nav {
+    height: 72px !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+  .bnav-item {
+    font-size: 11px !important;
+    gap: 4px !important;
+  }
 }
 @media (min-width: 769px) {
   .floating-btn { bottom: 24px; right: 24px; }

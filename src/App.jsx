@@ -43,11 +43,11 @@ function MentorAvatar({ size = 40 }) {
 }
 
 function UserAvatar({ size=40, gender="male", skinTone="medium", hairStyle="wavy",
-  hairColor="black", shirtColor="blue", hasGlasses=false, hasBeard=false }) {
+  hairColor="black", shirtColor="blue", hasGlasses=false, hasBeard=false, hasMustache=false }) {
   return (
     <AvatarPreview gender={gender} skinTone={skinTone} hairStyle={hairStyle}
       hairColor={hairColor} shirtColor={shirtColor}
-      hasGlasses={hasGlasses} hasBeard={hasBeard} size={size}/>
+      hasGlasses={hasGlasses} hasBeard={hasBeard} hasMustache={hasMustache} size={size}/>
   )
 }
 
@@ -183,6 +183,8 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
                     type="time"
                     value={d[r.f] || ""}
                     onChange={e => upd(r.f, e.target.value)}
+                    autoComplete="off"
+                    autoCorrect="off"
                     style={{
                       background: "#1a1a1a",
                       border: "1px solid #2a2a2a",
@@ -463,7 +465,7 @@ function CalendarPage({ data, sel, onSel, start }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard }) {
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -514,7 +516,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             <div style={{fontSize:11,color:"#f97316",marginTop:2,
               letterSpacing:"0.06em"}}>99.99%ILE · IIM-A · YOUR MENTOR</div>
           </div>
-          <UserAvatar size={56} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard}/>
+          <UserAvatar size={56} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/>
         </div>
       </div>
 
@@ -557,7 +559,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
               {renderMessage(m.t)}
             </div>
             {m.r === "user" && (
-              <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard}/></div>
+              <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
             )}
           </div>
         ))}
@@ -616,7 +618,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -624,7 +626,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   const [seenCount, setSeenCount] = useState(mentorMessages.length);
   const [pos, setPos] = useState(() => {
     const saved = localStorage.getItem("mentor_btn_pos")
-    return saved ? JSON.parse(saved) : { x: window.innerWidth - 72, y: window.innerHeight - 160 }
+    return saved ? JSON.parse(saved) : { x: window.innerWidth - 72, y: window.innerHeight - 100 }
   })
   const [dragging, setDragging] = useState(false)
   const btnSize = 56
@@ -789,7 +791,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                   {renderMessage(m.t)}
                 </div>
                 {m.r === "user" && (
-                  <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard}/></div>
+                  <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
                 )}
               </div>
             ))}
@@ -853,7 +855,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
 }
 
 function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
-  hairColor="black", shirtColor="orange", hasGlasses=false, hasBeard=false, size=80 }) {
+  hairColor="black", shirtColor="orange", hasGlasses=false, hasBeard=false, hasMustache=false, size=80 }) {
 
   const skinColors = {light:"#f1c27d", medium:"#c68642", dark:"#8d5524"}
   const hairColors = {black:"#1a0a00", brown:"#6b3a2a", blonde:"#c8a850", grey:"#888888"}
@@ -965,6 +967,9 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
           <path d="M67 50 L73 48" stroke="#222" strokeWidth="1.5" strokeLinecap="round"/>
         </>}
         <path d="M50 56 Q47 62 44 63 Q50 65 56 63 Q53 62 50 56Z" fill={shadow} opacity="0.5"/>
+        {hasMustache && gender==="male" && (
+          <path d="M38 64 Q44 61 50 63 Q56 61 62 64 Q57 67 50 65 Q43 67 38 64Z" fill={hair}/>
+        )}
         {hasBeard && gender==="male" && <>
           <path d="M32 64 Q34 74 40 79 Q50 84 60 79 Q66 74 68 64 Q58 70 50 71 Q42 70 32 64Z" fill={hair}/>
           <path d="M39 62 Q44 65 50 64 Q56 65 61 62 Q56 67 50 66 Q44 67 39 62Z" fill={hair}/>
@@ -991,6 +996,7 @@ function OnboardingScreen({ onStart }) {
   const [shirtColor, setShirtColor] = useState("orange")
   const [hasGlasses, setHasGlasses] = useState(false)
   const [hasBeard, setHasBeard] = useState(false)
+  const [hasMustache, setHasMustache] = useState(false)
 
   const months = ["January","February","March","April","May","June",
     "July","August","September","October","November","December"]
@@ -1129,12 +1135,18 @@ function OnboardingScreen({ onStart }) {
                   <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
                 </label>
               )}
+              {gender==="male" && (
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={hasMustache} onChange={e=>setHasMustache(e.target.checked)} style={{accentColor:"#f97316"}}/>
+                  <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
+                </label>
+              )}
             </div>
 
             <div style={{display:"flex",justifyContent:"center",marginTop:4}}>
               <AvatarPreview gender={gender} skinTone={skinTone} hairStyle={hairStyle}
                 hairColor={hairColor} shirtColor={shirtColor}
-                hasGlasses={hasGlasses} hasBeard={hasBeard} size={90}/>
+                hasGlasses={hasGlasses} hasBeard={hasBeard} hasMustache={hasMustache} size={90}/>
             </div>
           </div>
         </div>
@@ -1167,6 +1179,7 @@ function OnboardingScreen({ onStart }) {
               localStorage.setItem("cat_avatar_shirt", shirtColor)
               localStorage.setItem("cat_avatar_glasses", String(hasGlasses))
               localStorage.setItem("cat_avatar_beard", String(hasBeard))
+              localStorage.setItem("cat_avatar_mustache", String(hasMustache))
               onStart(d, name.trim())
             }
           }}
@@ -1436,6 +1449,7 @@ export default function App() {
   const avatarShirt = localStorage.getItem("cat_avatar_shirt") || "blue"
   const avatarGlasses = localStorage.getItem("cat_avatar_glasses") === "true"
   const avatarBeard = localStorage.getItem("cat_avatar_beard") === "true"
+  const avatarMustache = localStorage.getItem("cat_avatar_mustache") === "true"
   const userInitials = userName
     ? userName.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
     : "ME"
@@ -1588,10 +1602,10 @@ export default function App() {
         }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} />}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} />}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />
 
       <nav className="bottom-nav">
         <div className="bnav-inner">
