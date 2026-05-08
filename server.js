@@ -261,7 +261,8 @@ async function fetchJsonWithTimeout(url, options, timeoutMs = MENTOR_TIMEOUT_MS)
 }
 
 async function callAnthropic({ systemText, messages, maxTokens, model }) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!anthropicApiKey) {
     throw new Error("Anthropic API key not configured");
   }
 
@@ -269,7 +270,7 @@ async function callAnthropic({ systemText, messages, maxTokens, model }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "x-api-key": anthropicApiKey,
       "anthropic-version": "2023-06-01",
       "anthropic-beta": "prompt-caching-2024-07-31"
     },
@@ -304,14 +305,15 @@ async function callAnthropic({ systemText, messages, maxTokens, model }) {
 }
 
 async function callGroq({ systemText, messages, maxTokens }) {
-  if (!process.env.GROQ_API_KEY) {
+  const groqApiKey = process.env.GROQ_API_KEY?.trim();
+  if (!groqApiKey) {
     throw new Error("Groq API key not configured");
   }
 
   const { response, data } = await fetchJsonWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      "Authorization": `Bearer ${groqApiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -346,8 +348,14 @@ async function sendMentorReply(res, options) {
   try {
     return res.json(await callGroq(options));
   } catch (groqError) {
-    return res.status(502).json({
-      error: "Both Anthropic and Groq failed",
+    console.error("Both mentor providers failed:", {
+      anthropic: shortReason(anthropicError),
+      groq: shortReason(groqError),
+    });
+    return res.json({
+      reply: "Both AI providers failed. Check server logs.",
+      provider: "none",
+      error: true,
       details: `Anthropic: ${shortReason(anthropicError)}; Groq: ${shortReason(groqError)}`,
     });
   }

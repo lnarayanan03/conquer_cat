@@ -83,9 +83,11 @@ function renderMessage(text) {
 function getApiErrorMessage(data, fallback = "Server error") {
   if (!data) return fallback
   if (typeof data.error === "string") return data.error
+  if (typeof data.reply === "string") return data.reply
   if (typeof data.message === "string") return data.message
   if (typeof data.details?.error?.message === "string") return data.details.error.message
   if (typeof data.details?.message === "string") return data.details.message
+  if (typeof data.details === "string") return data.details
   return fallback
 }
 
@@ -99,13 +101,27 @@ function getMentorReply(data) {
     asString(data?.content?.[0]?.text) ||
     data?.content?.find?.(block => typeof block?.text === "string")?.text ||
     asString(data?.choices?.[0]?.message?.content) ||
-    "I received a response, but could not read it clearly."
+    asString(data?.error) ||
+    "I got a response, but could not parse it."
 
-  if (reply === "I received a response, but could not read it clearly.") {
+  if (reply === "I got a response, but could not parse it.") {
     console.warn("Unexpected /api/chat response shape", data)
   }
 
   return reply
+}
+
+async function readChatResponse(res) {
+  try {
+    const data = await res.clone().json()
+    console.log("CHAT_RESPONSE", data)
+    return data
+  } catch {
+    const text = await res.text()
+    const data = { error: text || `Server error: ${res.status}` }
+    console.log("CHAT_RESPONSE", data)
+    return data
+  }
 }
 
 function isMobileKeyboardViewport() {
@@ -549,14 +565,18 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
         })
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(getApiErrorMessage(data, `Server error: ${res.status}`))
+      const data = await readChatResponse(res)
+      if (!res.ok) {
+        setMentorMessages(p => [...p, { r:"ai", t:getApiErrorMessage(data, `Server error: ${res.status}`) }])
+        return
+      }
       const reply = getMentorReply(data)
       setMentorMessages(p => [...p, { r:"ai", t:reply }])
     } catch (err) {
       setMentorMessages(p => [...p, { r:"ai", t:err.message || "Connection error. Is the server running?" }])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -772,13 +792,17 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(getApiErrorMessage(data, `Server error: ${res.status}`));
+      const data = await readChatResponse(res);
+      if (!res.ok) {
+        setMentorMessages(p => [...p, {r:"ai", t:getApiErrorMessage(data, `Server error: ${res.status}`)}]);
+        return;
+      }
       setMentorMessages(p => [...p, {r:"ai", t:getMentorReply(data)}]);
     } catch (err) {
       setMentorMessages(p => [...p, {r:"ai", t:err.message || "Connection error. Check the server."}]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const focusDoubt = () => {
