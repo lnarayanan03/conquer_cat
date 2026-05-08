@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 dotenv.config();
 const app = express();
@@ -13,7 +14,11 @@ app.use(cors());
 app.use(express.json());
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+      realtime: {
+        transport: ws,
+      },
+    })
   : null;
 
 function buildMentorSystem(daysLeft, totals, dayNum, todayData, mode = "prep", userName = "", startDate = "", interviewDate = "", catResult = "", catPercentile = "") {

@@ -3,19 +3,28 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import "./App.css";
 
 function MentorAvatar({ size = 40 }) {
-  const s = size + "px"
   return (
     <div style={{
-      width:s, height:s, minWidth:s, minHeight:s,
-      borderRadius:"50%", flexShrink:0,
-      border:"3px solid #f97316",
-      background:"#000000",
-      boxShadow:"0 0 0 2px rgba(249,115,22,0.2), 0 4px 20px rgba(249,115,22,0.5)",
-      overflow:"hidden",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      position:"relative"
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      flexShrink: 0,
+      border: "2px solid #f97316",
+      background: "#000000",
+      boxShadow: "0 0 0 2px rgba(249,115,22,0.18), 0 4px 20px rgba(249,115,22,0.35)",
+      overflow: "hidden",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative"
     }}>
-      <svg width={size} height={size} viewBox="0 0 100 100">
+      <svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid slice"
+        style={{display: "block", objectFit: "cover", objectPosition: "center", transform: "none"}}
+      >
         <circle cx="50" cy="50" r="50" fill="#000000"/>
         <path d="M20 100 Q20 80 50 78 Q80 80 80 100Z" fill="#f97316" opacity="0.8"/>
         <path d="M25 100 Q25 82 50 80 Q75 82 75 100Z" fill="#f97316" opacity="0.5"/>
@@ -82,6 +91,14 @@ const toLocalDateKey = (date) => {
   return `${y}-${m}-${d}`;
 };
 const todayKey = () => toLocalDateKey(new Date());
+const getDaysLeft = () => {
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const exam = new Date("2026-11-29T00:00:00")
+  exam.setHours(0, 0, 0, 0)
+  const diff = Math.floor((exam - now) / 86400000)
+  return Math.max(0, diff - 1)
+}
 const getDaysToInterview = (dateStr) => {
   if (!dateStr) return 0
   const now = new Date()
@@ -503,14 +520,15 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   }
 
   return (
-    <div style={{
-      display:"flex", flexDirection:"column",
-      height:"calc(100vh - 0px)", overflow:"hidden"
+    <div className="mentor-page-shell" style={{
+      display:"flex", flexDirection:"column", overflow:"hidden"
     }}>
       <div style={{padding:"32px 40px 16px", flexShrink:0,
         borderBottom:"1px solid #1f1f1f"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <MentorAvatar size={64}/>
+          <div className="mentor-avatar">
+            <MentorAvatar size={56}/>
+          </div>
           <div style={{flex:1}}>
             <div className="page-title" style={{fontSize:24}}>Vikram Anand</div>
             <div style={{fontSize:11,color:"#f97316",marginTop:2,
@@ -520,7 +538,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         </div>
       </div>
 
-      <div style={{flex:1, overflowY:"auto", padding:"20px 40px",
+      <div className="mentor-page-messages" style={{flex:1, overflowY:"auto", padding:"20px 40px",
         display:"flex", flexDirection:"column", gap:12}}>
         {mentorMessages.length === 0 && (
           <div style={{textAlign:"center",color:"#444",fontSize:13,
@@ -572,7 +590,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         <div ref={messagesEndRef}/>
       </div>
 
-      <div style={{
+      <div className="mentor-page-composer" style={{
         padding:"16px 40px 24px",
         borderTop:"1px solid #1f1f1f",
         background:"#000",
@@ -618,7 +636,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, activeTab }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -722,6 +740,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   const PANEL_W = 360
   const PANEL_H = 500
   const margin = 12
+  const isMobile = window.innerWidth < 768
 
   const panelLeft = (() => {
     const btnRight = pos.x + btnSize
@@ -743,10 +762,14 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
       {open && (
         <div className="mentor-panel" style={{
           position: "fixed",
-          left: panelLeft,
-          top: panelTop,
-          width: PANEL_W,
-          height: PANEL_H,
+          left: isMobile ? 0 : panelLeft,
+          top: isMobile ? 0 : panelTop,
+          right: isMobile ? 0 : "auto",
+          bottom: isMobile ? 0 : "auto",
+          width: isMobile ? "100vw" : PANEL_W,
+          height: isMobile ? "100dvh" : PANEL_H,
+          maxHeight: isMobile ? "100svh" : PANEL_H,
+          borderRadius: isMobile ? 0 : 16,
         }}>
           <div className="mentor-header">
             <div className="mentor-identity">
@@ -760,7 +783,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
             </div>
             <button className="close-btn" onClick={() => setOpen(false)}>×</button>
           </div>
-          <div className="messages" ref={ref} style={{padding:"14px",minHeight:0}}>
+          <div className="messages mentor-messages" ref={ref} style={{padding:"14px",minHeight:0}}>
             {mentorMessages.map((m, i) => (
               <div key={i} style={{
                 display: "flex",
@@ -802,7 +825,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
               </div>
             )}
           </div>
-          <div className="chat-input-row" style={{padding:"12px",marginTop:0}}>
+          <div className="chat-input-row mentor-composer" style={{padding:"12px",marginTop:0}}>
             <textarea ref={inputRef} className="chat-input" placeholder={placeholder} value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} rows={1} />
             <button className="send-btn" onClick={() => send()}>↑</button>
           </div>
@@ -813,43 +836,16 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
           </div>
         </div>
       )}
-      <button
-        className="floating-btn"
-        aria-label="Open CAT mentor"
-        onMouseDown={e => { startDrag(e.clientX, e.clientY); e.preventDefault() }}
-        onTouchStart={e => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
-        style={{
-          position: "fixed",
-          left: pos.x,
-          top: pos.y,
-          width: btnSize,
-          height: btnSize,
-          borderRadius: "50%",
-          background: "transparent",
-          border: "none",
-          padding: 0,
-          overflow: "hidden",
-          cursor: dragging ? "grabbing" : "grab",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 200,
-          transition: dragging ? "none" : "left 0.3s cubic-bezier(0.4,0,0.2,1), top 0.3s cubic-bezier(0.4,0,0.2,1)",
-          touchAction: "none",
-          userSelect: "none",
-        }}
-      >
-        <MentorAvatar size={50}/>
-        {hasUnread && (
-          <span style={{
-            position:"absolute", top:0, right:0,
-            width:12, height:12, borderRadius:"50%",
-            background:"#30d158",
-            border:"2px solid #000",
-            zIndex:1
-          }}/>
-        )}
-      </button>
+      {activeTab !== "mentor" && (
+        <button
+          className="floating-btn"
+          aria-label="Open Mentor chat"
+          onClick={() => setOpen(true)}
+        >
+          <MentorAvatar size={58}/>
+          {hasUnread && <span className="mentor-unread-dot" />}
+        </button>
+      )}
     </>
   );
 }
@@ -1850,6 +1846,7 @@ export default function App() {
     return localStorage.getItem("interview_date") || null
   })
   const [tab, setTab] = useState("today");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem("cat_prep_data") || "{}") } catch { return {} } });
   const [sel, setSel] = useState(() => localStorage.getItem("cat_sel_date") || todayKey());
   const [mentorMessages, setMentorMessages] = useState([]);
@@ -1878,11 +1875,7 @@ export default function App() {
     : "ME"
   const _today = new Date()
   _today.setHours(0, 0, 0, 0)
-  const _exam = new Date("2026-11-29T00:00:00")
-  _exam.setHours(0, 0, 0, 0)
-  const dl = mode === "interview"
-    ? getDaysToInterview(interviewDate)
-    : Math.max(0, Math.floor((_exam - _today) / 86400000) - 1)
+  const dl = getDaysLeft()
   const _start = startDate ? new Date(startDate + "T00:00:00") : _today
   _start.setHours(0, 0, 0, 0)
   const dn = Math.max(1, Math.floor((_today - _start) / 86400000) + 1)
@@ -1979,6 +1972,79 @@ export default function App() {
 
   return (
     <div className="app">
+      <header className="mobile-header">
+        <button
+          className="mobile-menu-btn"
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="Open navigation menu"
+        >
+          ☰
+        </button>
+        <div className="mobile-brand">
+          <div className="mobile-title">PREP OS</div>
+          <div className="mobile-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
+        </div>
+        <div className="mobile-days-pill" aria-label={`${dl} days to CAT`}>
+          <span>{dl}</span>
+          <small>DAYS</small>
+        </div>
+      </header>
+
+      <button
+        className={`mobile-drawer-backdrop${mobileMenuOpen ? " open" : ""}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-label="Close navigation menu"
+      />
+
+      <aside className={`mobile-drawer${mobileMenuOpen ? " open" : ""}`}>
+        <div className="mobile-drawer-head">
+          <div>
+            <div className="s-title">CONQUER</div>
+            <div className="s-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
+          </div>
+          <button
+            className="mobile-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            ×
+          </button>
+        </div>
+        <nav className="s-nav mobile-drawer-nav">
+          {nav.map(n => (
+            <button
+              key={n.id}
+              className={`nav-item${tab===n.id?" active":""}`}
+              onClick={() => {
+                setTab(n.id)
+                setMobileMenuOpen(false)
+              }}
+            >
+              <NavIcon id={n.id} />
+              <span>{n.lbl}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="days-pill">
+          <div className="dp-num">{dl}</div>
+          <div className="dp-lab">days to CAT</div>
+        </div>
+        <div className="mobile-started">
+          {userName && <div>{userName}</div>}
+          Started: {new Date(startDate+"T00:00:00")
+            .toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"})}
+          <button
+            onClick={() => {
+              localStorage.removeItem("cat_start_date")
+              window.location.reload()
+            }}
+            className="mobile-reset-btn"
+          >
+            reset start date
+          </button>
+        </div>
+      </aside>
+
       <aside className="sidebar">
         <div className="s-logo">
           <div className="s-title">CONQUER</div>
@@ -1994,7 +2060,7 @@ export default function App() {
         </nav>
         <div className="days-pill">
           <div className="dp-num">{dl}</div>
-          <div className="dp-lab">{mode === "interview" ? "days to interview" : "days to CAT"}</div>
+          <div className="dp-lab">days to CAT</div>
         </div>
         <div style={{
           padding:"0 14px 8px",
@@ -2022,7 +2088,7 @@ export default function App() {
         </button>
       </aside>
 
-      <main className="main">
+      <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
         {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} mode={mode} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
@@ -2035,11 +2101,8 @@ export default function App() {
         {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} activeTab={tab === "chat" ? "mentor" : tab} />
 
-      <div className="mobile-only">
-        <MobileNav tab={tab} setTab={setTab} dl={dl} userName={userName} startDate={startDate} mode={mode} />
-      </div>
     </div>
   );
 }
