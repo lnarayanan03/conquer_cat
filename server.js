@@ -303,6 +303,19 @@ app.post("/api/mentor/greet", async (req, res) => {
   }
 });
 
+app.post("/api/user/check", async (req, res) => {
+  if (!supabase) return res.json({ exists: false });
+  const { userId } = req.body;
+  try {
+    const { data } = await supabase
+      .from("users").select("*").eq("id", userId).single();
+    if (data) return res.json({ exists: true, user: data });
+    return res.json({ exists: false });
+  } catch {
+    return res.json({ exists: false });
+  }
+});
+
 app.post("/api/user/init", async (req, res) => {
   if (!supabase) return res.json({ ok: true });
   const { userId, name, startDate, gender, skinTone, hairStyle, hairColor, shirtColor, hasGlasses, hasBeard } = req.body;

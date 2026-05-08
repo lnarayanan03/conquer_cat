@@ -626,7 +626,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   const [seenCount, setSeenCount] = useState(mentorMessages.length);
   const [pos, setPos] = useState(() => {
     const saved = localStorage.getItem("mentor_btn_pos")
-    return saved ? JSON.parse(saved) : { x: window.innerWidth - 72, y: window.innerHeight - 100 }
+    return saved ? JSON.parse(saved) : { x: window.innerWidth - 72, y: window.innerHeight - 180 }
   })
   const [dragging, setDragging] = useState(false)
   const btnSize = 56
@@ -984,8 +984,223 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
   )
 }
 
+function MobileNav({ tab, setTab, dl, userName, startDate, mode }) {
+  const [open, setOpen] = useState(false)
+  const [btnPos, setBtnPos] = useState(() => {
+    const saved = localStorage.getItem("nav_btn_pos")
+    return saved ? JSON.parse(saved) : { x: 16, y: window.innerHeight / 2 }
+  })
+  const [dragging, setDragging] = useState(false)
+  const dragOffset = useRef({ x: 0, y: 0 })
+  const moved = useRef(false)
+  const btnSize = 48
+
+  const snapToEdge = (x, y) => {
+    const W = window.innerWidth
+    const H = window.innerHeight
+    const margin = 12
+    const distLeft = x
+    const distRight = W - x - btnSize
+    if (distLeft < distRight) {
+      return { x: margin, y: Math.min(Math.max(y, margin), H - btnSize - margin) }
+    }
+    return { x: W - btnSize - margin, y: Math.min(Math.max(y, margin), H - btnSize - margin) }
+  }
+
+  const startDrag = (clientX, clientY) => {
+    moved.current = false
+    dragOffset.current = { x: clientX - btnPos.x, y: clientY - btnPos.y }
+    setDragging(true)
+  }
+
+  useEffect(() => {
+    if (!dragging) return
+    const onMove = (e) => {
+      const { clientX, clientY } = e.touches ? e.touches[0] : e
+      moved.current = true
+      setBtnPos({
+        x: Math.min(Math.max(clientX - dragOffset.current.x, 0), window.innerWidth - btnSize),
+        y: Math.min(Math.max(clientY - dragOffset.current.y, 0), window.innerHeight - btnSize)
+      })
+    }
+    const onEnd = () => {
+      setDragging(false)
+      if (moved.current) {
+        setBtnPos(prev => {
+          const snapped = snapToEdge(prev.x, prev.y)
+          localStorage.setItem("nav_btn_pos", JSON.stringify(snapped))
+          return snapped
+        })
+      } else {
+        setOpen(p => !p)
+      }
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onEnd)
+    window.addEventListener("touchmove", onMove, { passive: false })
+    window.addEventListener("touchend", onEnd)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onEnd)
+      window.removeEventListener("touchmove", onMove)
+      window.removeEventListener("touchend", onEnd)
+    }
+  }, [dragging])
+
+  const nav = [
+    { id:"today", label:"Today", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg> },
+    { id:"progress", label:"Progress", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg> },
+    { id:"calendar", label:"Calendar", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+    { id:"chat", label:"Mentor", icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+  ]
+
+  const onLeft = btnPos.x < window.innerWidth / 2
+
+  return (
+    <>
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position:"fixed", inset:0,
+            background:"rgba(0,0,0,0.5)",
+            backdropFilter:"blur(4px)",
+            zIndex:300
+          }}
+        />
+      )}
+
+      {open && (
+        <div style={{
+          position:"fixed",
+          left: onLeft ? 0 : "auto",
+          right: onLeft ? "auto" : 0,
+          top: 0, bottom: 0,
+          width: 240,
+          background:"#0a0a0a",
+          borderRight: onLeft ? "1px solid #1f1f1f" : "none",
+          borderLeft: onLeft ? "none" : "1px solid #1f1f1f",
+          zIndex:301,
+          display:"flex",
+          flexDirection:"column",
+          animation: `slideIn${onLeft?"Left":"Right"} 0.25s cubic-bezier(0.4,0,0.2,1)`
+        }}>
+          <style>{`
+            @keyframes slideInLeft {
+              from { transform: translateX(-100%); }
+              to { transform: translateX(0); }
+            }
+            @keyframes slideInRight {
+              from { transform: translateX(100%); }
+              to { transform: translateX(0); }
+            }
+          `}</style>
+
+          <div style={{
+            padding:"32px 24px 20px",
+            borderBottom:"1px solid #1f1f1f"
+          }}>
+            <div style={{fontSize:16,fontWeight:900,
+              letterSpacing:"0.12em",color:"#f5f5f7"}}>CONQUER</div>
+            <div style={{fontSize:10,color:"#f97316",
+              marginTop:2,letterSpacing:"0.08em"}}>
+              {mode==="interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ILE"}
+            </div>
+          </div>
+
+          <nav style={{flex:1,padding:"16px 12px",
+            display:"flex",flexDirection:"column",gap:2}}>
+            {nav.map(n => (
+              <button key={n.id}
+                onClick={() => { setTab(n.id); setOpen(false) }}
+                style={{
+                  display:"flex", alignItems:"center", gap:12,
+                  padding:"12px 14px", borderRadius:10,
+                  border:"none",
+                  color: tab===n.id ? "#f5f5f7" : "#6e6e73",
+                  fontSize:15, fontWeight:500,
+                  cursor:"pointer", fontFamily:"inherit",
+                  textAlign:"left", width:"100%",
+                  background: tab===n.id ? "#1a1a1a" : "transparent",
+                  borderLeft: tab===n.id ? "2px solid #f97316" : "2px solid transparent"
+                }}>
+                <span style={{color: tab===n.id ? "#f97316" : "#6e6e73"}}>
+                  {n.icon}
+                </span>
+                {n.label}
+              </button>
+            ))}
+          </nav>
+
+          <div style={{
+            margin:"12px",
+            background:"rgba(249,115,22,0.08)",
+            border:"1px solid rgba(249,115,22,0.2)",
+            borderRadius:12, padding:"14px 16px"
+          }}>
+            <div style={{fontSize:32,fontWeight:900,
+              color:"#f97316",lineHeight:1,
+              fontVariantNumeric:"tabular-nums"}}>{dl}</div>
+            <div style={{fontSize:10,color:"#6e6e73",
+              marginTop:4,letterSpacing:"0.06em",
+              textTransform:"uppercase"}}>
+              {mode==="interview" ? "days to interview" : "days to CAT"}
+            </div>
+          </div>
+
+          <div style={{padding:"0 16px 24px"}}>
+            <div style={{fontSize:11,color:"#555"}}>{userName}</div>
+            <div style={{fontSize:10,color:"#444",marginTop:2}}>
+              Started: {startDate ? new Date(startDate+"T00:00:00")
+                .toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}) : ""}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        onMouseDown={e => { startDrag(e.clientX, e.clientY); e.preventDefault() }}
+        onTouchStart={e => startDrag(e.touches[0].clientX, e.touches[0].clientY)}
+        style={{
+          position:"fixed",
+          left: btnPos.x,
+          top: btnPos.y,
+          width: btnSize,
+          height: btnSize,
+          borderRadius: "50%",
+          background: open ? "#1a1a1a" : "#0a0a0a",
+          border: "1px solid #2a2a2a",
+          cursor: dragging ? "grabbing" : "grab",
+          display:"flex",
+          alignItems:"center",
+          justifyContent:"center",
+          zIndex: 400,
+          touchAction:"none",
+          userSelect:"none",
+          transition: dragging ? "none" : "left 0.3s cubic-bezier(0.4,0,0.2,1), top 0.3s cubic-bezier(0.4,0,0.2,1), background 0.15s",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.6)"
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke={open ? "#f97316" : "#6e6e73"}
+          strokeWidth="2" strokeLinecap="round">
+          {open
+            ? <path d="M18 6L6 18M6 6l12 12"/>
+            : <><line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/></>
+          }
+        </svg>
+      </button>
+    </>
+  )
+}
+
 function OnboardingScreen({ onStart }) {
+  const [screen, setScreen] = useState("choice")
   const [name, setName] = useState("")
+  const [pin, setPin] = useState("")
+  const [confirmPin, setConfirmPin] = useState("")
   const [day, setDay] = useState("")
   const [month, setMonth] = useState("")
   const [year, setYear] = useState("2026")
@@ -993,14 +1208,15 @@ function OnboardingScreen({ onStart }) {
   const [skinTone, setSkinTone] = useState("medium")
   const [hairStyle, setHairStyle] = useState("wavy")
   const [hairColor, setHairColor] = useState("black")
-  const [shirtColor, setShirtColor] = useState("orange")
+  const [shirtColor, setShirtColor] = useState("blue")
   const [hasGlasses, setHasGlasses] = useState(false)
   const [hasBeard, setHasBeard] = useState(false)
   const [hasMustache, setHasMustache] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const months = ["January","February","March","April","May","June",
     "July","August","September","October","November","December"]
-
   const days = Array.from({length:31},(_,i)=>String(i+1).padStart(2,"0"))
 
   const getDateString = () => {
@@ -1009,17 +1225,107 @@ function OnboardingScreen({ onStart }) {
     return `${year}-${m}-${day}`
   }
 
-  const selectStyle = {
-    background:"#111", border:"1px solid #2a2a2a",
-    borderRadius:10, padding:"12px 14px", color:"#f5f5f7",
-    fontSize:15, outline:"none", fontFamily:"inherit",
-    cursor:"pointer", appearance:"none", WebkitAppearance:"none",
-    width:"100%"
+  const generateUserId = (name, pin) => {
+    const str = name.trim().toLowerCase() + pin
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i)
+      hash |= 0
+    }
+    const hex = Math.abs(hash).toString(16).padStart(8,"0")
+    return `${hex.slice(0,8)}-${hex.slice(0,4)}-4${hex.slice(1,4)}-a${hex.slice(2,5)}-${hex.slice(0,12).padEnd(12,"0")}`
   }
 
-  const canSubmit = name.trim() && day && month
+  const handleNewUser = async () => {
+    if (!name.trim()) return setError("Enter your name")
+    if (pin.length !== 4) return setError("PIN must be 4 digits")
+    if (pin !== confirmPin) return setError("PINs do not match")
+    const d = getDateString()
+    if (!d) return setError("Select your start date")
+    setLoading(true)
+    setError("")
+    const userId = generateUserId(name, pin)
+    try {
+      const res = await fetch("/api/user/check", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ userId })
+      })
+      const data = await res.json()
+      if (data.exists) {
+        setError("This name + PIN combination already exists. Use 'Return to Journey' instead.")
+        setLoading(false)
+        return
+      }
+    } catch {}
+    localStorage.setItem("conquer_user_id", userId)
+    localStorage.setItem("cat_avatar_gender", gender)
+    localStorage.setItem("cat_avatar_skin", skinTone)
+    localStorage.setItem("cat_avatar_hair", hairStyle)
+    localStorage.setItem("cat_avatar_hair_color", hairColor)
+    localStorage.setItem("cat_avatar_shirt", shirtColor)
+    localStorage.setItem("cat_avatar_glasses", String(hasGlasses))
+    localStorage.setItem("cat_avatar_beard", String(hasBeard))
+    localStorage.setItem("cat_avatar_mustache", String(hasMustache))
+    setLoading(false)
+    onStart(d, name.trim(), userId)
+  }
 
-  return (
+  const handleReturn = async () => {
+    if (!name.trim()) return setError("Enter your name")
+    if (pin.length !== 4) return setError("Enter your 4-digit PIN")
+    setLoading(true)
+    setError("")
+    const userId = generateUserId(name, pin)
+    try {
+      const res = await fetch("/api/user/check", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ userId })
+      })
+      const data = await res.json()
+      if (!data.exists) {
+        setError("No account found. Check your name and PIN.")
+        setLoading(false)
+        return
+      }
+      localStorage.setItem("conquer_user_id", userId)
+      if (data.user.avatar_gender) localStorage.setItem("cat_avatar_gender", data.user.avatar_gender)
+      if (data.user.avatar_skin) localStorage.setItem("cat_avatar_skin", data.user.avatar_skin)
+      if (data.user.avatar_hair) localStorage.setItem("cat_avatar_hair", data.user.avatar_hair)
+      if (data.user.avatar_hair_color) localStorage.setItem("cat_avatar_hair_color", data.user.avatar_hair_color)
+      if (data.user.avatar_shirt) localStorage.setItem("cat_avatar_shirt", data.user.avatar_shirt)
+      if (data.user.avatar_glasses != null) localStorage.setItem("cat_avatar_glasses", String(data.user.avatar_glasses))
+      if (data.user.avatar_beard != null) localStorage.setItem("cat_avatar_beard", String(data.user.avatar_beard))
+      setLoading(false)
+      onStart(data.user.start_date, data.user.name, userId)
+    } catch {
+      setError("Connection error. Try again.")
+      setLoading(false)
+    }
+  }
+
+  const inputStyle = {
+    width:"100%", background:"#111", border:"1px solid #2a2a2a",
+    borderRadius:10, padding:"12px 16px", color:"#f5f5f7",
+    fontSize:15, outline:"none", fontFamily:"inherit",
+    boxSizing:"border-box", colorScheme:"dark"
+  }
+  const selectStyle = {
+    ...inputStyle, cursor:"pointer",
+    appearance:"none", WebkitAppearance:"none"
+  }
+  const btnStyle = (active) => ({
+    width:"100%", height:52,
+    background: active ? "#f97316" : "#2a2a2a",
+    border:"none", borderRadius:11, color:"white",
+    fontSize:15, fontWeight:800,
+    cursor: active ? "pointer" : "not-allowed",
+    fontFamily:"inherit", letterSpacing:"0.05em",
+    textTransform:"uppercase", transition:"all 0.2s"
+  })
+
+  if (screen === "choice") return (
     <div style={{position:"fixed",inset:0,background:"#000",
       display:"flex",flexDirection:"column",
       alignItems:"center",justifyContent:"center",
@@ -1031,172 +1337,289 @@ function OnboardingScreen({ onStart }) {
         lineHeight:1.2}}>200 Days.<br/>One Goal.</div>
       <div style={{fontSize:14,color:"#6e6e73",marginBottom:48,
         textAlign:"center",lineHeight:1.6}}>
-        CAT 2026 · 99.9%ile<br/>When does your journey begin?
+        CAT 2026 · 99.9%ile
       </div>
-      <div style={{width:"100%",maxWidth:320,display:"flex",
-        flexDirection:"column",gap:16}}>
-        <div>
-          <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
-            textTransform:"uppercase",marginBottom:8}}>Your Name</div>
-          <input
-            type="text"
-            placeholder="Enter your full name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            style={{width:"100%",background:"#111",border:"1px solid #2a2a2a",
-              borderRadius:10,padding:"12px 16px",color:"#f5f5f7",
-              fontSize:15,outline:"none",fontFamily:"inherit",
-              boxSizing:"border-box"}}
-          />
-        </div>
-        <div>
-          <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
-            textTransform:"uppercase",marginBottom:12}}>Your Look</div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:12,color:"#6e6e73",width:70}}>Gender</span>
-              <div style={{display:"flex",gap:6}}>
-                {["male","female"].map(g => (
-                  <button key={g} onClick={() => { setGender(g); if (g==="female") setHasBeard(false) }}
-                    style={{padding:"5px 14px",borderRadius:20,
-                      background:gender===g?"rgba(249,115,22,0.15)":"#1a1a1a",
-                      border:gender===g?"1px solid #f97316":"1px solid #2a2a2a",
-                      color:gender===g?"#f97316":"#6e6e73",
-                      fontSize:12,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}
-                  >{g}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:12,color:"#6e6e73",width:70}}>Skin</span>
-              <div style={{display:"flex",gap:6}}>
-                {[{id:"light",color:"#f1c27d"},{id:"medium",color:"#c68642"},{id:"dark",color:"#8d5524"}].map(s => (
-                  <button key={s.id} onClick={() => setSkinTone(s.id)}
-                    style={{width:28,height:28,borderRadius:"50%",background:s.color,border:"none",
-                      cursor:"pointer",outline:skinTone===s.id?"2px solid #f97316":"2px solid transparent",
-                      outlineOffset:2}}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:12,color:"#6e6e73",width:70}}>Hair</span>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {(gender==="female" ? ["short","wavy","long","curly","bun"] : ["short","wavy","curly"]).map(h => (
-                  <button key={h} onClick={() => setHairStyle(h)}
-                    style={{padding:"4px 10px",borderRadius:20,
-                      background:hairStyle===h?"rgba(249,115,22,0.15)":"#1a1a1a",
-                      border:hairStyle===h?"1px solid #f97316":"1px solid #2a2a2a",
-                      color:hairStyle===h?"#f97316":"#6e6e73",
-                      fontSize:11,cursor:"pointer",fontFamily:"inherit",textTransform:"capitalize"}}
-                  >{h}</button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:12,color:"#6e6e73",width:70}}>Hair color</span>
-              <div style={{display:"flex",gap:6}}>
-                {[{id:"black",color:"#1a0a00"},{id:"brown",color:"#6b3a2a"},{id:"blonde",color:"#c8a850"},{id:"grey",color:"#888888"}].map(h => (
-                  <button key={h.id} onClick={() => setHairColor(h.id)}
-                    style={{width:24,height:24,borderRadius:"50%",background:h.color,border:"none",
-                      cursor:"pointer",outline:hairColor===h.id?"2px solid #f97316":"2px solid transparent",
-                      outlineOffset:2}}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:12,color:"#6e6e73",width:70}}>Outfit</span>
-              <div style={{display:"flex",gap:6}}>
-                {[{id:"orange",color:"#f97316"},{id:"blue",color:"#3b82f6"},{id:"green",color:"#22c55e"},
-                  {id:"purple",color:"#a855f7"},{id:"red",color:"#ef4444"},{id:"white",color:"#e5e5e5"}].map(s => (
-                  <button key={s.id} onClick={() => setShirtColor(s.id)}
-                    style={{width:24,height:24,borderRadius:"50%",background:s.color,border:"none",
-                      cursor:"pointer",outline:shirtColor===s.id?"2px solid #f97316":"2px solid transparent",
-                      outlineOffset:2}}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div style={{display:"flex",gap:16}}>
-              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                <input type="checkbox" checked={hasGlasses} onChange={e=>setHasGlasses(e.target.checked)} style={{accentColor:"#f97316"}}/>
-                <span style={{fontSize:12,color:"#6e6e73"}}>Glasses</span>
-              </label>
-              {gender==="male" && (
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={hasBeard} onChange={e=>setHasBeard(e.target.checked)} style={{accentColor:"#f97316"}}/>
-                  <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
-                </label>
-              )}
-              {gender==="male" && (
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={hasMustache} onChange={e=>setHasMustache(e.target.checked)} style={{accentColor:"#f97316"}}/>
-                  <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
-                </label>
-              )}
-            </div>
-
-            <div style={{display:"flex",justifyContent:"center",marginTop:4}}>
-              <AvatarPreview gender={gender} skinTone={skinTone} hairStyle={hairStyle}
-                hairColor={hairColor} shirtColor={shirtColor}
-                hasGlasses={hasGlasses} hasBeard={hasBeard} hasMustache={hasMustache} size={90}/>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
-            textTransform:"uppercase",marginBottom:8}}>Start Date</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr",gap:8}}>
-            <select value={day} onChange={e=>setDay(e.target.value)} style={selectStyle}>
-              <option value="">DD</option>
-              {days.map(d=><option key={d} value={d}>{d}</option>)}
-            </select>
-            <select value={month} onChange={e=>setMonth(e.target.value)} style={selectStyle}>
-              <option value="">Month</option>
-              {months.map(m=><option key={m} value={m}>{m}</option>)}
-            </select>
-            <select value={year} onChange={e=>setYear(e.target.value)} style={selectStyle}>
-              <option value="2026">2026</option>
-            </select>
-          </div>
-        </div>
+      <div style={{width:"100%",maxWidth:320,
+        display:"flex",flexDirection:"column",gap:12}}>
         <button
-          onClick={() => {
-            const d = getDateString()
-            if (d && name.trim()) {
-              localStorage.setItem("cat_avatar_gender", gender)
-              localStorage.setItem("cat_avatar_skin", skinTone)
-              localStorage.setItem("cat_avatar_hair", hairStyle)
-              localStorage.setItem("cat_avatar_hair_color", hairColor)
-              localStorage.setItem("cat_avatar_shirt", shirtColor)
-              localStorage.setItem("cat_avatar_glasses", String(hasGlasses))
-              localStorage.setItem("cat_avatar_beard", String(hasBeard))
-              localStorage.setItem("cat_avatar_mustache", String(hasMustache))
-              onStart(d, name.trim())
-            }
-          }}
-          disabled={!canSubmit}
-          style={{width:"100%",height:52,
-            background:canSubmit?"#f97316":"#2a2a2a",
-            border:"none",borderRadius:11,color:"white",fontSize:15,
-            fontWeight:800,cursor:canSubmit?"pointer":"not-allowed",
-            transition:"all 0.2s",fontFamily:"inherit",
-            letterSpacing:"0.05em",textTransform:"uppercase"}}>
+          onClick={() => setScreen("new")}
+          style={{...btnStyle(true), background:"#f97316"}}>
           Begin the Journey →
+        </button>
+        <button
+          onClick={() => setScreen("return")}
+          style={{...btnStyle(true), background:"transparent",
+            border:"1px solid #2a2a2a", color:"#a1a1a6",
+            fontSize:14, fontWeight:600}}>
+          Return to Journey
         </button>
       </div>
       <div style={{marginTop:48,fontSize:12,color:"#444",
         textAlign:"center",lineHeight:1.8}}>
         "The secret of getting ahead is getting started."<br/>
         <span style={{color:"#6e6e73"}}>— Every IIM topper, ever.</span>
+      </div>
+    </div>
+  )
+
+  if (screen === "return") return (
+    <div style={{position:"fixed",inset:0,background:"#000",
+      display:"flex",flexDirection:"column",
+      alignItems:"center",justifyContent:"center",
+      padding:"40px 24px",fontFamily:"inherit"}}>
+      <MentorAvatar size={64}/>
+      <div style={{marginTop:16,fontSize:13,fontWeight:700,
+        color:"#f97316",letterSpacing:"0.1em"}}>VIKRAM ANAND</div>
+      <div style={{marginTop:16,fontSize:26,fontWeight:800,
+        color:"#f5f5f7",textAlign:"center",lineHeight:1.2,
+        letterSpacing:"-0.03em",marginBottom:32}}>
+        Welcome back.<br/>Let's continue.
+      </div>
+      <div style={{width:"100%",maxWidth:320,
+        display:"flex",flexDirection:"column",gap:14}}>
+        <div>
+          <div style={{fontSize:11,color:"#6e6e73",
+            letterSpacing:"0.08em",textTransform:"uppercase",
+            marginBottom:8}}>Your Name</div>
+          <input type="text" placeholder="Same name you used before"
+            value={name} onChange={e=>setName(e.target.value)}
+            style={inputStyle}/>
+        </div>
+        <div>
+          <div style={{fontSize:11,color:"#6e6e73",
+            letterSpacing:"0.08em",textTransform:"uppercase",
+            marginBottom:8}}>Your PIN</div>
+          <input type="password" inputMode="numeric"
+            maxLength={4} placeholder="4-digit PIN"
+            value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))}
+            style={{...inputStyle,fontSize:24,letterSpacing:"0.3em",
+              textAlign:"center"}}/>
+        </div>
+        {error && <div style={{fontSize:13,color:"#ff453a",
+          textAlign:"center"}}>{error}</div>}
+        <button
+          onClick={handleReturn}
+          disabled={loading}
+          style={btnStyle(name.trim() && pin.length===4 && !loading)}>
+          {loading ? "Loading..." : "Continue →"}
+        </button>
+        <button onClick={() => { setScreen("choice"); setError("") }}
+          style={{background:"transparent",border:"none",
+            color:"#6e6e73",fontSize:13,cursor:"pointer",
+            fontFamily:"inherit",padding:"8px"}}>
+          ← Back
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"#000",
+      overflowY:"auto",fontFamily:"inherit"}}>
+      <div style={{display:"flex",flexDirection:"column",
+        alignItems:"center",padding:"40px 24px 60px"}}>
+        <div style={{fontSize:13,fontWeight:700,letterSpacing:"0.15em",
+          color:"#f97316",marginBottom:12}}>CONQUER</div>
+        <div style={{fontSize:28,fontWeight:800,color:"#f5f5f7",
+          letterSpacing:"-0.03em",marginBottom:32,textAlign:"center",
+          lineHeight:1.2}}>Create your profile</div>
+
+        <div style={{width:"100%",maxWidth:360,
+          display:"flex",flexDirection:"column",gap:20}}>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Your Name</div>
+            <input type="text" placeholder="Full name"
+              value={name} onChange={e=>setName(e.target.value)}
+              style={inputStyle}/>
+          </div>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Create PIN</div>
+            <input type="password" inputMode="numeric"
+              maxLength={4} placeholder="4 digits"
+              value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,""))}
+              style={{...inputStyle,fontSize:24,letterSpacing:"0.3em",
+                textAlign:"center"}}/>
+            <div style={{fontSize:11,color:"#6e6e73",marginTop:6}}>
+              Remember this PIN — you'll need it on other devices
+            </div>
+          </div>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Confirm PIN</div>
+            <input type="password" inputMode="numeric"
+              maxLength={4} placeholder="Repeat PIN"
+              value={confirmPin}
+              onChange={e=>setConfirmPin(e.target.value.replace(/\D/g,""))}
+              style={{...inputStyle,fontSize:24,letterSpacing:"0.3em",
+                textAlign:"center"}}/>
+          </div>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Your Look</div>
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:80}}>Gender</span>
+                <div style={{display:"flex",gap:6}}>
+                  {["male","female"].map(g => (
+                    <button key={g} onClick={() => {
+                      setGender(g)
+                      if (g==="female") { setHasBeard(false); setHasMustache(false) }
+                    }} style={{
+                      padding:"5px 14px",borderRadius:20,
+                      background:gender===g?"rgba(249,115,22,0.15)":"#1a1a1a",
+                      border:gender===g?"1px solid #f97316":"1px solid #2a2a2a",
+                      color:gender===g?"#f97316":"#6e6e73",
+                      fontSize:12,cursor:"pointer",fontFamily:"inherit",
+                      textTransform:"capitalize"
+                    }}>{g}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:80}}>Skin</span>
+                <div style={{display:"flex",gap:6}}>
+                  {[{id:"light",color:"#f1c27d"},{id:"medium",color:"#c68642"},{id:"dark",color:"#8d5524"}].map(s=>(
+                    <button key={s.id} onClick={()=>setSkinTone(s.id)} style={{
+                      width:28,height:28,borderRadius:"50%",
+                      background:s.color,border:"none",cursor:"pointer",
+                      outline:skinTone===s.id?"2px solid #f97316":"2px solid transparent",
+                      outlineOffset:2
+                    }}/>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:80}}>Hair</span>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {(gender==="female"
+                    ?["short","wavy","long","curly","bun"]
+                    :["short","wavy","curly"]
+                  ).map(h=>(
+                    <button key={h} onClick={()=>setHairStyle(h)} style={{
+                      padding:"4px 10px",borderRadius:20,
+                      background:hairStyle===h?"rgba(249,115,22,0.15)":"#1a1a1a",
+                      border:hairStyle===h?"1px solid #f97316":"1px solid #2a2a2a",
+                      color:hairStyle===h?"#f97316":"#6e6e73",
+                      fontSize:11,cursor:"pointer",fontFamily:"inherit",
+                      textTransform:"capitalize"
+                    }}>{h}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:80}}>Hair color</span>
+                <div style={{display:"flex",gap:6}}>
+                  {[
+                    {id:"black",color:"#0a0a0a"},
+                    {id:"brown",color:"#6b3a2a"},
+                    {id:"blonde",color:"#c8a850"},
+                    {id:"grey",color:"#888888"}
+                  ].map(h=>(
+                    <button key={h.id} onClick={()=>setHairColor(h.id)} style={{
+                      width:24,height:24,borderRadius:"50%",
+                      background:h.color,border:"none",cursor:"pointer",
+                      outline:hairColor===h.id?"2px solid #f97316":"2px solid transparent",
+                      outlineOffset:2
+                    }}/>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:80}}>Outfit</span>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {[
+                    {id:"orange",color:"#f97316"},
+                    {id:"blue",color:"#3b82f6"},
+                    {id:"green",color:"#22c55e"},
+                    {id:"purple",color:"#a855f7"},
+                    {id:"red",color:"#ef4444"},
+                    {id:"white",color:"#e5e5e5"}
+                  ].map(s=>(
+                    <button key={s.id} onClick={()=>setShirtColor(s.id)} style={{
+                      width:24,height:24,borderRadius:"50%",
+                      background:s.color,border:"none",cursor:"pointer",
+                      outline:shirtColor===s.id?"2px solid #f97316":"2px solid transparent",
+                      outlineOffset:2
+                    }}/>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={hasGlasses}
+                    onChange={e=>setHasGlasses(e.target.checked)}
+                    style={{accentColor:"#f97316"}}/>
+                  <span style={{fontSize:12,color:"#6e6e73"}}>Glasses</span>
+                </label>
+                {gender==="male" && <>
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <input type="checkbox" checked={hasBeard}
+                      onChange={e=>setHasBeard(e.target.checked)}
+                      style={{accentColor:"#f97316"}}/>
+                    <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <input type="checkbox" checked={hasMustache}
+                      onChange={e=>setHasMustache(e.target.checked)}
+                      style={{accentColor:"#f97316"}}/>
+                    <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
+                  </label>
+                </>}
+              </div>
+              <div style={{display:"flex",justifyContent:"center",marginTop:4}}>
+                <AvatarPreview
+                  gender={gender} skinTone={skinTone}
+                  hairStyle={hairStyle} hairColor={hairColor}
+                  shirtColor={shirtColor} hasGlasses={hasGlasses}
+                  hasBeard={hasBeard} hasMustache={hasMustache}
+                  size={90}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Start Date</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr",gap:8}}>
+              <select value={day} onChange={e=>setDay(e.target.value)} style={selectStyle}>
+                <option value="">DD</option>
+                {days.map(d=><option key={d} value={d}>{d}</option>)}
+              </select>
+              <select value={month} onChange={e=>setMonth(e.target.value)} style={selectStyle}>
+                <option value="">Month</option>
+                {months.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+              <select value={year} onChange={e=>setYear(e.target.value)} style={selectStyle}>
+                <option value="2026">2026</option>
+              </select>
+            </div>
+          </div>
+
+          {error && <div style={{fontSize:13,color:"#ff453a",
+            textAlign:"center"}}>{error}</div>}
+
+          <button
+            onClick={handleNewUser}
+            disabled={loading}
+            style={btnStyle(!loading && name.trim() && pin.length===4
+              && confirmPin.length===4 && day && month)}>
+            {loading ? "Creating..." : "Begin the Journey →"}
+          </button>
+
+          <button onClick={() => { setScreen("choice"); setError("") }}
+            style={{background:"transparent",border:"none",
+              color:"#6e6e73",fontSize:13,cursor:"pointer",
+              fontFamily:"inherit",padding:"8px"}}>
+            ← Back
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1502,25 +1925,32 @@ export default function App() {
     greet();
   }, [startDate, mentorGreeted, dl, totals, dn, todayData]);
 
-  if (!startDate) return <OnboardingScreen onStart={(date, name) => {
+  if (!startDate) return <OnboardingScreen onStart={async (date, name, userId) => {
     localStorage.setItem("cat_start_date", date)
     localStorage.setItem("cat_user_name", name)
+    localStorage.setItem("conquer_user_id", userId)
     setStartDate(date)
     setUserName(name)
-    fetch("/api/user/init", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId, name, startDate: date,
-        gender: localStorage.getItem("cat_avatar_gender"),
-        skinTone: localStorage.getItem("cat_avatar_skin"),
-        hairStyle: localStorage.getItem("cat_avatar_hair"),
-        hairColor: localStorage.getItem("cat_avatar_hair_color"),
-        shirtColor: localStorage.getItem("cat_avatar_shirt"),
-        hasGlasses: localStorage.getItem("cat_avatar_glasses") === "true",
-        hasBeard: localStorage.getItem("cat_avatar_beard") === "true",
+    try {
+      await fetch("/api/user/init", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          userId,
+          name,
+          startDate: date,
+          avatarGender: localStorage.getItem("cat_avatar_gender") || "male",
+          avatarSkin: localStorage.getItem("cat_avatar_skin") || "medium",
+          avatarHair: localStorage.getItem("cat_avatar_hair") || "wavy",
+          avatarHairColor: localStorage.getItem("cat_avatar_hair_color") || "black",
+          avatarShirt: localStorage.getItem("cat_avatar_shirt") || "blue",
+          avatarGlasses: localStorage.getItem("cat_avatar_glasses") === "true",
+          avatarBeard: localStorage.getItem("cat_avatar_beard") === "true"
+        })
       })
-    }).catch(() => {})
+    } catch (err) {
+      console.error("User init failed:", err)
+    }
   }} />
 
   const examPassed = new Date() > new Date("2026-11-29T00:00:00")
@@ -1607,16 +2037,9 @@ export default function App() {
 
       <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />
 
-      <nav className="bottom-nav">
-        <div className="bnav-inner">
-          {nav.map(n => (
-            <button key={n.id} className={`bnav-item${tab===n.id?" active":""}`} onClick={() => setTab(n.id)}>
-              <NavIcon id={n.id} />
-              <span>{n.lbl}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
+      <div className="mobile-only">
+        <MobileNav tab={tab} setTab={setTab} dl={dl} userName={userName} startDate={startDate} mode={mode} />
+      </div>
     </div>
   );
 }
