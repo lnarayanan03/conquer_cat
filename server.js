@@ -223,89 +223,159 @@ until student says "stop" or "feedback".`
   return systemPrompt
 }
 
+const MENTOR_TIMEOUT_MS = 25000;
+
+function extractReply(data) {
+  const asString = value => typeof value === "string" ? value : "";
+  return asString(data?.reply) ||
+    asString(data?.message) ||
+    asString(data?.text) ||
+    (typeof data?.content === "string" ? data.content : "") ||
+    asString(data?.content?.[0]?.text) ||
+    data?.content?.find?.(block => typeof block?.text === "string")?.text ||
+    asString(data?.choices?.[0]?.message?.content) ||
+    ""
+}
+
+function apiErrorMessage(data, fallback) {
+  return data?.error?.message ||
+    data?.message ||
+    data?.error ||
+    fallback
+}
+
+function shortReason(err) {
+  return (err?.message || String(err) || "Unknown error").slice(0, 240)
+}
+
+async function fetchJsonWithTimeout(url, options, timeoutMs = MENTOR_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    const data = await response.json().catch(() => ({}));
+    return { response, data };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callAnthropic({ systemText, messages, maxTokens, model }) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("Anthropic API key not configured");
+  }
+
+  const { response, data } = await fetchJsonWithTimeout("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "prompt-caching-2024-07-31"
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      system: [
+        {
+          type: "text",
+          text: systemText,
+          cache_control: { type: "ephemeral" }
+        }
+      ],
+      messages,
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search"
+        }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, `Anthropic error: ${response.status}`));
+  }
+
+  const reply = extractReply(data).trim();
+  if (!reply) throw new Error("Anthropic returned an empty response");
+
+  return { reply, provider: "anthropic" };
+}
+
+async function callGroq({ systemText, messages, maxTokens }) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("Groq API key not configured");
+  }
+
+  const { response, data } = await fetchJsonWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      max_tokens: maxTokens,
+      messages: [
+        { role: "system", content: systemText },
+        ...messages,
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(apiErrorMessage(data, `Groq error: ${response.status}`));
+  }
+
+  const reply = extractReply(data).trim();
+  if (!reply) throw new Error("Groq returned an empty response");
+
+  return { reply, provider: "groq" };
+}
+
+async function sendMentorReply(res, options) {
+  let anthropicError;
+  try {
+    return res.json(await callAnthropic(options));
+  } catch (err) {
+    anthropicError = err;
+    console.warn("Anthropic mentor provider failed; trying Groq fallback:", shortReason(err));
+  }
+
+  try {
+    return res.json(await callGroq(options));
+  } catch (groqError) {
+    return res.status(502).json({
+      error: "Both Anthropic and Groq failed",
+      details: `Anthropic: ${shortReason(anthropicError)}; Groq: ${shortReason(groqError)}`,
+    });
+  }
+}
+
 app.post("/api/chat", async (req, res) => {
   const { messages, daysLeft, totals, dayNum, todayData, mode = "prep", userName = "", startDate = "", interviewDate = "", catResult = "", catPercentile = "" } = req.body;
   const systemText = buildMentorSystem(daysLeft, totals, dayNum, todayData, mode, userName, startDate, interviewDate, catResult, catPercentile);
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: "API key not configured" });
-  }
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "prompt-caching-2024-07-31"
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: 400,
-        system: [
-          {
-            type: "text",
-            text: systemText,
-            cache_control: { type: "ephemeral" }
-          }
-        ],
-        messages,
-        tools: [
-          {
-            type: "web_search_20250305",
-            name: "web_search"
-          }
-        ],
-      }),
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to reach Anthropic" });
-  }
+  return sendMentorReply(res, {
+    systemText,
+    messages,
+    maxTokens: 400,
+    model: "claude-sonnet-4-5",
+  });
 });
 
 app.post("/api/mentor/greet", async (req, res) => {
   const { daysLeft, totals, dayNum, todayData, mode = "prep", userName = "", startDate = "", interviewDate = "", catResult = "", catPercentile = "" } = req.body;
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: "API key not configured" });
-  }
   const systemText = buildMentorSystem(daysLeft, totals, dayNum, todayData, mode, userName, startDate, interviewDate, catResult, catPercentile);
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "prompt-caching-2024-07-31"
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 250,
-        system: [
-          {
-            type: "text",
-            text: systemText,
-            cache_control: { type: "ephemeral" }
-          }
-        ],
-        messages: [{
-          role: "user",
-          content: "Give me: 1) A warm greeting checking in on my prep, 2) One specific CAT success story or insight from exam history to motivate me, 3) One sharp tip for today based on where I am in my 200-day journey. Keep it punchy and real. Max 150 words."
-        }],
-        tools: [
-          {
-            type: "web_search_20250305",
-            name: "web_search"
-          }
-        ],
-      }),
-    });
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to reach Anthropic" });
-  }
+  return sendMentorReply(res, {
+    systemText,
+    maxTokens: 250,
+    model: "claude-haiku-4-5-20251001",
+    messages: [{
+      role: "user",
+      content: "Give me: 1) A warm greeting checking in on my prep, 2) One specific CAT success story or insight from exam history to motivate me, 3) One sharp tip for today based on where I am in my 200-day journey. Keep it punchy and real. Max 150 words."
+    }],
+  });
 });
 
 app.post("/api/user/check", async (req, res) => {

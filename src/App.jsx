@@ -80,6 +80,39 @@ function renderMessage(text) {
   ))
 }
 
+function getApiErrorMessage(data, fallback = "Server error") {
+  if (!data) return fallback
+  if (typeof data.error === "string") return data.error
+  if (typeof data.message === "string") return data.message
+  if (typeof data.details?.error?.message === "string") return data.details.error.message
+  if (typeof data.details?.message === "string") return data.details.message
+  return fallback
+}
+
+function getMentorReply(data) {
+  const asString = value => typeof value === "string" ? value : ""
+  const reply =
+    asString(data?.reply) ||
+    asString(data?.message) ||
+    asString(data?.text) ||
+    (typeof data?.content === "string" ? data.content : "") ||
+    asString(data?.content?.[0]?.text) ||
+    data?.content?.find?.(block => typeof block?.text === "string")?.text ||
+    asString(data?.choices?.[0]?.message?.content) ||
+    "I received a response, but could not read it clearly."
+
+  if (reply === "I received a response, but could not read it clearly.") {
+    console.warn("Unexpected /api/chat response shape", data)
+  }
+
+  return reply
+}
+
+function isMobileKeyboardViewport() {
+  if (typeof window === "undefined") return false
+  return window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches ?? window.innerWidth < 768
+}
+
 const EXAM = new Date("2026-11-29T00:00:00");
 const TOTAL = 200;
 const AC = "#f97316";
@@ -486,15 +519,22 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [mentorMessages])
 
-  const send = async () => {
+  const blurInput = (mobileOnly = false) => {
+    if (mobileOnly && !isMobileKeyboardViewport()) return
+    setTimeout(() => inputRef.current?.blur(), 50)
+  }
+
+  const send = async ({ blur = false, mobileBlurOnly = false } = {}) => {
     if (!inp.trim() || loading) return
     const q = inp.trim()
     setInp("")
+    if (blur) blurInput(mobileBlurOnly)
     setMentorMessages(p => [...p, { r:"user", t:q }])
     setLoading(true)
     try {
@@ -509,12 +549,12 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
         })
       })
-      if (!res.ok) throw new Error("Server error")
       const data = await res.json()
-      const reply = data.content?.[0]?.text || "..."
+      if (!res.ok) throw new Error(getApiErrorMessage(data, `Server error: ${res.status}`))
+      const reply = getMentorReply(data)
       setMentorMessages(p => [...p, { r:"ai", t:reply }])
-    } catch {
-      setMentorMessages(p => [...p, { r:"ai", t:"Connection error. Is the server running?" }])
+    } catch (err) {
+      setMentorMessages(p => [...p, { r:"ai", t:err.message || "Connection error. Is the server running?" }])
     }
     setLoading(false)
   }
@@ -617,19 +657,22 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         </div>
         <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
           <textarea
+            ref={inputRef}
             className="chat-input"
             placeholder="Ask Vikram anything..."
+            enterKeyHint="send"
+            inputMode="text"
             value={inp}
             onChange={e => setInp(e.target.value)}
             onKeyDown={e => {
               if(e.key==="Enter" && !e.shiftKey){
-                e.preventDefault(); send()
+                e.preventDefault(); send({ blur: true, mobileBlurOnly: true })
               }
             }}
             rows={1}
             style={{flex:1}}
           />
-          <button className="send-btn" onClick={send}>↑</button>
+          <button className="send-btn" onClick={() => send({ blur: true })}>↑</button>
         </div>
       </div>
     </div>
@@ -658,6 +701,11 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   useEffect(() => { posRef.current = pos }, [pos])
   useEffect(() => { if (ref.current) ref.current.scrollTop = ref.current.scrollHeight; }, [mentorMessages, loading]);
   useEffect(() => { if (open) setSeenCount(mentorMessages.length); }, [open, mentorMessages.length]);
+
+  const blurInput = (mobileOnly = false) => {
+    if (mobileOnly && !isMobileKeyboardViewport()) return
+    setTimeout(() => inputRef.current?.blur(), 50)
+  }
 
   const snapToEdge = (x, y) => {
     const margin = 12
@@ -710,10 +758,11 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
     }
   }, [dragging])
 
-  const send = async (text) => {
+  const send = async (text, { blur = false, mobileBlurOnly = false } = {}) => {
     const q = (text ?? inp).trim();
     if (!q || loading) return;
     setInp("");
+    if (blur) blurInput(mobileBlurOnly)
     setMentorMessages(p => [...p, {r:"user", t:q}]);
     setLoading(true);
     try {
@@ -723,11 +772,11 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
       });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
-      setMentorMessages(p => [...p, {r:"ai", t:data.content?.[0]?.text || "I could not get a clean response. Try again."}]);
-    } catch {
-      setMentorMessages(p => [...p, {r:"ai", t:"Connection error. Check the server."}]);
+      if (!res.ok) throw new Error(getApiErrorMessage(data, `Server error: ${res.status}`));
+      setMentorMessages(p => [...p, {r:"ai", t:getMentorReply(data)}]);
+    } catch (err) {
+      setMentorMessages(p => [...p, {r:"ai", t:err.message || "Connection error. Check the server."}]);
     }
     setLoading(false);
   };
@@ -826,12 +875,12 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
             )}
           </div>
           <div className="chat-input-row mentor-composer" style={{padding:"12px",marginTop:0}}>
-            <textarea ref={inputRef} className="chat-input" placeholder={placeholder} value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} rows={1} />
-            <button className="send-btn" onClick={() => send()}>↑</button>
+            <textarea ref={inputRef} className="chat-input" placeholder={placeholder} enterKeyHint="send" inputMode="text" value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(undefined, { blur: true, mobileBlurOnly: true });}}} rows={1} />
+            <button className="send-btn" onClick={() => send(undefined, { blur: true })}>↑</button>
           </div>
           <div className="mentor-actions">
-            <button onClick={() => send("Start a mock PI interview with me right now")}>Mock Interview</button>
-            <button onClick={() => send("Give me a WAT topic and evaluate my response")}>WAT Topic</button>
+            <button onClick={() => send("Start a mock PI interview with me right now", { blur: true })}>Mock Interview</button>
+            <button onClick={() => send("Give me a WAT topic and evaluate my response", { blur: true })}>WAT Topic</button>
             <button onClick={focusDoubt}>Doubt</button>
           </div>
         </div>
@@ -1905,11 +1954,11 @@ export default function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ daysLeft: dl, totals, dayNum: dn, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
         });
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const data = await res.json();
-        setMentorMessages(p => [...p, {r:"ai", t:data.content?.[0]?.text || "Ready when you are. Show up today."}]);
-      } catch {
-        setMentorMessages(p => [...p, {r:"ai", t:"Ready when you are. Show up today."}]);
+        if (!res.ok) throw new Error(getApiErrorMessage(data, `Server error: ${res.status}`));
+        setMentorMessages(p => [...p, {r:"ai", t:getMentorReply(data)}]);
+      } catch (err) {
+        setMentorMessages(p => [...p, {r:"ai", t:err.message || "Ready when you are. Show up today."}]);
       } finally {
         localStorage.setItem("mentor_greeted_today", today);
         setMentorGreeted(true);

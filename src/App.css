@@ -252,9 +252,9 @@ select:focus { border-color: #f97316; }
 .cal-cell.partial { background: rgba(249,115,22,0.05); border-color: rgba(249,115,22,0.15); color: #555; }
 .cal-cell.today { border-color: var(--ac) !important; color: var(--ac) !important; }
 .cal-cell.selected { box-shadow: 0 0 0 2px rgba(249,115,22,0.4); }
-.chat-layout { display: flex; flex-direction: column; height: calc(100vh - 140px); }
-.mentor-page-shell { height: 100vh; }
-.messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+.chat-layout { display: flex; flex-direction: column; height: calc(100dvh - 140px); }
+.mentor-page-shell { height: 100svh; height: 100dvh; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
 .messages::-webkit-scrollbar { width: 0; }
 .message { max-width: 78%; }
 .message.user { align-self: flex-end; }
@@ -394,7 +394,7 @@ select:focus { border-color: #f97316; }
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 24px !important;
+  padding-bottom: 12px !important;
 }
 .mentor-header {
   padding: 14px 16px;
@@ -778,7 +778,7 @@ select:focus { border-color: #f97316; }
     margin-top: 0 !important;
     background: #0a0a0a;
     border-top: 1px solid #1f1f1f;
-    padding: 10px 12px !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
   }
   .mentor-actions {
     flex-shrink: 0;
