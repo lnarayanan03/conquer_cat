@@ -6,7 +6,7 @@ import { dirname, join } from "path";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { mentorChat } from "./src/mentor/chain.js";
-import { initQdrant } from "./src/mentor/memory.js";
+import { getRecentChat, initQdrant } from "./src/mentor/memory.js";
 import { startPipeline } from "./src/mentor/pipeline.js";
 
 dotenv.config();
@@ -366,16 +366,33 @@ async function sendMentorReply(res, options) {
 
 app.post("/api/chat", async (req, res) => {
   try {
-    const { userId, message, trackerData = {}, daysLeft } = req.body;
+    const { userId, trackerData, daysLeft } = req.body;
+    const userMessage = req.body.message || req.body.userMessage;
+    if (!userMessage) {
+      return res.status(400).json({ error: "userMessage is required" });
+    }
     const result = await mentorChat({
       userId,
-      userMessage: message,
-      trackerData,
+      userMessage,
+      trackerData: trackerData || req.body,
       daysLeft,
     });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err?.message || "Mentor chat failed" });
+  }
+});
+
+app.get("/api/chat/history/:userId", async (req, res) => {
+  try {
+    const history = await getRecentChat(req.params.userId, 50);
+    const messages = history.map(msg => ({
+      r: msg.role === "user" ? "user" : "ai",
+      t: msg.content,
+    }));
+    res.json({ messages });
+  } catch (err) {
+    res.status(500).json({ error: err?.message || "Failed to load chat history" });
   }
 });
 

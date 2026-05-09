@@ -559,6 +559,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
           userId,
+          message: q,
           daysLeft: dl, totals, dayNum, todayData: d, mode,
           userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
           catResult: catResult || "", catPercentile: catPercentile || "",
@@ -791,7 +792,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
+        body: JSON.stringify({ userId, message: q, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
       });
       const data = await readChatResponse(res);
       if (!res.ok) {
