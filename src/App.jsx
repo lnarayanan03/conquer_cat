@@ -619,6 +619,9 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             width: "100%",
             boxSizing: "border-box"
           }}>
+            {m.r === "user" && (
+              <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
+            )}
             {m.r !== "user" && (
               <div style={{flexShrink: 0}}><MentorAvatar size={44}/></div>
             )}
@@ -638,9 +641,6 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             }}>
               {renderMessage(m.t)}
             </div>
-            {m.r === "user" && (
-              <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
-            )}
           </div>
         ))}
         {loading && (
@@ -869,6 +869,9 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                 width: "100%",
                 boxSizing: "border-box"
               }}>
+                {m.r === "user" && (
+                  <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
+                )}
                 {m.r !== "user" && (
                   <div style={{flexShrink: 0}}><MentorAvatar size={44}/></div>
                 )}
@@ -888,9 +891,6 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                 }}>
                   {renderMessage(m.t)}
                 </div>
-                {m.r === "user" && (
-                  <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
-                )}
               </div>
             ))}
             {loading && (
@@ -1929,6 +1929,7 @@ export default function App() {
     () => localStorage.getItem("mentor_greeted_today") ===
       new Date().toISOString().split("T")[0]
   );
+  const [mentorHistoryChecked, setMentorHistoryChecked] = useState(false);
   const [catResult, setCatResult] = useState(() => localStorage.getItem("cat_result") || null)
   const [catPercentile, setCatPercentile] = useState(() => localStorage.getItem("cat_percentile") || null)
   const [userId] = useState(() => {
@@ -1972,15 +1973,26 @@ export default function App() {
   }, [userId]);
   useEffect(() => {
     if (!userId || !startDate) return;
+    setMentorHistoryChecked(false);
     fetch(`/api/chat/history/${userId}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (Array.isArray(data?.messages)) setMentorMessages(data.messages);
+        const messages = Array.isArray(data?.messages) ? data.messages : [];
+        if (messages.length === 0) {
+          localStorage.removeItem("mentor_greeted_today");
+          setMentorGreeted(false);
+          return;
+        }
+        setMentorMessages(messages);
+        const today = new Date().toISOString().split("T")[0];
+        localStorage.setItem("mentor_greeted_today", today);
+        setMentorGreeted(true);
       })
-      .catch(err => console.warn("Mentor history load failed:", err));
+      .catch(err => console.warn("Mentor history load failed:", err))
+      .finally(() => setMentorHistoryChecked(true));
   }, [userId, startDate]);
   useEffect(() => {
-    if (!startDate || mentorGreeted) return;
+    if (!startDate || !mentorHistoryChecked || mentorGreeted) return;
     const today = new Date().toISOString().split("T")[0];
     const greet = async () => {
       try {
@@ -2000,7 +2012,7 @@ export default function App() {
       }
     };
     greet();
-  }, [startDate, mentorGreeted, dl, totals, dn, todayData]);
+  }, [startDate, mentorHistoryChecked, mentorGreeted, dl, totals, dn, todayData]);
 
   if (!startDate) return <OnboardingScreen onStart={async (date, name, userId) => {
     localStorage.setItem("cat_start_date", date)
