@@ -1966,10 +1966,34 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
     if (!userId) return;
-    fetch(`/api/log/all/${userId}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(logs => { if (logs) setData(prev => ({ ...logs, ...prev })); setSynced(true); })
-      .catch(() => setSynced(true));
+    const verifyAndLoad = async () => {
+      try {
+        const checkRes = await fetch("/api/user/check", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ userId })
+        });
+        const checkData = checkRes.ok ? await checkRes.json() : null;
+        if (checkData?.exists === false) {
+          localStorage.removeItem("conquer_user_id");
+          localStorage.removeItem("cat_start_date");
+          localStorage.removeItem("cat_user_name");
+          localStorage.removeItem("mentor_greeted_today");
+          localStorage.removeItem("cat_result");
+          localStorage.removeItem("cat_percentile");
+          localStorage.removeItem("app_mode");
+          localStorage.removeItem("interview_date");
+          window.location.reload();
+          return;
+        }
+      } catch {}
+
+      fetch(`/api/log/all/${userId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(logs => { if (logs) setData(prev => ({ ...logs, ...prev })); setSynced(true); })
+        .catch(() => setSynced(true));
+    };
+    verifyAndLoad();
   }, [userId]);
   useEffect(() => {
     if (!userId || !startDate) return;
