@@ -226,7 +226,7 @@ until student says "stop" or "feedback".`
   return systemPrompt
 }
 
-const MENTOR_TIMEOUT_MS = 25000;
+const MENTOR_TIMEOUT_MS = 40000;
 
 function extractReply(data) {
   const asString = value => typeof value === "string" ? value : "";
@@ -315,23 +315,34 @@ async function callGroq({ systemText, messages, maxTokens }) {
     throw new Error("Groq API key not configured");
   }
 
-  const { response, data } = await fetchJsonWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${groqApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      max_tokens: maxTokens,
-      messages: [
-        { role: "system", content: systemText },
-        ...messages,
-      ],
-    }),
-  });
+  let response, data;
+  try {
+    ({ response, data } = await fetchJsonWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        max_tokens: maxTokens,
+        messages: [
+          { role: "system", content: systemText },
+          ...messages,
+        ],
+      }),
+    }));
+  } catch (err) {
+    if (err.name === "AbortError" || /timeout|ETIMEDOUT/i.test(err.message || "")) {
+      console.warn("Groq timeout, trying next key or fallback");
+    }
+    throw err;
+  }
 
   if (!response.ok) {
+    if (response.status === 503 || response.status === 504) {
+      console.warn("Groq timeout, trying next key or fallback");
+    }
     throw new Error(apiErrorMessage(data, `Groq error: ${response.status}`));
   }
 
@@ -444,11 +455,12 @@ app.post("/api/log/save", async (req, res) => {
   const { userId, date, dayData } = req.body;
   try {
     await supabase.from("daily_logs").upsert(
-      { user_id: userId, log_date: date, ...dayData },
+      { user_id: userId, log_date: date, ...dayData, backlog: dayData.backlog || [] },
       { onConflict: "user_id,log_date" }
     );
     res.json({ ok: true });
   } catch (err) {
+    console.error("Log save DB error:", err.message);
     res.status(500).json({ error: "DB error" });
   }
 });

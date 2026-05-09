@@ -208,11 +208,36 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       longTermMemories,
       daysLeft,
     });
-    const messages = [
-      new SystemMessage(systemPrompt),
-      ...toLangChainHistory(recentChat),
-      new HumanMessage(userMessage),
-    ];
+
+    const MAX_RECENT = 6;
+    const SUMMARIZE_THRESHOLD = 10;
+
+    let messages;
+    if (recentChat.length > SUMMARIZE_THRESHOLD) {
+      const older = recentChat.slice(0, recentChat.length - MAX_RECENT);
+      const recent = recentChat.slice(-MAX_RECENT);
+
+      const summaryText = older.map(m =>
+        `${m.role === 'user' ? 'Student' : 'Vikram'}: ${m.content}`
+      ).join('\n');
+
+      const summaryMessage = new SystemMessage(
+        `EARLIER IN THIS CONVERSATION (summarized):\n${summaryText}\n\nFocus on the recent messages below.`
+      );
+
+      messages = [
+        new SystemMessage(systemPrompt),
+        summaryMessage,
+        ...toLangChainHistory(recent),
+        new HumanMessage(userMessage),
+      ];
+    } else {
+      messages = [
+        new SystemMessage(systemPrompt),
+        ...toLangChainHistory(recentChat),
+        new HumanMessage(userMessage),
+      ];
+    }
 
     let result;
     let groqUsedSearch = false;

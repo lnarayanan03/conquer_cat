@@ -108,6 +108,10 @@ function getMentorReply(data) {
     console.warn("Unexpected /api/chat response shape", data)
   }
 
+  if (reply === "Load failed" || reply.includes("Load failed")) {
+    return "Connection issue. Send your message again."
+  }
+
   return reply
 }
 
@@ -156,7 +160,7 @@ const getDaysToInterview = (dateStr) => {
   interview.setHours(0, 0, 0, 0)
   return Math.max(0, Math.floor((interview - now) / 86400000))
 }
-const defaultDay = () => ({ wt:"",st:"",lc:false,ah:"",eh:"",vp:false,vp_count:0,q:0,v:0,l:0,iq:"",n:"" });
+const defaultDay = () => ({ wt:"",st:"",lc:false,ah:"",eh:"",vp:false,vp_count:0,q:0,v:0,l:0,iq:"",n:"",backlog:[] });
 
 const effortScore = (day) => {
   const q = Math.min((+day.q||0)/10, 1) * 25;
@@ -304,6 +308,59 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
               <Tog v={d.vp} onChange={v=>upd("vp",v)} />
             </div>
           </div>
+        </div>
+
+        <div>
+          <div className="sec-label">iQuanta Backlog</div>
+          {(d.backlog || []).map((entry, i) => (
+            <div key={i} className="card" style={{marginTop: i === 0 ? 0 : 8, position:"relative"}}>
+              <button className="backlog-remove-btn" onClick={() => {
+                upd("backlog", (d.backlog || []).filter((_, j) => j !== i));
+              }}>×</button>
+              <div className="backlog-entry">
+                <input
+                  type="text"
+                  className="backlog-topic-input"
+                  placeholder="Topic / Video name"
+                  value={entry.topic || ""}
+                  onChange={e => {
+                    const next = [...(d.backlog || [])];
+                    next[i] = { ...next[i], topic: e.target.value };
+                    upd("backlog", next);
+                  }}
+                />
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <input
+                    type="number"
+                    className="num-input"
+                    min="0"
+                    step="5"
+                    value={entry.duration || ""}
+                    onChange={e => {
+                      const next = [...(d.backlog || [])];
+                      next[i] = { ...next[i], duration: +e.target.value };
+                      upd("backlog", next);
+                    }}
+                  />
+                  <span style={{fontSize:11,color:"var(--tt)"}}>mins</span>
+                </div>
+                <textarea
+                  className="textarea backlog-notes"
+                  placeholder="Notes (optional)"
+                  rows={1}
+                  value={entry.notes || ""}
+                  onChange={e => {
+                    const next = [...(d.backlog || [])];
+                    next[i] = { ...next[i], notes: e.target.value };
+                    upd("backlog", next);
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+          <button className="backlog-add-btn" onClick={() => {
+            upd("backlog", [...(d.backlog || []), { topic:"", duration:0, notes:"" }]);
+          }}>+</button>
         </div>
 
         {mode === "interview" ? (
@@ -554,28 +611,43 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
     setMentorMessages(p => [...p, { r:"user", t:q }])
     setLoading(true)
     const doFetch = async () => {
-      const res = await fetch("/api/chat", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          userId,
-          message: q,
-          daysLeft: dl, totals, dayNum, todayData: d, mode,
-          userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
-          catResult: catResult || "", catPercentile: catPercentile || "",
-          messages: [...mentorMessages, {r:"user",t:q}]
-            .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 35000)
+      try {
+        const res = await fetch("/api/chat", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            userId,
+            message: q,
+            daysLeft: dl, totals, dayNum, todayData: d, mode,
+            userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
+            catResult: catResult || "", catPercentile: catPercentile || "",
+            messages: [...mentorMessages, {r:"user",t:q}]
+              .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
+          }),
+          signal: controller.signal
         })
-      })
-      const data = await readChatResponse(res)
-      if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) }
-      return { reply: getMentorReply(data) }
+        clearTimeout(timeout)
+        const data = await readChatResponse(res)
+        if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) }
+        return { reply: getMentorReply(data) }
+      } catch (err) {
+        clearTimeout(timeout)
+        if (err.name === "AbortError") {
+          setMentorMessages(p => [...p, { r:"ai", t:"Taking longer than usual. Send your message again." }])
+          return null
+        }
+        throw err
+      }
     }
     try {
       let result = await doFetch()
+      if (result === null) return
       if (!result.error && (result.reply.includes("system stumbled") || result.reply.includes("Load failed"))) {
         await new Promise(r => setTimeout(r, 2000))
         result = await doFetch()
+        if (result === null) return
       }
       if (result.error) {
         setMentorMessages(p => [...p, { r:"ai", t:result.error }])
@@ -803,20 +875,35 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
     setLoading(true);
     const doFetch = async () => {
       const messages = [{ role: "user", content: q }];
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, message: q, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
-      });
-      const data = await readChatResponse(res);
-      if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) };
-      return { reply: getMentorReply(data) };
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 35000);
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, message: q, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" }),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        const data = await readChatResponse(res);
+        if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) };
+        return { reply: getMentorReply(data) };
+      } catch (err) {
+        clearTimeout(timeout);
+        if (err.name === "AbortError") {
+          setMentorMessages(p => [...p, {r:"ai", t:"Taking longer than usual. Send your message again."}]);
+          return null;
+        }
+        throw err;
+      }
     };
     try {
       let result = await doFetch();
+      if (result === null) return;
       if (!result.error && (result.reply.includes("system stumbled") || result.reply.includes("Load failed"))) {
         await new Promise(r => setTimeout(r, 2000));
         result = await doFetch();
+        if (result === null) return;
       }
       if (result.error) {
         setMentorMessages(p => [...p, {r:"ai", t:result.error}]);
@@ -2020,11 +2107,25 @@ export default function App() {
 
       fetch(`/api/log/all/${userId}`)
         .then(r => r.ok ? r.json() : null)
-        .then(logs => { if (logs) setData(prev => ({ ...logs, ...prev })); setSynced(true); })
+        .then(logs => { if (logs) setData(prev => ({ ...prev, ...logs })); setSynced(true); })
         .catch(() => setSynced(true));
     };
     verifyAndLoad();
   }, [userId, startDate, userInitialized]);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && userId) {
+        fetch(`/api/log/all/${userId}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(logs => {
+            if (logs) setData(prev => ({ ...prev, ...logs }));
+          })
+          .catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [userId]);
   useEffect(() => {
     if (!userId || !startDate) return;
     setMentorHistoryChecked(false);
@@ -2248,7 +2349,7 @@ export default function App() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId, date: sel, dayData: data[sel] || defaultDay() })
-          }).catch(() => {})
+          }).catch(err => { console.error("Log save failed:", err.message) })
         }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} />}
