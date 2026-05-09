@@ -5,6 +5,9 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import { mentorChat } from "./src/mentor/chain.js";
+import { initQdrant } from "./src/mentor/memory.js";
+import { startPipeline } from "./src/mentor/pipeline.js";
 
 dotenv.config();
 const app = express();
@@ -362,14 +365,18 @@ async function sendMentorReply(res, options) {
 }
 
 app.post("/api/chat", async (req, res) => {
-  const { messages, daysLeft, totals, dayNum, todayData, mode = "prep", userName = "", startDate = "", interviewDate = "", catResult = "", catPercentile = "" } = req.body;
-  const systemText = buildMentorSystem(daysLeft, totals, dayNum, todayData, mode, userName, startDate, interviewDate, catResult, catPercentile);
-  return sendMentorReply(res, {
-    systemText,
-    messages,
-    maxTokens: 400,
-    model: "claude-sonnet-4-5",
-  });
+  try {
+    const { userId, message, trackerData = {}, daysLeft } = req.body;
+    const result = await mentorChat({
+      userId,
+      userMessage: message,
+      trackerData,
+      daysLeft,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err?.message || "Mentor chat failed" });
+  }
 });
 
 app.post("/api/mentor/greet", async (req, res) => {
@@ -464,5 +471,15 @@ app.get("/{*path}", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  initQdrant().catch(err => {
+    console.error("Qdrant init failed:", err?.message || err);
+  });
+  try {
+    startPipeline(supabase);
+  } catch (err) {
+    console.error("Mentor pipeline startup failed:", err?.message || err);
+  }
+});
 server.on("error", err => console.error(err));
