@@ -427,10 +427,10 @@ app.post("/api/user/check", async (req, res) => {
 
 app.post("/api/user/init", async (req, res) => {
   if (!supabase) return res.json({ ok: true });
-  const { userId, name, startDate, gender, skinTone, hairStyle, hairColor, shirtColor, hasGlasses, hasBeard } = req.body;
+  const { userId, name, startDate, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache } = req.body;
   try {
     await supabase.from("users").upsert(
-      { id: userId, name, start_date: startDate, gender, skin_tone: skinTone, hair_style: hairStyle, hair_color: hairColor, shirt_color: shirtColor, has_glasses: hasGlasses, has_beard: hasBeard },
+      { id: userId, name, start_date: startDate, avatar_gender: avatarGender, avatar_skin: avatarSkin, avatar_hair: avatarHair, avatar_hair_color: avatarHairColor, avatar_shirt: avatarShirt, avatar_glasses: avatarGlasses, avatar_beard: avatarBeard, avatar_mustache: avatarMustache },
       { onConflict: "id" }
     );
     res.json({ ok: true });
