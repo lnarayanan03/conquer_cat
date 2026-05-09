@@ -1937,6 +1937,7 @@ export default function App() {
     if (!id) { id = crypto.randomUUID(); localStorage.setItem("conquer_user_id", id) }
     return id
   })
+  const userChecked = useRef(false)
   const [synced, setSynced] = useState(false)
   const avatarGender = localStorage.getItem("cat_avatar_gender") || "male"
   const avatarSkin = localStorage.getItem("cat_avatar_skin") || "medium"
@@ -1965,7 +1966,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !startDate || userChecked.current) return;
+    userChecked.current = true;
     const verifyAndLoad = async () => {
       try {
         const checkRes = await fetch("/api/user/check", {
@@ -1983,7 +1985,8 @@ export default function App() {
           localStorage.removeItem("cat_percentile");
           localStorage.removeItem("app_mode");
           localStorage.removeItem("interview_date");
-          window.location.reload();
+          setStartDate(null);
+          setUserName(null);
           return;
         }
       } catch {}
@@ -1994,7 +1997,7 @@ export default function App() {
         .catch(() => setSynced(true));
     };
     verifyAndLoad();
-  }, [userId]);
+  }, [userId, startDate]);
   useEffect(() => {
     if (!userId || !startDate) return;
     setMentorHistoryChecked(false);
