@@ -13,22 +13,24 @@ function requireEnv(name) {
   return value;
 }
 
-function createGroqModel() {
-  return new ChatGroq({
+function createGroqModel(withTools = true) {
+  const model = new ChatGroq({
     apiKey: requireEnv("GROQ_API_KEY"),
     model: "llama-3.3-70b-versatile",
     temperature: 0.85,
     maxTokens: 400,
-  }).bindTools(ALL_TOOLS);
+  });
+  return withTools ? model.bindTools(ALL_TOOLS) : model;
 }
 
-function createAnthropicModel() {
-  return new ChatAnthropic({
+function createAnthropicModel(withTools = true) {
+  const model = new ChatAnthropic({
     apiKey: requireEnv("ANTHROPIC_API_KEY"),
     model: "claude-sonnet-4-20250514",
     temperature: 0.85,
     maxTokens: 400,
-  }).bindTools(ALL_TOOLS);
+  });
+  return withTools ? model.bindTools(ALL_TOOLS) : model;
 }
 
 function toLangChainHistory(messages = []) {
@@ -59,6 +61,22 @@ function normalizeContent(content) {
       .trim();
   }
   return "";
+}
+
+function cleanReply(text) {
+  if (!text) return text;
+  const leakPatterns = [
+    /I('ll| will| need to| am going to| don't need to).{0,80}search[^.]*\.\s*/gi,
+    /I('m going to| will) (find|get|pull|look up|search for)[^.]*\.\s*/gi,
+    /Let me (search|find|look|get|pull)[^.]*\.\s*/gi,
+    /I need (a|to find|to search|to get)[^.]{0,120}(story|insight|example|real|search)[^.]*\.\s*/gi,
+    /(Searching|Looking up|Finding|Pulling) for[^.]*\.\s*/gi,
+  ];
+  let cleaned = text;
+  for (const pattern of leakPatterns) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.trim();
 }
 
 function toolOutputToString(output) {
@@ -108,6 +126,7 @@ async function runWithTools(model, baseMessages) {
         content = toolOutputToString(await selectedTool.invoke(call.args || {}));
       } catch (err) {
         status = "error";
+        console.error(`Tool ${call.name} failed:`, err?.message || err);
         content = err?.message || `Tool failed: ${call.name}`;
       }
 
@@ -126,8 +145,8 @@ async function runWithTools(model, baseMessages) {
   };
 }
 
-async function runProvider(provider, messages) {
-  const model = provider === "groq" ? createGroqModel() : createAnthropicModel();
+async function runProvider(provider, messages, withTools = true) {
+  const model = provider === "groq" ? createGroqModel(withTools) : createAnthropicModel(withTools);
   const result = await runWithTools(model, messages);
   if (!result.reply) {
     const err = new Error(`${provider} returned an empty reply`);
@@ -140,39 +159,68 @@ async function runProvider(provider, messages) {
   };
 }
 
-export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft }) {
-  if (!userId) throw new Error("userId is required");
-  if (!userMessage?.trim()) throw new Error("userMessage is required");
-
-  const longTermMemories = await retrieveMemories(userId, userMessage, 4);
-  const recentChat = await getRecentChat(userId, 20);
-  const systemPrompt = buildSystemPrompt({
-    trackerData,
-    longTermMemories,
-    daysLeft,
-  });
-  const messages = [
-    new SystemMessage(systemPrompt),
-    ...toLangChainHistory(recentChat),
-    new HumanMessage(userMessage),
-  ];
-
-  let result;
-  let groqUsedSearch = false;
+export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false }) {
   try {
-    result = await runProvider("groq", messages);
+    if (!userId) throw new Error("userId is required");
+    if (!userMessage?.trim()) throw new Error("userMessage is required");
+
+    let longTermMemories = [];
+    try {
+      longTermMemories = await retrieveMemories(userId, userMessage, 4);
+    } catch (err) {
+      console.warn("Memory retrieval skipped:", err?.message || err);
+      longTermMemories = [];
+    }
+
+    let recentChat = [];
+    try {
+      recentChat = await getRecentChat(userId, 20);
+    } catch (err) {
+      console.warn("Recent chat load skipped:", err?.message || err);
+      recentChat = [];
+    }
+
+    const systemPrompt = buildSystemPrompt({
+      trackerData,
+      longTermMemories,
+      daysLeft,
+    });
+    const messages = [
+      new SystemMessage(systemPrompt),
+      ...toLangChainHistory(recentChat),
+      new HumanMessage(userMessage),
+    ];
+
+    let result;
+    let groqUsedSearch = false;
+    try {
+      result = await runProvider("groq", messages, !disableTools);
+    } catch (err) {
+      groqUsedSearch = Boolean(err?.usedSearch);
+      result = await runProvider("anthropic", messages, !disableTools);
+      result.usedSearch = result.usedSearch || groqUsedSearch;
+    }
+
+    const reply = cleanReply(result.reply);
+
+    try {
+      await appendChat(userId, 'user', userMessage);
+      await appendChat(userId, 'assistant', reply);
+    } catch (err) {
+      console.warn('appendChat failed:', err?.message || err);
+    }
+
+    return {
+      reply,
+      provider: result.provider,
+      used_search: result.usedSearch,
+    };
   } catch (err) {
-    groqUsedSearch = Boolean(err?.usedSearch);
-    result = await runProvider("anthropic", messages);
-    result.usedSearch = result.usedSearch || groqUsedSearch;
+    console.error("mentorChat fallback response:", err?.message || err);
+    return {
+      reply: "I am here. The system stumbled, but the work does not stop. Send your question again, clean and specific.",
+      provider: "none",
+      used_search: false,
+    };
   }
-
-  await appendChat(userId, "user", userMessage);
-  await appendChat(userId, "assistant", result.reply);
-
-  return {
-    reply: result.reply,
-    provider: result.provider,
-    used_search: result.usedSearch,
-  };
 }

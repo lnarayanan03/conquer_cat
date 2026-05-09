@@ -1,13 +1,14 @@
 import Redis from "ioredis";
 import { QdrantClient } from "@qdrant/js-client-rest";
+import { pipeline } from "@xenova/transformers";
 
 const COLLECTION = "conquer_mentor_memory";
 const VECTOR_SIZE = 384;
 const CHAT_TTL_SECONDS = 60 * 60 * 24;
-const HF_EMBED_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
 
 let redisClient;
 let qdrantClient;
+let embedder = null;
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -78,6 +79,15 @@ export async function initQdrant() {
     });
   }
 
+  try {
+    await client.createPayloadIndex(COLLECTION, {
+      field_name: "user_id",
+      field_schema: "keyword"
+    });
+  } catch {
+    // index already exists — safe to ignore
+  }
+
   return client;
 }
 
@@ -112,34 +122,27 @@ export async function clearChat(userId) {
   await redis.del(chatKey(userId));
 }
 
-export async function embed(text) {
-  const res = await fetch(HF_EMBED_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${requireEnv("HF_API_KEY")}`,
-      "Content-Type": "application/json",
-      "x-wait-for-model": "true",
-    },
-    body: JSON.stringify({
-      inputs: text,
-      options: { wait_for_model: true },
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`HF embed failed (${res.status}): ${err}`);
+async function getEmbedder() {
+  if (!embedder) {
+    embedder = await pipeline(
+      "feature-extraction",
+      "Xenova/all-MiniLM-L6-v2"
+    );
   }
+  return embedder;
+}
 
-  const data = await res.json();
-  let vector;
-
-  if (Array.isArray(data) && typeof data[0] === "number") vector = data;
-  else if (Array.isArray(data) && Array.isArray(data[0]) && typeof data[0][0] === "number") vector = data[0];
-  else if (Array.isArray(data) && Array.isArray(data[0]?.[0])) vector = data[0][0];
-  else throw new Error("Unexpected HF embedding shape: " + JSON.stringify(data).slice(0, 200));
-
-  return vector.map(Number);
+export async function embed(text) {
+  const extractor = await getEmbedder();
+  const output = await extractor(text, {
+    pooling: "mean",
+    normalize: true
+  });
+  const vector = Array.from(output.data);
+  if (!vector || vector.length === 0) {
+    throw new Error("Embedding returned empty vector");
+  }
+  return vector;
 }
 
 export async function storeDailyMemory(userId, date, payload) {

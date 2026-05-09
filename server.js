@@ -263,7 +263,7 @@ async function fetchJsonWithTimeout(url, options, timeoutMs = MENTOR_TIMEOUT_MS)
   }
 }
 
-async function callAnthropic({ systemText, messages, maxTokens, model }) {
+async function callAnthropic({ systemText, messages, maxTokens, model, enableTools = false }) {
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!anthropicApiKey) {
     throw new Error("Anthropic API key not configured");
@@ -288,12 +288,14 @@ async function callAnthropic({ systemText, messages, maxTokens, model }) {
         }
       ],
       messages,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search"
-        }
-      ],
+      ...(enableTools ? {
+        tools: [
+          {
+            type: "web_search_20250305",
+            name: "web_search"
+          }
+        ],
+      } : {}),
     }),
   });
 
