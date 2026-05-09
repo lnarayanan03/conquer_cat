@@ -612,7 +612,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
     setLoading(true)
     const doFetch = async () => {
       const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 35000)
+      const timeout = setTimeout(() => controller.abort(), 55000)
       try {
         const res = await fetch("/api/chat", {
           method:"POST",
@@ -635,12 +635,22 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
       } catch (err) {
         clearTimeout(timeout)
         if (err.name === "AbortError") {
-          setMentorMessages(p => [...p, { r:"ai", t:"Taking longer than usual. Send your message again." }])
+          setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:"Render is waking up. Send your message again in 10 seconds." }])
           return null
         }
         throw err
       }
     }
+    setMentorMessages(p => [...p, { r: 'ai', t: '...', loading: true }])
+    const slowTimer = setTimeout(() => {
+      setMentorMessages(p => {
+        const last = p[p.length - 1]
+        if (last?.r === 'ai' && last?.loading) {
+          return [...p.slice(0, -1), { r: 'ai', t: 'Still thinking... Vikram does not rush.', loading: true }]
+        }
+        return p
+      })
+    }, 15000)
     try {
       let result = await doFetch()
       if (result === null) return
@@ -650,13 +660,15 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         if (result === null) return
       }
       if (result.error) {
-        setMentorMessages(p => [...p, { r:"ai", t:result.error }])
+        setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:result.error }])
       } else {
-        setMentorMessages(p => [...p, { r:"ai", t:result.reply }])
+        setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:result.reply }])
       }
     } catch (err) {
-      setMentorMessages(p => [...p, { r:"ai", t:err.message || "Connection error. Is the server running?" }])
+      setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:err.message || "Connection error. Is the server running?" }])
     } finally {
+      clearTimeout(slowTimer)
+      setMentorMessages(p => p.filter(m => !m.loading))
       setLoading(false)
     }
   }
@@ -876,7 +888,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
     const doFetch = async () => {
       const messages = [{ role: "user", content: q }];
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 35000);
+      const timeout = setTimeout(() => controller.abort(), 55000);
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
@@ -891,12 +903,22 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
       } catch (err) {
         clearTimeout(timeout);
         if (err.name === "AbortError") {
-          setMentorMessages(p => [...p, {r:"ai", t:"Taking longer than usual. Send your message again."}]);
+          setMentorMessages(p => [...p.filter(m => !m.loading), {r:"ai", t:"Render is waking up. Send your message again in 10 seconds."}]);
           return null;
         }
         throw err;
       }
     };
+    setMentorMessages(p => [...p, { r: 'ai', t: '...', loading: true }]);
+    const slowTimer = setTimeout(() => {
+      setMentorMessages(p => {
+        const last = p[p.length - 1];
+        if (last?.r === 'ai' && last?.loading) {
+          return [...p.slice(0, -1), { r: 'ai', t: 'Still thinking... Vikram does not rush.', loading: true }];
+        }
+        return p;
+      });
+    }, 15000);
     try {
       let result = await doFetch();
       if (result === null) return;
@@ -906,13 +928,15 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         if (result === null) return;
       }
       if (result.error) {
-        setMentorMessages(p => [...p, {r:"ai", t:result.error}]);
+        setMentorMessages(p => [...p.filter(m => !m.loading), {r:"ai", t:result.error}]);
       } else {
-        setMentorMessages(p => [...p, {r:"ai", t:result.reply}]);
+        setMentorMessages(p => [...p.filter(m => !m.loading), {r:"ai", t:result.reply}]);
       }
     } catch (err) {
-      setMentorMessages(p => [...p, {r:"ai", t:err.message || "Connection error. Check the server."}]);
+      setMentorMessages(p => [...p.filter(m => !m.loading), {r:"ai", t:err.message || "Connection error. Check the server."}]);
     } finally {
+      clearTimeout(slowTimer);
+      setMentorMessages(p => p.filter(m => !m.loading));
       setLoading(false);
     }
   };
