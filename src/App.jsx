@@ -1903,6 +1903,8 @@ function InterviewOnboarding({ onConfirm }) {
 }
 
 export default function App() {
+  const fromLocalStorageRef = useRef(!!localStorage.getItem("cat_start_date"))
+  const greetingFiredRef = useRef(false)
   const [startDate, setStartDate] = useState(() => {
     const saved = localStorage.getItem("cat_start_date")
     if (!saved || saved.trim() === "" || saved === "null") {
@@ -1930,6 +1932,7 @@ export default function App() {
       new Date().toISOString().split("T")[0]
   );
   const [mentorHistoryChecked, setMentorHistoryChecked] = useState(false);
+  const [userInitialized, setUserInitialized] = useState(false);
   const [catResult, setCatResult] = useState(() => localStorage.getItem("cat_result") || null)
   const [catPercentile, setCatPercentile] = useState(() => localStorage.getItem("cat_percentile") || null)
   const [userId] = useState(() => {
@@ -1967,6 +1970,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
     if (!userId || !startDate || userChecked.current) return;
+    if (!fromLocalStorageRef.current && !userInitialized) return;
     userChecked.current = true;
     const verifyAndLoad = async () => {
       try {
@@ -1997,7 +2001,7 @@ export default function App() {
         .catch(() => setSynced(true));
     };
     verifyAndLoad();
-  }, [userId, startDate]);
+  }, [userId, startDate, userInitialized]);
   useEffect(() => {
     if (!userId || !startDate) return;
     setMentorHistoryChecked(false);
@@ -2020,7 +2024,11 @@ export default function App() {
   }, [userId, startDate]);
   useEffect(() => {
     if (!startDate || !mentorHistoryChecked || mentorGreeted) return;
+    if (greetingFiredRef.current) return;
+    greetingFiredRef.current = true;
     const today = new Date().toISOString().split("T")[0];
+    localStorage.setItem("mentor_greeted_today", today);
+    setMentorGreeted(true);
     const greet = async () => {
       try {
         const res = await fetch("/api/mentor/greet", {
@@ -2033,9 +2041,6 @@ export default function App() {
         setMentorMessages(p => [...p, {r:"ai", t:getMentorReply(data)}]);
       } catch (err) {
         setMentorMessages(p => [...p, {r:"ai", t:err.message || "Ready when you are. Show up today."}]);
-      } finally {
-        localStorage.setItem("mentor_greeted_today", today);
-        setMentorGreeted(true);
       }
     };
     greet();
@@ -2045,10 +2050,12 @@ export default function App() {
     localStorage.setItem("cat_start_date", date)
     localStorage.setItem("cat_user_name", name)
     localStorage.setItem("conquer_user_id", userId)
+    fromLocalStorageRef.current = false
+    setUserInitialized(false)
     setStartDate(date)
     setUserName(name)
     try {
-      await fetch("/api/user/init", {
+      const res = await fetch("/api/user/init", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
@@ -2064,6 +2071,7 @@ export default function App() {
           avatarBeard: localStorage.getItem("cat_avatar_beard") === "true"
         })
       })
+      if (res.ok) setUserInitialized(true)
     } catch (err) {
       console.error("User init failed:", err)
     }
