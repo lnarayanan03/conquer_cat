@@ -553,7 +553,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
     if (blur) blurInput(mobileBlurOnly)
     setMentorMessages(p => [...p, { r:"user", t:q }])
     setLoading(true)
-    try {
+    const doFetch = async () => {
       const res = await fetch("/api/chat", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
@@ -568,12 +568,20 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         })
       })
       const data = await readChatResponse(res)
-      if (!res.ok) {
-        setMentorMessages(p => [...p, { r:"ai", t:getApiErrorMessage(data, `Server error: ${res.status}`) }])
-        return
+      if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) }
+      return { reply: getMentorReply(data) }
+    }
+    try {
+      let result = await doFetch()
+      if (!result.error && (result.reply.includes("system stumbled") || result.reply.includes("Load failed"))) {
+        await new Promise(r => setTimeout(r, 2000))
+        result = await doFetch()
       }
-      const reply = getMentorReply(data)
-      setMentorMessages(p => [...p, { r:"ai", t:reply }])
+      if (result.error) {
+        setMentorMessages(p => [...p, { r:"ai", t:result.error }])
+      } else {
+        setMentorMessages(p => [...p, { r:"ai", t:result.reply }])
+      }
     } catch (err) {
       setMentorMessages(p => [...p, { r:"ai", t:err.message || "Connection error. Is the server running?" }])
     } finally {
@@ -686,6 +694,12 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             inputMode="text"
             value={inp}
             onChange={e => setInp(e.target.value)}
+            onFocus={() => {
+              setTimeout(() => {
+                inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+              }, 100)
+            }}
             onKeyDown={e => {
               if(e.key==="Enter" && !e.shiftKey){
                 e.preventDefault(); send({ blur: true, mobileBlurOnly: true })
@@ -694,7 +708,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             rows={1}
             style={{flex:1}}
           />
-          <button className="send-btn" onClick={() => send({ blur: true })}>↑</button>
+          <button className="send-btn" onClick={() => send({ blur: true })} disabled={loading} style={{opacity: loading ? 0.5 : 1}}>↑</button>
         </div>
       </div>
     </div>
@@ -787,7 +801,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
     if (blur) blurInput(mobileBlurOnly)
     setMentorMessages(p => [...p, {r:"user", t:q}]);
     setLoading(true);
-    try {
+    const doFetch = async () => {
       const messages = [{ role: "user", content: q }];
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -795,11 +809,20 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         body: JSON.stringify({ userId, message: q, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
       });
       const data = await readChatResponse(res);
-      if (!res.ok) {
-        setMentorMessages(p => [...p, {r:"ai", t:getApiErrorMessage(data, `Server error: ${res.status}`)}]);
-        return;
+      if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) };
+      return { reply: getMentorReply(data) };
+    };
+    try {
+      let result = await doFetch();
+      if (!result.error && (result.reply.includes("system stumbled") || result.reply.includes("Load failed"))) {
+        await new Promise(r => setTimeout(r, 2000));
+        result = await doFetch();
       }
-      setMentorMessages(p => [...p, {r:"ai", t:getMentorReply(data)}]);
+      if (result.error) {
+        setMentorMessages(p => [...p, {r:"ai", t:result.error}]);
+      } else {
+        setMentorMessages(p => [...p, {r:"ai", t:result.reply}]);
+      }
     } catch (err) {
       setMentorMessages(p => [...p, {r:"ai", t:err.message || "Connection error. Check the server."}]);
     } finally {
@@ -902,7 +925,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
           </div>
           <div className="chat-input-row mentor-composer" style={{padding:"12px",marginTop:0}}>
             <textarea ref={inputRef} className="chat-input" placeholder={placeholder} enterKeyHint="send" inputMode="text" value={inp} onChange={e => setInp(e.target.value)} onKeyDown={e => { if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send(undefined, { blur: true, mobileBlurOnly: true });}}} rows={1} />
-            <button className="send-btn" onClick={() => send(undefined, { blur: true })}>↑</button>
+            <button className="send-btn" onClick={() => send(undefined, { blur: true })} disabled={loading} style={{opacity: loading ? 0.5 : 1}}>↑</button>
           </div>
           <div className="mentor-actions">
             <button onClick={() => send("Start a mock PI interview with me right now", { blur: true })}>Mock Interview</button>

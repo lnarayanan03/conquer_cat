@@ -726,10 +726,13 @@ select:focus { border-color: #f97316; }
     min-height: 0;
     overflow-y: auto !important;
     padding: 14px 16px 12px !important;
+    scroll-padding-bottom: 80px;
   }
   .mentor-page-composer {
     flex-shrink: 0;
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
+    position: sticky;
+    bottom: 0;
   }
   .mentor-panel {
     inset: 0 !important;
