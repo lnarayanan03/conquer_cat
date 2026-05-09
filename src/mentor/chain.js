@@ -79,10 +79,18 @@ function getAvailableGeminiKey() {
   return null;
 }
 
-function createGeminiModelWithKey(apiKey, withTools = true) {
+const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-8b",
+  "gemini-2.0-flash",
+];
+
+function createGeminiModel(modelName, withTools = true) {
+  const apiKey = getAvailableGeminiKey();
+  if (!apiKey) throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
   const model = new ChatGoogleGenerativeAI({
     apiKey,
-    model: "gemini-2.0-flash",
+    model: modelName,
     temperature: 0.85,
     maxOutputTokens: 400,
   });
@@ -240,28 +248,20 @@ async function runProvider(provider, messages, withTools = true) {
 
   if (provider === "gemini") {
     if (geminiKeys.length === 0) throw new Error("No Gemini API keys configured");
-
-    const currentKey = getAvailableGeminiKey();
-    if (!currentKey) throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
-
-    try {
-      const result = await runWithTools(createGeminiModelWithKey(currentKey, withTools), messages);
-      if (!result.reply) throw new Error("gemini returned empty reply");
-      return { ...result, provider: "gemini" };
-    } catch (err) {
-      const msg = err?.message || "";
-      if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-        markKeyCooldown(currentKey);
-        const nextKey = getAvailableGeminiKey();
-        if (nextKey) {
-          const result = await runWithTools(createGeminiModelWithKey(nextKey, withTools), messages);
-          if (!result.reply) throw new Error("gemini returned empty reply on retry");
-          return { ...result, provider: "gemini" };
-        }
-        throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
+    let lastErr;
+    for (const modelName of GEMINI_MODELS) {
+      try {
+        const model = createGeminiModel(modelName, withTools);
+        const result = await runWithTools(model, messages);
+        if (!result.reply) throw new Error(`${modelName} returned empty`);
+        console.log(`Gemini responded via ${modelName}`);
+        return { ...result, provider: "gemini" };
+      } catch (err) {
+        console.warn(`Gemini ${modelName} failed:`, err.message);
+        lastErr = err;
       }
-      throw err;
     }
+    throw lastErr;
   }
 
   const model = createAnthropicModel(withTools);
