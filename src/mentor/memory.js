@@ -4,7 +4,7 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 const COLLECTION = "conquer_mentor_memory";
 const VECTOR_SIZE = 384;
 const CHAT_TTL_SECONDS = 60 * 60 * 24;
-const HF_EMBED_URL = "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2";
+const HF_EMBED_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction";
 
 let redisClient;
 let qdrantClient;
