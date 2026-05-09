@@ -2045,11 +2045,7 @@ export default function App() {
   const [userInitialized, setUserInitialized] = useState(false);
   const [catResult, setCatResult] = useState(() => localStorage.getItem("cat_result") || null)
   const [catPercentile, setCatPercentile] = useState(() => localStorage.getItem("cat_percentile") || null)
-  const [userId] = useState(() => {
-    let id = localStorage.getItem("conquer_user_id")
-    if (!id) { id = crypto.randomUUID(); localStorage.setItem("conquer_user_id", id) }
-    return id
-  })
+  const [userId, setUserId] = useState(() => localStorage.getItem("conquer_user_id") || null)
   const userChecked = useRef(false)
   const [synced, setSynced] = useState(false)
   const avatarGender = localStorage.getItem("cat_avatar_gender") || "male"
@@ -2078,6 +2074,20 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
+  useEffect(() => {
+    if (!userId && startDate) {
+      localStorage.removeItem("conquer_user_id");
+      localStorage.removeItem("cat_start_date");
+      localStorage.removeItem("cat_user_name");
+      localStorage.removeItem("mentor_greeted_today");
+      localStorage.removeItem("cat_result");
+      localStorage.removeItem("cat_percentile");
+      localStorage.removeItem("app_mode");
+      localStorage.removeItem("interview_date");
+      setStartDate(null);
+      setUserName(null);
+    }
+  }, []);
   useEffect(() => {
     if (!userId || !startDate || userChecked.current) return;
     if (!fromLocalStorageRef.current && !userInitialized) return;
@@ -2176,6 +2186,7 @@ export default function App() {
     localStorage.setItem("conquer_user_id", userId)
     fromLocalStorageRef.current = false
     setUserInitialized(false)
+    setUserId(userId)
     setStartDate(date)
     setUserName(name)
     try {
