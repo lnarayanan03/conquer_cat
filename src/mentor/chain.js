@@ -8,50 +8,11 @@ import { ALL_TOOLS, searchTool } from "./tools.js";
 
 const MAX_TOOL_HOPS = 3;
 
-function requireEnv(name) {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is not configured`);
-  return value;
-}
-
 const groqKeys = [
   process.env.GROQ_API_KEY,
   process.env.GROQ_API_KEY_2,
   process.env.GROQ_API_KEY_3,
 ].filter(key => key?.trim());
-
-let groqKeyIndex = 0;
-const KEY_COOLDOWN_MS = 60000;
-const keyCooldowns = new Map();
-
-function getAvailableGroqKey() {
-  const now = Date.now();
-  for (let i = 0; i < groqKeys.length; i++) {
-    const idx = (groqKeyIndex + i) % groqKeys.length;
-    const key = groqKeys[idx];
-    const cooldownUntil = keyCooldowns.get(key) || 0;
-    if (now > cooldownUntil) {
-      groqKeyIndex = (idx + 1) % groqKeys.length;
-      return key;
-    }
-  }
-  return null;
-}
-
-function markKeyCooldown(apiKey) {
-  keyCooldowns.set(apiKey, Date.now() + KEY_COOLDOWN_MS);
-  console.warn(`Groq key marked in cooldown for 60s`);
-}
-
-function createGroqModelWithKey(apiKey, withTools = true) {
-  const model = new ChatGroq({
-    apiKey,
-    model: "llama-3.3-70b-versatile",
-    temperature: 0.85,
-    maxTokens: 400,
-  });
-  return withTools ? model.bindTools(ALL_TOOLS) : model;
-}
 
 const geminiKeys = [
   process.env.GEMINI_API_KEY_1,
@@ -64,47 +25,36 @@ const geminiKeys = [
   process.env.GEMINI_API_KEY_8,
 ].filter(k => k?.trim());
 
-let geminiKeyIndex = 0;
+const KEY_COOLDOWN_MS = 60000;
+const keyCooldowns = new Map();
 
-function getAvailableGeminiKey() {
+const providerPool = [
+  ...groqKeys.map(apiKey => ({ provider: "groq", apiKey, model: "llama-3.3-70b-versatile" })),
+  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash" })),
+  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash-8b" })),
+  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.0-flash" })),
+  { provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: "claude-sonnet-4-5" },
+].filter(slot => slot.apiKey?.trim());
+
+let poolIndex = 0;
+
+function getNextAvailableSlot() {
   const now = Date.now();
-  for (let i = 0; i < geminiKeys.length; i++) {
-    const idx = (geminiKeyIndex + i) % geminiKeys.length;
-    const key = geminiKeys[idx];
-    if (now > (keyCooldowns.get(key) || 0)) {
-      geminiKeyIndex = (idx + 1) % geminiKeys.length;
-      return key;
+  const total = providerPool.length;
+  for (let i = 0; i < total; i++) {
+    const idx = (poolIndex + i) % total;
+    const slot = providerPool[idx];
+    if (now > (keyCooldowns.get(slot.apiKey + slot.model) || 0)) {
+      poolIndex = (idx + 1) % total;
+      return { slot, idx };
     }
   }
   return null;
 }
 
-const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-8b",
-  "gemini-2.0-flash",
-];
-
-function createGeminiModel(modelName, withTools = true) {
-  const apiKey = getAvailableGeminiKey();
-  if (!apiKey) throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
-  const model = new ChatGoogleGenerativeAI({
-    apiKey,
-    model: modelName,
-    temperature: 0.85,
-    maxOutputTokens: 400,
-  });
-  return withTools ? model.bindTools(ALL_TOOLS) : model;
-}
-
-function createAnthropicModel(withTools = true) {
-  const model = new ChatAnthropic({
-    apiKey: requireEnv("ANTHROPIC_API_KEY"),
-    model: "claude-sonnet-4-5",
-    temperature: 0.85,
-    maxTokens: 400,
-  });
-  return withTools ? model.bindTools(ALL_TOOLS) : model;
+function markSlotCooldown(slot) {
+  keyCooldowns.set(slot.apiKey + slot.model, Date.now() + KEY_COOLDOWN_MS);
+  console.warn(`Cooldown: ${slot.provider} ${slot.model}`);
 }
 
 function toLangChainHistory(messages = []) {
@@ -219,55 +169,67 @@ async function runWithTools(model, baseMessages) {
   };
 }
 
-async function runProvider(provider, messages, withTools = true) {
-  if (provider === "groq") {
-    if (groqKeys.length === 0) throw new Error("No Groq API keys configured");
+async function runWithPool(messages, withTools = true) {
+  const total = providerPool.length;
+  let attempts = 0;
 
-    const currentKey = getAvailableGroqKey();
-    if (!currentKey) throw new Error("ALL_GROQ_KEYS_COOLDOWN");
+  while (attempts < total) {
+    const next = getNextAvailableSlot();
+    if (!next) throw new Error("All provider slots exhausted");
+
+    const { slot } = next;
+    attempts++;
 
     try {
-      const result = await runWithTools(createGroqModelWithKey(currentKey, withTools), messages);
-      if (!result.reply) throw new Error("groq returned empty reply");
-      return { ...result, provider: "groq" };
+      let model;
+      if (slot.provider === "groq") {
+        model = new ChatGroq({
+          apiKey: slot.apiKey,
+          model: slot.model,
+          temperature: 0.85,
+          maxTokens: 400,
+        });
+      } else if (slot.provider === "gemini") {
+        model = new ChatGoogleGenerativeAI({
+          apiKey: slot.apiKey,
+          model: slot.model,
+          temperature: 0.85,
+          maxOutputTokens: 400,
+        });
+      } else {
+        model = new ChatAnthropic({
+          apiKey: slot.apiKey,
+          model: slot.model,
+          temperature: 0.85,
+          maxTokens: 400,
+        });
+      }
+
+      const bound = withTools ? model.bindTools(ALL_TOOLS) : model;
+      const result = await runWithTools(bound, messages);
+
+      if (!result.reply) throw new Error("Empty reply");
+
+      console.log(`Response from ${slot.provider} ${slot.model}`);
+      return { ...result, provider: slot.provider };
+
     } catch (err) {
       const msg = err?.message || "";
-      if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
-        markKeyCooldown(currentKey);
-        const nextKey = getAvailableGroqKey();
-        if (nextKey) {
-          const result = await runWithTools(createGroqModelWithKey(nextKey, withTools), messages);
-          if (!result.reply) throw new Error("groq returned empty reply on retry");
-          return { ...result, provider: "groq" };
-        }
-        throw new Error("ALL_GROQ_KEYS_COOLDOWN");
+      if (
+        msg.includes("429") ||
+        msg.toLowerCase().includes("rate limit") ||
+        msg.toLowerCase().includes("quota")
+      ) {
+        markSlotCooldown(slot);
+        console.warn(`Slot ${slot.provider}/${slot.model} rate limited, trying next`);
+        continue;
       }
-      throw err;
+      console.warn(`Slot ${slot.provider}/${slot.model} error:`, msg.slice(0, 100));
+      continue;
     }
   }
 
-  if (provider === "gemini") {
-    if (geminiKeys.length === 0) throw new Error("No Gemini API keys configured");
-    let lastErr;
-    for (const modelName of GEMINI_MODELS) {
-      try {
-        const model = createGeminiModel(modelName, withTools);
-        const result = await runWithTools(model, messages);
-        if (!result.reply) throw new Error(`${modelName} returned empty`);
-        console.log(`Gemini responded via ${modelName}`);
-        return { ...result, provider: "gemini" };
-      } catch (err) {
-        console.warn(`Gemini ${modelName} failed:`, err.message);
-        lastErr = err;
-      }
-    }
-    throw lastErr;
-  }
-
-  const model = createAnthropicModel(withTools);
-  const result = await runWithTools(model, messages);
-  if (!result.reply) throw new Error("anthropic returned empty reply");
-  return { ...result, provider: "anthropic" };
+  throw new Error("All 28 provider slots failed");
 }
 
 export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false }) {
@@ -327,22 +289,7 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       ];
     }
 
-    let result;
-    let failedSearch = false;
-    try {
-      result = await runProvider("groq", messages, !disableTools);
-    } catch (groqErr) {
-      failedSearch = failedSearch || Boolean(groqErr?.usedSearch);
-      console.warn("Groq failed, trying Gemini:", groqErr.message);
-      try {
-        result = await runProvider("gemini", messages, !disableTools);
-      } catch (geminiErr) {
-        failedSearch = failedSearch || Boolean(geminiErr?.usedSearch);
-        console.warn("Gemini failed, trying Anthropic:", geminiErr.message);
-        result = await runProvider("anthropic", messages, !disableTools);
-      }
-    }
-    if (failedSearch) result.usedSearch = result.usedSearch || failedSearch;
+    const result = await runWithPool(messages, !disableTools);
 
     const reply = cleanReply(result.reply);
 
