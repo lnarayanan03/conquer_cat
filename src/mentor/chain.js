@@ -20,25 +20,31 @@ const groqKeys = [
 ].filter(key => key?.trim());
 
 let groqKeyIndex = 0;
+const KEY_COOLDOWN_MS = 60000;
+const keyCooldowns = new Map();
 
-function getNextGroqKey() {
-  const keys = groqKeys.length > 0
-    ? groqKeys
-    : [
-        process.env.GROQ_API_KEY,
-        process.env.GROQ_API_KEY_2,
-        process.env.GROQ_API_KEY_3,
-      ].filter(key => key?.trim());
-
-  if (keys.length === 0) throw new Error("No Groq API keys configured");
-  const key = keys[groqKeyIndex % keys.length];
-  groqKeyIndex += 1;
-  return key;
+function getAvailableGroqKey() {
+  const now = Date.now();
+  for (let i = 0; i < groqKeys.length; i++) {
+    const idx = (groqKeyIndex + i) % groqKeys.length;
+    const key = groqKeys[idx];
+    const cooldownUntil = keyCooldowns.get(key) || 0;
+    if (now > cooldownUntil) {
+      groqKeyIndex = (idx + 1) % groqKeys.length;
+      return key;
+    }
+  }
+  return null;
 }
 
-function createGroqModel(withTools = true) {
+function markKeyCooldown(apiKey) {
+  keyCooldowns.set(apiKey, Date.now() + KEY_COOLDOWN_MS);
+  console.warn(`Groq key marked in cooldown for 60s`);
+}
+
+function createGroqModelWithKey(apiKey, withTools = true) {
   const model = new ChatGroq({
-    apiKey: getNextGroqKey(),
+    apiKey,
     model: "llama-3.3-70b-versatile",
     temperature: 0.85,
     maxTokens: 400,
@@ -169,17 +175,36 @@ async function runWithTools(model, baseMessages) {
 }
 
 async function runProvider(provider, messages, withTools = true) {
-  const model = provider === "groq" ? createGroqModel(withTools) : createAnthropicModel(withTools);
-  const result = await runWithTools(model, messages);
-  if (!result.reply) {
-    const err = new Error(`${provider} returned an empty reply`);
-    err.usedSearch = result.usedSearch;
-    throw err;
+  if (provider === "groq") {
+    if (groqKeys.length === 0) throw new Error("No Groq API keys configured");
+
+    const currentKey = getAvailableGroqKey();
+    if (!currentKey) throw new Error("ALL_GROQ_KEYS_COOLDOWN");
+
+    try {
+      const result = await runWithTools(createGroqModelWithKey(currentKey, withTools), messages);
+      if (!result.reply) throw new Error("groq returned empty reply");
+      return { ...result, provider: "groq" };
+    } catch (err) {
+      const msg = err?.message || "";
+      if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
+        markKeyCooldown(currentKey);
+        const nextKey = getAvailableGroqKey();
+        if (nextKey) {
+          const result = await runWithTools(createGroqModelWithKey(nextKey, withTools), messages);
+          if (!result.reply) throw new Error("groq returned empty reply on retry");
+          return { ...result, provider: "groq" };
+        }
+        throw new Error("ALL_GROQ_KEYS_COOLDOWN");
+      }
+      throw err;
+    }
   }
-  return {
-    ...result,
-    provider,
-  };
+
+  const model = createAnthropicModel(withTools);
+  const result = await runWithTools(model, messages);
+  if (!result.reply) throw new Error("anthropic returned empty reply");
+  return { ...result, provider: "anthropic" };
 }
 
 export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false }) {
@@ -245,6 +270,9 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       result = await runProvider("groq", messages, !disableTools);
     } catch (err) {
       groqUsedSearch = Boolean(err?.usedSearch);
+      if (err?.message === "ALL_GROQ_KEYS_COOLDOWN") {
+        console.warn("All Groq keys in cooldown, using Anthropic");
+      }
       result = await runProvider("anthropic", messages, !disableTools);
       result.usedSearch = result.usedSearch || groqUsedSearch;
     }
