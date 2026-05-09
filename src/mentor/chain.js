@@ -55,7 +55,7 @@ function createGroqModelWithKey(apiKey, withTools = true) {
 function createAnthropicModel(withTools = true) {
   const model = new ChatAnthropic({
     apiKey: requireEnv("ANTHROPIC_API_KEY"),
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-5",
     temperature: 0.85,
     maxTokens: 400,
   });
@@ -246,8 +246,8 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
         `${m.role === 'user' ? 'Student' : 'Vikram'}: ${m.content}`
       ).join('\n');
 
-      const summaryMessage = new SystemMessage(
-        `EARLIER IN THIS CONVERSATION (summarized):\n${summaryText}\n\nFocus on the recent messages below.`
+      const summaryMessage = new HumanMessage(
+        `[Earlier conversation summary]\n${summaryText}`
       );
 
       messages = [
