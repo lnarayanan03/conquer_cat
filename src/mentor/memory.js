@@ -113,11 +113,12 @@ export async function clearChat(userId) {
 }
 
 export async function embed(text) {
-  const response = await fetch(HF_EMBED_URL, {
+  const res = await fetch(HF_EMBED_URL, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${requireEnv("HF_API_KEY")}`,
       "Content-Type": "application/json",
+      "x-wait-for-model": "true",
     },
     body: JSON.stringify({
       inputs: text,
@@ -125,16 +126,18 @@ export async function embed(text) {
     }),
   });
 
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const reason = data?.error || `HuggingFace embedding failed with ${response.status}`;
-    throw new Error(reason);
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`HF embed failed (${res.status}): ${err}`);
   }
 
-  const vector = Array.isArray(data?.[0]) ? data[0] : data;
-  if (!Array.isArray(vector) || vector.length !== VECTOR_SIZE) {
-    throw new Error("HuggingFace embedding response was not a 384-dimension vector");
-  }
+  const data = await res.json();
+  let vector;
+
+  if (Array.isArray(data) && typeof data[0] === "number") vector = data;
+  else if (Array.isArray(data) && Array.isArray(data[0]) && typeof data[0][0] === "number") vector = data[0];
+  else if (Array.isArray(data) && Array.isArray(data[0]?.[0])) vector = data[0][0];
+  else throw new Error("Unexpected HF embedding shape: " + JSON.stringify(data).slice(0, 200));
 
   return vector.map(Number);
 }
