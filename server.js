@@ -6,7 +6,7 @@ import { dirname, join } from "path";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { mentorChat } from "./src/mentor/chain.js";
-import { getRecentChat, initQdrant } from "./src/mentor/memory.js";
+import { getRecentChat, initQdrant, warmup } from "./src/mentor/memory.js";
 import { startPipeline } from "./src/mentor/pipeline.js";
 
 dotenv.config();
@@ -500,5 +500,6 @@ const server = app.listen(PORT, () => {
   } catch (err) {
     console.error("Mentor pipeline startup failed:", err?.message || err);
   }
+  warmup().catch(err => console.warn('Warmup error:', err.message));
 });
 server.on("error", err => console.error(err));

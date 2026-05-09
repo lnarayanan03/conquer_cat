@@ -195,3 +195,20 @@ export async function retrieveMemories(userId, query, limit = 5) {
     .map(result => result.payload?.raw_summary)
     .filter(value => typeof value === "string" && value.trim());
 }
+
+export async function warmup() {
+  try {
+    console.log('Warming up Xenova embedder...');
+    await getEmbedder();
+    console.log('Xenova embedder ready');
+  } catch (err) {
+    console.warn('Xenova warmup failed:', err.message);
+  }
+  try {
+    console.log('Warming up Qdrant...');
+    await initQdrant();
+    console.log('Qdrant ready');
+  } catch (err) {
+    console.warn('Qdrant warmup failed:', err.message);
+  }
+}
