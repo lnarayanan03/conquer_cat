@@ -30,10 +30,10 @@ const keyCooldowns = new Map();
 
 const providerPool = [
   ...groqKeys.map(apiKey => ({ provider: "groq", apiKey, model: "llama-3.3-70b-versatile" })),
+  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash-lite" })),
   ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash" })),
-  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash-8b" })),
   ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.0-flash" })),
-  { provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: "claude-sonnet-4-5" },
+  { provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: "claude-sonnet-4-6" },
 ].filter(slot => slot.apiKey?.trim());
 
 let poolIndex = 0;
