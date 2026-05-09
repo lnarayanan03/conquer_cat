@@ -1,5 +1,6 @@
 import { ChatGroq } from "@langchain/groq";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { buildSystemPrompt } from "./prompt.js";
 import { appendChat, getRecentChat, retrieveMemories } from "./memory.js";
@@ -48,6 +49,42 @@ function createGroqModelWithKey(apiKey, withTools = true) {
     model: "llama-3.3-70b-versatile",
     temperature: 0.85,
     maxTokens: 400,
+  });
+  return withTools ? model.bindTools(ALL_TOOLS) : model;
+}
+
+const geminiKeys = [
+  process.env.GEMINI_API_KEY_1,
+  process.env.GEMINI_API_KEY_2,
+  process.env.GEMINI_API_KEY_3,
+  process.env.GEMINI_API_KEY_4,
+  process.env.GEMINI_API_KEY_5,
+  process.env.GEMINI_API_KEY_6,
+  process.env.GEMINI_API_KEY_7,
+  process.env.GEMINI_API_KEY_8,
+].filter(k => k?.trim());
+
+let geminiKeyIndex = 0;
+
+function getAvailableGeminiKey() {
+  const now = Date.now();
+  for (let i = 0; i < geminiKeys.length; i++) {
+    const idx = (geminiKeyIndex + i) % geminiKeys.length;
+    const key = geminiKeys[idx];
+    if (now > (keyCooldowns.get(key) || 0)) {
+      geminiKeyIndex = (idx + 1) % geminiKeys.length;
+      return key;
+    }
+  }
+  return null;
+}
+
+function createGeminiModelWithKey(apiKey, withTools = true) {
+  const model = new ChatGoogleGenerativeAI({
+    apiKey,
+    model: "gemini-2.0-flash",
+    temperature: 0.85,
+    maxOutputTokens: 400,
   });
   return withTools ? model.bindTools(ALL_TOOLS) : model;
 }
@@ -201,6 +238,32 @@ async function runProvider(provider, messages, withTools = true) {
     }
   }
 
+  if (provider === "gemini") {
+    if (geminiKeys.length === 0) throw new Error("No Gemini API keys configured");
+
+    const currentKey = getAvailableGeminiKey();
+    if (!currentKey) throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
+
+    try {
+      const result = await runWithTools(createGeminiModelWithKey(currentKey, withTools), messages);
+      if (!result.reply) throw new Error("gemini returned empty reply");
+      return { ...result, provider: "gemini" };
+    } catch (err) {
+      const msg = err?.message || "";
+      if (msg.includes("429") || msg.toLowerCase().includes("rate limit")) {
+        markKeyCooldown(currentKey);
+        const nextKey = getAvailableGeminiKey();
+        if (nextKey) {
+          const result = await runWithTools(createGeminiModelWithKey(nextKey, withTools), messages);
+          if (!result.reply) throw new Error("gemini returned empty reply on retry");
+          return { ...result, provider: "gemini" };
+        }
+        throw new Error("ALL_GEMINI_KEYS_COOLDOWN");
+      }
+      throw err;
+    }
+  }
+
   const model = createAnthropicModel(withTools);
   const result = await runWithTools(model, messages);
   if (!result.reply) throw new Error("anthropic returned empty reply");
@@ -247,7 +310,7 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       ).join('\n');
 
       const summaryMessage = new HumanMessage(
-        `[Earlier conversation summary]\n${summaryText}`
+        `[Context from earlier in our conversation today]\n${summaryText}`
       );
 
       messages = [
@@ -265,17 +328,21 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
     }
 
     let result;
-    let groqUsedSearch = false;
+    let failedSearch = false;
     try {
       result = await runProvider("groq", messages, !disableTools);
-    } catch (err) {
-      groqUsedSearch = Boolean(err?.usedSearch);
-      if (err?.message === "ALL_GROQ_KEYS_COOLDOWN") {
-        console.warn("All Groq keys in cooldown, using Anthropic");
+    } catch (groqErr) {
+      failedSearch = failedSearch || Boolean(groqErr?.usedSearch);
+      console.warn("Groq failed, trying Gemini:", groqErr.message);
+      try {
+        result = await runProvider("gemini", messages, !disableTools);
+      } catch (geminiErr) {
+        failedSearch = failedSearch || Boolean(geminiErr?.usedSearch);
+        console.warn("Gemini failed, trying Anthropic:", geminiErr.message);
+        result = await runProvider("anthropic", messages, !disableTools);
       }
-      result = await runProvider("anthropic", messages, !disableTools);
-      result.usedSearch = result.usedSearch || groqUsedSearch;
     }
+    if (failedSearch) result.usedSearch = result.usedSearch || failedSearch;
 
     const reply = cleanReply(result.reply);
 
