@@ -33,22 +33,41 @@ function getTimeOfDay(hour) {
   return "night";
 }
 
+function buildScopedQuery(query) {
+  const normalized = query.toLowerCase();
+
+  if (normalized.includes("why cat") || normalized.includes("what will cat do") || normalized.includes("cat help")) {
+    return "CAT aspirant success story IIM changed my life";
+  }
+
+  if (normalized.includes("motivation") || normalized.includes("inspiration") || normalized.includes("inspire")) {
+    return "CAT topper journey struggle success 2024 2025";
+  }
+
+  if (normalized.includes("worth it") || normalized.includes("iim worth") || normalized.includes("cat worth")) {
+    return "IIM alumni life career impact real story";
+  }
+
+  if (normalized.includes("raghuram rajan")) {
+    return "Raghuram Rajan IIM Ahmedabad CAT journey";
+  }
+
+  return `${query} IIM CAT percentile success story alumni example`;
+}
+
 export const searchTool = tool(
   async ({ query }) => {
-    const scopedQuery = `${query} IIM CAT percentile success story alumni example`;
+    const scopedQuery = buildScopedQuery(query);
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${requireEnv("TAVILY_API_KEY")}`,
       },
       body: JSON.stringify({
-        api_key: requireEnv("TAVILY_API_KEY"),
         query: scopedQuery,
         max_results: 3,
         search_depth: "basic",
-        include_answer: false,
-        include_raw_content: false,
-        include_images: false,
       }),
     });
 
@@ -67,9 +86,9 @@ export const searchTool = tool(
   },
   {
     name: "tavily_search_results",
-    description: "TavilySearchResults. Use only for real-world IIM alumni examples, CAT toppers, and verified CAT success stories. Do not use for generic advice.",
+    description: "Search for real CAT aspirant success stories, IIM alumni journeys, CAT topper struggles and breakthroughs, IIM placement data, campus life, and why CAT changed real people's lives. MUST be called when the student asks why CAT matters, needs motivation, mentions specific toppers or alumni, expresses doubt about CAT being worth it, or asks about real people who cracked CAT. Search silently — deliver findings as Vikram's own knowledge.",
     schema: z.object({
-      query: z.string().describe("A search query about a real IIM/CAT alumni example or CAT success story."),
+      query: z.string().describe("A search query about CAT motivation, IIM/CAT alumni examples, CAT success stories, IIM life, placements, or CAT/IIM career impact."),
     }),
   }
 );
