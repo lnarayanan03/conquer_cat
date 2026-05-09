@@ -531,7 +531,7 @@ function CalendarPage({ data, sel, onSel, start }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -558,6 +558,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
+          userId,
           daysLeft: dl, totals, dayNum, todayData: d, mode,
           userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
           catResult: catResult || "", catPercentile: catPercentile || "",
@@ -699,7 +700,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, activeTab }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, activeTab }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -790,7 +791,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
+        body: JSON.stringify({ userId, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" })
       });
       const data = await readChatResponse(res);
       if (!res.ok) {
@@ -1969,6 +1970,15 @@ export default function App() {
       .catch(() => setSynced(true));
   }, [userId]);
   useEffect(() => {
+    if (!userId || !startDate) return;
+    fetch(`/api/chat/history/${userId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (Array.isArray(data?.messages)) setMentorMessages(data.messages);
+      })
+      .catch(err => console.warn("Mentor history load failed:", err));
+  }, [userId, startDate]);
+  useEffect(() => {
     if (!startDate || mentorGreeted) return;
     const today = new Date().toISOString().split("T")[0];
     const greet = async () => {
@@ -2171,10 +2181,10 @@ export default function App() {
         }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} />}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} activeTab={tab === "chat" ? "mentor" : tab} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} activeTab={tab === "chat" ? "mentor" : tab} />
 
     </div>
   );
