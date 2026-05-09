@@ -13,9 +13,32 @@ function requireEnv(name) {
   return value;
 }
 
+const groqKeys = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_2,
+  process.env.GROQ_API_KEY_3,
+].filter(key => key?.trim());
+
+let groqKeyIndex = 0;
+
+function getNextGroqKey() {
+  const keys = groqKeys.length > 0
+    ? groqKeys
+    : [
+        process.env.GROQ_API_KEY,
+        process.env.GROQ_API_KEY_2,
+        process.env.GROQ_API_KEY_3,
+      ].filter(key => key?.trim());
+
+  if (keys.length === 0) throw new Error("No Groq API keys configured");
+  const key = keys[groqKeyIndex % keys.length];
+  groqKeyIndex += 1;
+  return key;
+}
+
 function createGroqModel(withTools = true) {
   const model = new ChatGroq({
-    apiKey: requireEnv("GROQ_API_KEY"),
+    apiKey: getNextGroqKey(),
     model: "llama-3.3-70b-versatile",
     temperature: 0.85,
     maxTokens: 400,
