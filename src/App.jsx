@@ -133,8 +133,7 @@ function isMobileKeyboardViewport() {
   return window.matchMedia?.("(max-width: 768px), (pointer: coarse)")?.matches ?? window.innerWidth < 768
 }
 
-const EXAM = new Date("2026-11-29T00:00:00");
-const TOTAL = 200;
+const EXAM_DATE = new Date("2026-11-29T00:00:00");
 const AC = "#f97316";
 
 const toLocalDateKey = (date) => {
@@ -162,15 +161,70 @@ const getDaysToInterview = (dateStr) => {
 }
 const defaultDay = () => ({ wt:"",st:"",lc:false,ah:"",eh:"",vp:false,vp_count:0,q:0,v:0,l:0,iq:"",n:"",backlog:[] });
 
-const effortScore = (day) => {
-  const q = Math.min((+day.q||0)/10, 1) * 25;
-  const v = Math.min((+day.v||0)/5, 1) * 15;
-  const l = Math.min((+day.l||0)/5, 1) * 15;
-  const vp = Math.min((+day.vp_count||0)/1, 1) * 10;
-  const hrs = Math.min(((+day.ah||0)+(+day.eh||0))/5, 1) * 20;
-  const lc = (day.lc ? 1 : 0) * 10;
-  const passage = (day.vp ? 1 : 0) * 5;
-  return Math.round(q + v + l + vp + hrs + lc + passage);
+const getSleepDuration = (sleepTime, wakeTime) => {
+  if (!sleepTime || !wakeTime) return null;
+  const [sh, sm] = sleepTime.split(":").map(Number);
+  const [wh, wm] = wakeTime.split(":").map(Number);
+  let sleepMins = sh * 60 + sm;
+  let wakeMins = wh * 60 + wm;
+  if (wakeMins <= sleepMins) wakeMins += 24 * 60;
+  return (wakeMins - sleepMins) / 60;
+};
+
+const wakeTimeOptions = [
+  ["04:00", "4:00"],
+  ["04:30", "4:30"],
+  ["05:00", "5:00"],
+  ["05:30", "5:30"],
+  ["06:00", "6:00"],
+  ["06:30", "6:30"],
+  ["07:00", "7:00"],
+  ["07:30", "7:30"],
+  ["08:00", "8:00"],
+];
+
+const sleepTimeOptions = [
+  ["21:00", "21:00"],
+  ["21:30", "21:30"],
+  ["22:00", "22:00"],
+  ["22:30", "22:30"],
+  ["23:00", "23:00"],
+  ["23:30", "23:30"],
+  ["00:00", "00:00"],
+  ["00:30", "00:30"],
+  ["01:00", "1:00"],
+  ["01:30", "1:30"],
+  ["02:00", "2:00"],
+];
+
+const effortScore = (day, backlogItems = day?.backlog || []) => {
+  const q = Math.min((+day.q||0)/10, 1) * 20;
+  const v = Math.min((+day.v||0)/5, 1) * 12;
+  const l = Math.min((+day.l||0)/5, 1) * 12;
+  const vp = Math.min((+day.vp_count||0)/1, 1) * 8;
+  const hrs = Math.min(((+day.ah||0)+(+day.eh||0))/5, 1) * 16;
+  const lc = (day.lc ? 1 : 0) * 8;
+  const passage = (day.vp ? 1 : 0) * 4;
+  const sleepScore = (() => {
+    if (!day.wt || !day.st) return 0;
+    const [wh, wm] = day.wt.split(":").map(Number);
+    const [sh, sm] = day.st.split(":").map(Number);
+    let wakeMins = wh * 60 + wm;
+    let sleepMins = sh * 60 + sm;
+    if (wakeMins <= sleepMins) wakeMins += 24 * 60;
+    const duration = (wakeMins - sleepMins) / 60;
+    if (duration >= 4 && duration <= 6) return 10;
+    if (duration >= 3.5 && duration < 4) return 6;
+    if (duration > 6 && duration <= 7) return 6;
+    if (duration >= 3 && duration < 3.5) return 3;
+    return 0;
+  })();
+  const backlogScore = (() => {
+    if (!backlogItems || backlogItems.length === 0) return 0;
+    const checked = backlogItems.filter(item => item.checked).length;
+    return Math.round((checked / backlogItems.length) * 10);
+  })();
+  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore));
 };
 
 function Tog({ v, onChange }) {
@@ -194,7 +248,7 @@ function NavIcon({ id }) {
 }
 
 
-function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
+function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBacklog, onSave }) {
   const [saved, setSaved] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
@@ -222,6 +276,20 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
   ];
   const quotes = mode === "interview" ? interviewQuotes : prepQuotes;
   const todayQuote = quotes[new Date().getDate() % quotes.length];
+  const sleepDuration = getSleepDuration(d.st, d.wt);
+  const hasSleepDuration = sleepDuration !== null;
+  const sleepDurationValid = hasSleepDuration && sleepDuration >= 4 && sleepDuration <= 6;
+  const wakeBeforeSeven = !!d.wt && d.wt < "07:00";
+  const sleepWarning = hasSleepDuration && sleepDuration < 4
+    ? "Too little sleep. Minimum 4 hours."
+    : hasSleepDuration && sleepDuration > 6
+      ? "Too much sleep. Maximum 6 hours for CAT prep."
+      : "";
+  const backlogDone = globalBacklog.filter(item => item.checked).length;
+  const backlogPending = globalBacklog.length - backlogDone;
+  const backlogCoverage = globalBacklog.length > 0
+    ? Math.round((backlogDone / globalBacklog.length) * 100)
+    : 0;
 
   return (
     <div className="page">
@@ -229,7 +297,7 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
           <div>
             <div className="page-title">{greet}</div>
-            <div className="page-sub">{fmt} · Day {dn} of 200</div>
+            <div className="page-sub">{fmt} · Day {dn} of {totalDays}</div>
             <div style={{fontSize:12,color:"#f97316",opacity:0.8,fontStyle:"italic",marginTop:8}}>{todayQuote}</div>
           </div>
           <div className="badge"><span>{dl}d left</span></div>
@@ -240,8 +308,8 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
           <div className="sec-label">Vitals</div>
           <div className="card">
             {[
-              {lbl:"Wake time", sub:"Goal: 6:00 AM", f:"wt", goal:"06:00"},
-              {lbl:"Sleep time", sub:"Goal: by midnight", f:"st", goal:"23:59"}
+              {lbl:"Wake time", sub:"Window: 4:00-8:00 AM", f:"wt", options:wakeTimeOptions},
+              {lbl:"Sleep time", sub:"Window: 9:00 PM-2:00 AM", f:"st", options:sleepTimeOptions}
             ].map(r => (
               <div className="card-row" key={r.f}>
                 <div>
@@ -249,41 +317,38 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
                   <div className="row-sub">{r.sub}</div>
                 </div>
                 <div style={{display:"flex", alignItems:"center", gap:10}}>
-                  <input
-                    type="time"
+                  <select
+                    className="time-select"
                     value={d[r.f] || ""}
                     onChange={e => upd(r.f, e.target.value)}
                     autoComplete="off"
                     autoCorrect="off"
-                    style={{
-                      background: "#1a1a1a",
-                      border: "1px solid #2a2a2a",
-                      borderRadius: "8px",
-                      padding: "8px 12px",
-                      color: "#f5f5f7",
-                      fontSize: "15px",
-                      fontWeight: "500",
-                      fontFamily: "inherit",
-                      outline: "none",
-                      cursor: "pointer",
-                      colorScheme: "dark",
-                      minWidth: "120px"
-                    }}
-                  />
+                  >
+                    <option value="">Select</option>
+                    {r.options.map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
                   <div style={{
                     width: 8,
                     height: 8,
                     borderRadius: "50%",
                     flexShrink: 0,
-                    background: d[r.f]
-                      ? (r.f === "wt"
-                          ? (d[r.f] <= "06:00" ? "#30d158" : "#ff453a")
-                          : (d[r.f] >= "23:00" || d[r.f] <= "00:30" ? "#30d158" : "#ff453a"))
-                      : "#444"
+                    background: r.f === "wt"
+                      ? (wakeBeforeSeven && sleepDurationValid ? "#30d158" : "#ff453a")
+                      : (sleepDurationValid ? "#30d158" : "#ff453a")
                   }}/>
                 </div>
               </div>
             ))}
+            {hasSleepDuration && (
+              <div className="sleep-summary">
+                <div className={`sleep-duration-badge${sleepDurationValid ? " valid" : " invalid"}`}>
+                  Sleep: {sleepDuration.toFixed(1)} hrs
+                </div>
+                {sleepWarning && <div className="sleep-warning">{sleepWarning}</div>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -310,57 +375,35 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
           </div>
         </div>
 
-        <div>
-          <div className="sec-label">iQuanta Backlog</div>
-          {(d.backlog || []).map((entry, i) => (
-            <div key={i} className="card" style={{marginTop: i === 0 ? 0 : 8, position:"relative"}}>
-              <button className="backlog-remove-btn" onClick={() => {
-                upd("backlog", (d.backlog || []).filter((_, j) => j !== i));
-              }}>×</button>
-              <div className="backlog-entry">
-                <input
-                  type="text"
-                  className="backlog-topic-input"
-                  placeholder="Topic / Video name"
-                  value={entry.topic || ""}
-                  onChange={e => {
-                    const next = [...(d.backlog || [])];
-                    next[i] = { ...next[i], topic: e.target.value };
-                    upd("backlog", next);
-                  }}
-                />
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <input
-                    type="number"
-                    className="num-input"
-                    min="0"
-                    step="5"
-                    value={entry.duration || ""}
-                    onChange={e => {
-                      const next = [...(d.backlog || [])];
-                      next[i] = { ...next[i], duration: +e.target.value };
-                      upd("backlog", next);
-                    }}
-                  />
-                  <span style={{fontSize:11,color:"var(--tt)"}}>mins</span>
-                </div>
-                <textarea
-                  className="textarea backlog-notes"
-                  placeholder="Notes (optional)"
-                  rows={1}
-                  value={entry.notes || ""}
-                  onChange={e => {
-                    const next = [...(d.backlog || [])];
-                    next[i] = { ...next[i], notes: e.target.value };
-                    upd("backlog", next);
-                  }}
-                />
+        <div className="card" style={{marginTop: 0, marginBottom: 0}}>
+          <button
+            onClick={() => setTab("backlog")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              padding: "14px 16px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            <div>
+              <div className="row-label">iQuanta Backlog ({globalBacklog.length})</div>
+              <div className="row-sub">
+                {globalBacklog.length > 0
+                  ? `${backlogPending} pending · ${backlogCoverage}% covered`
+                  : "Log backlog topics and videos"}
               </div>
             </div>
-          ))}
-          <button className="backlog-add-btn" onClick={() => {
-            upd("backlog", [...(d.backlog || []), { topic:"", duration:0, notes:"" }]);
-          }}>+</button>
+            <svg width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="#6e6e73" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
         </div>
 
         {mode === "interview" ? (
@@ -419,26 +462,246 @@ function TodayPage({ date, d, upd, dl, start, mode, onSave }) {
   );
 }
 
-function ProgressPage({ data, totals, dl, dn, start }) {
+function BacklogPage({ backlog, setBacklog, onBack }) {
+  const [noteInput, setNoteInput] = useState("");
+
+  const addItem = (text) => {
+    if (!text.trim()) return;
+    setBacklog(prev => [...prev, {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      text: text.trim(),
+      checked: false,
+      addedDate: new Date().toISOString().split("T")[0],
+      checkedDate: null
+    }]);
+    setNoteInput("");
+  };
+
+  const toggleItem = (id) => {
+    setBacklog(prev => prev.map(item =>
+      item.id === id
+        ? {
+            ...item,
+            checked: !item.checked,
+            checkedDate: !item.checked
+              ? new Date().toISOString().split("T")[0]
+              : null
+          }
+        : item
+    ));
+  };
+
+  const deleteItem = (id) => {
+    setBacklog(prev => prev.filter(item => item.id !== id));
+  };
+
+  const pending = backlog.filter(i => !i.checked);
+  const done = backlog.filter(i => i.checked);
+  const coverage = backlog.length > 0
+    ? Math.round((done.length / backlog.length) * 100)
+    : 0;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent", border:"none",
+          color:"#f97316", fontSize:15, cursor:"pointer",
+          fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">iQuanta Backlog</div>
+        <div className="page-sub">Global backlog — all chapters and videos</div>
+
+        {backlog.length > 0 && (
+          <div style={{
+            marginTop:12, padding:"10px 14px",
+            background:"rgba(249,115,22,0.08)",
+            border:"1px solid rgba(249,115,22,0.2)",
+            borderRadius:10, display:"flex",
+            justifyContent:"space-between", alignItems:"center"
+          }}>
+            <span style={{fontSize:12,color:"#6e6e73"}}>
+              Coverage: {done.length}/{backlog.length} completed
+            </span>
+            <span style={{
+              fontSize:14, fontWeight:700,
+              color: coverage >= 70 ? "#30d158" : coverage >= 40 ? "#f97316" : "#ff453a"
+            }}>{coverage}%</span>
+          </div>
+        )}
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Add to Backlog</div>
+          <div className="card" style={{padding:"12px 16px"}}>
+            <div style={{display:"flex", gap:8}}>
+              <input
+                type="text"
+                placeholder="Type a topic or video name, press Enter..."
+                value={noteInput}
+                onChange={e => setNoteInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addItem(noteInput);
+                  }
+                }}
+                style={{
+                  flex:1, background:"#111",
+                  border:"1px solid #2a2a2a", borderRadius:8,
+                  padding:"10px 12px", color:"#f5f5f7",
+                  fontSize:14, fontFamily:"inherit",
+                  outline:"none"
+                }}
+              />
+              <button
+                onClick={() => addItem(noteInput)}
+                style={{
+                  background:"#f97316", border:"none",
+                  borderRadius:8, color:"white",
+                  fontSize:18, fontWeight:700,
+                  width:44, cursor:"pointer"
+                }}
+              >+</button>
+            </div>
+            <div style={{fontSize:11,color:"#444",marginTop:6}}>
+              Press Enter to instantly add as a checklist item
+            </div>
+          </div>
+        </div>
+
+        {pending.length > 0 && (
+          <div>
+            <div className="sec-label">Pending ({pending.length})</div>
+            <div className="card" style={{padding:"4px 0"}}>
+              {pending.map(item => (
+                <div key={item.id} style={{
+                  display:"flex", alignItems:"center",
+                  gap:12, padding:"12px 16px",
+                  borderBottom:"1px solid #1a1a1a"
+                }}>
+                  <button
+                    onClick={() => toggleItem(item.id)}
+                    style={{
+                      width:22, height:22,
+                      borderRadius:6,
+                      border:"2px solid #3a3a3a",
+                      background:"transparent",
+                      cursor:"pointer", flexShrink:0,
+                      display:"flex", alignItems:"center",
+                      justifyContent:"center"
+                    }}
+                  />
+                  <span style={{
+                    flex:1, fontSize:14,
+                    color:"#f5f5f7", lineHeight:1.4
+                  }}>{item.text}</span>
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    style={{
+                      background:"transparent", border:"none",
+                      color:"#3a3a3a", fontSize:18,
+                      cursor:"pointer", padding:"0 4px",
+                      lineHeight:1
+                    }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {done.length > 0 && (
+          <div>
+            <div className="sec-label">Completed ({done.length})</div>
+            <div className="card" style={{padding:"4px 0"}}>
+              {done.map(item => (
+                <div key={item.id} style={{
+                  display:"flex", alignItems:"center",
+                  gap:12, padding:"12px 16px",
+                  borderBottom:"1px solid #1a1a1a",
+                  opacity:0.5
+                }}>
+                  <button
+                    onClick={() => toggleItem(item.id)}
+                    style={{
+                      width:22, height:22,
+                      borderRadius:6,
+                      border:"2px solid #f97316",
+                      background:"rgba(249,115,22,0.15)",
+                      cursor:"pointer", flexShrink:0,
+                      display:"flex", alignItems:"center",
+                      justifyContent:"center"
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24"
+                      fill="none" stroke="#f97316" strokeWidth="3"
+                      strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </button>
+                  <span style={{
+                    flex:1, fontSize:14,
+                    color:"#6e6e73", lineHeight:1.4,
+                    textDecoration:"line-through"
+                  }}>{item.text}</span>
+                  <button
+                    onClick={() => deleteItem(item.id)}
+                    style={{
+                      background:"transparent", border:"none",
+                      color:"#3a3a3a", fontSize:18,
+                      cursor:"pointer", padding:"0 4px"
+                    }}
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {backlog.length === 0 && (
+          <div style={{
+            textAlign:"center", color:"#444",
+            fontSize:13, padding:"60px 0", lineHeight:2
+          }}>
+            No backlog items yet.<br/>
+            <span style={{color:"#6e6e73"}}>
+              Type a topic above and press Enter.
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProgressPage({ data, totals, dl, dn, start, totalDays, globalBacklog }) {
   const subj = [
-    {id:"quant",lbl:"Quant",tar:2000,act:totals.quant},
-    {id:"varc",lbl:"VARC",tar:1000,act:totals.varc},
-    {id:"lrdi",lbl:"LRDI",tar:1000,act:totals.lrdi},
+    {id:"quant",lbl:"Quant",tar:totalDays * 10,act:totals.quant},
+    {id:"varc",lbl:"VARC",tar:totalDays * 5,act:totals.varc},
+    {id:"lrdi",lbl:"LRDI",tar:totalDays * 5,act:totals.lrdi},
   ];
 
   const chartData = useMemo(() => {
     let totalEffort = 0;
-    return Array.from({length: TOTAL}, (_, i) => {
+    return Array.from({length: totalDays}, (_, i) => {
       const d = new Date(start); d.setDate(d.getDate() + i);
       const k = toLocalDateKey(d); const e = data[k];
-      if (i+1 <= dn) totalEffort += effortScore(e || defaultDay());
+      if (i+1 <= dn) totalEffort += effortScore(e || defaultDay(), globalBacklog);
       return {
         day:i+1,
-        targetLine: ((i+1)/TOTAL) * 100,
+        targetLine: ((i+1)/totalDays) * 100,
         actualLine: i+1 <= dn ? Math.round(totalEffort / (i+1)) : null,
       };
     });
-  }, [data, dn, start]);
+  }, [data, dn, start, totalDays, globalBacklog]);
 
   const totalH = Object.values(data).reduce((a,d) => a + (+d.ah||0) + (+d.eh||0), 0);
 
@@ -456,7 +719,7 @@ function ProgressPage({ data, totals, dl, dn, start }) {
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:18,fontWeight:700,color:"var(--tp)"}}>Day {dn}</div>
-            <div style={{fontSize:12,color:"var(--tt)",marginTop:2}}>of 200</div>
+            <div style={{fontSize:12,color:"var(--tt)",marginTop:2}}>of {totalDays}</div>
           </div>
         </div>
 
@@ -477,7 +740,7 @@ function ProgressPage({ data, totals, dl, dn, start }) {
                   <div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`}} /></div>
                   <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
                     <span style={{fontSize:11,color:"var(--tt)"}}>{pct.toFixed(1)}% complete</span>
-                    <span style={{fontSize:11,color: nd <= (s.tar/200) ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
+                    <span style={{fontSize:11,color: nd <= (s.tar/totalDays) ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
                   </div>
                 </div>
               );
@@ -496,7 +759,7 @@ function ProgressPage({ data, totals, dl, dn, start }) {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{top:0,right:12,bottom:0,left:-24}}>
                 <CartesianGrid stroke="#1f1f1f" vertical={false} />
-                <XAxis dataKey="day" domain={[1, TOTAL]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
+                <XAxis dataKey="day" domain={[1, totalDays]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
                 <YAxis domain={[0, 100]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{background:"#111",border:"1px solid #2a2a2a",borderRadius:8,fontSize:11}}
@@ -528,8 +791,8 @@ function ProgressPage({ data, totals, dl, dn, start }) {
   );
 }
 
-function CalendarPage({ data, sel, onSel, start }) {
-  const days = useMemo(() => Array.from({length: TOTAL}, (_, i) => {
+function CalendarPage({ data, sel, onSel, start, totalDays }) {
+  const days = useMemo(() => Array.from({length: totalDays}, (_, i) => {
     const d = new Date(start); d.setDate(d.getDate() + i);
     const k = toLocalDateKey(d); const e = data[k];
     let status = "";
@@ -538,23 +801,23 @@ function CalendarPage({ data, sel, onSel, start }) {
       status = mq && mv && ml && mvp ? "done" : "partial";
     }
     return { k, day:i+1, isToday: k===todayKey(), status };
-  }), [data, start]);
+  }), [data, start, totalDays]);
 
   const months = useMemo(() => {
     const labels = [];
-    for (let i = 0; i < TOTAL; i += 30) {
+    for (let i = 0; i < totalDays; i += 30) {
       const d = new Date(start);
       d.setDate(d.getDate() + i);
       const label = d.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
       if (!labels.includes(label)) labels.push(label);
     }
     return labels;
-  }, [start]);
+  }, [start, totalDays]);
 
   return (
     <div className="page">
       <div className="page-header">
-        <div className="page-title">200 Days</div>
+        <div className="page-title">{totalDays} Days</div>
         <div className="page-sub">Every cell is a choice. Leave none empty.</div>
       </div>
       <div className="sections">
@@ -2059,6 +2322,13 @@ export default function App() {
   const [tab, setTab] = useState("today");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem("cat_prep_data") || "{}") } catch { return {} } });
+  const [globalBacklog, setGlobalBacklog] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("conquer_backlog") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [sel, setSel] = useState(() => localStorage.getItem("cat_sel_date") || todayKey());
   const [mentorMessages, setMentorMessages] = useState([]);
   const [mentorGreeted, setMentorGreeted] = useState(
@@ -2086,6 +2356,15 @@ export default function App() {
   const _today = new Date()
   _today.setHours(0, 0, 0, 0)
   const dl = getDaysLeft()
+  const totalDays = useMemo(() => {
+    if (!startDate) return 200;
+    const start = new Date(startDate + "T00:00:00");
+    start.setHours(0, 0, 0, 0);
+    const exam = new Date(EXAM_DATE);
+    exam.setHours(0, 0, 0, 0);
+    const diff = Math.ceil((exam - start) / 86400000);
+    return Math.max(1, Math.min(diff, 300));
+  }, [startDate]);
   const _start = startDate ? new Date(startDate + "T00:00:00") : _today
   _start.setHours(0, 0, 0, 0)
   const dn = Math.max(1, Math.floor((_today - _start) / 86400000) + 1)
@@ -2097,6 +2376,15 @@ export default function App() {
   const todayData = data[todayKey()] || defaultDay();
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
+  useEffect(() => {
+    localStorage.setItem("conquer_backlog", JSON.stringify(globalBacklog));
+    if (!userId) return;
+    fetch("/api/user/update", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ userId, backlog: globalBacklog })
+    }).catch(err => console.error("Backlog sync failed:", err.message));
+  }, [globalBacklog, userId]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
     if (!userId && startDate) {
@@ -2271,7 +2559,7 @@ export default function App() {
           ☰
         </button>
         <div className="mobile-brand">
-          <div className="mobile-title">PREP OS</div>
+          <div className="mobile-title">CONQUER CAT</div>
           <div className="mobile-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
         </div>
         <div className="mobile-days-pill" aria-label={`${dl} days to CAT`}>
@@ -2289,7 +2577,7 @@ export default function App() {
       <aside className={`mobile-drawer${mobileMenuOpen ? " open" : ""}`}>
         <div className="mobile-drawer-head">
           <div>
-            <div className="s-title">CONQUER</div>
+            <div className="s-title">CONQUER CAT</div>
             <div className="s-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
           </div>
           <button
@@ -2337,7 +2625,7 @@ export default function App() {
 
       <aside className="sidebar">
         <div className="s-logo">
-          <div className="s-title">CONQUER</div>
+          <div className="s-title">CONQUER CAT</div>
           <div className="s-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
         </div>
         <nav className="s-nav">
@@ -2379,15 +2667,22 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} mode={mode} onSave={() => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} globalBacklog={globalBacklog} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId, date: sel, dayData: data[sel] || defaultDay() })
           }).catch(err => { console.error("Log save failed:", err.message) })
         }} />}
-        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} />}
-        {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} />}
+        {tab === "backlog" && (
+          <BacklogPage
+            backlog={globalBacklog}
+            setBacklog={setGlobalBacklog}
+            onBack={() => setTab("today")}
+          />
+        )}
+        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} globalBacklog={globalBacklog} />}
+        {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
       </main>
 

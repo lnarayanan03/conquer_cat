@@ -1,125 +1,569 @@
-# CONQUER — CAT 2026 Prep Tracker
+# CONQUER CAT — CAT 2026 Prep Tracker
 
-A personal daily tracker for CAT 2026 preparation, built with React + Vite + Express. Includes an AI mentor (Vikram Anand) powered by Claude, daily logging, progress charts, a 200-day calendar, and a post-exam interview prep mode.
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+A personal daily tracker for CAT 2026 preparation built with React + Vite + Express. Features an AI mentor (Vikram Anand) powered by a multi-provider LLM pool (Groq, Gemini, Anthropic), long-term memory via Qdrant + Redis, persistent logs via Supabase, web search via Tavily, and semantic embeddings via HuggingFace.
 
 ---
 
-## Stack
+## Table of Contents
 
-| Layer | Tech |
+1. [What This App Does](#1-what-this-app-does)
+2. [Tech Stack](#2-tech-stack)
+3. [Architecture Overview](#3-architecture-overview)
+4. [Prerequisites](#4-prerequisites)
+5. [Step 1 — Clone & Install](#step-1--clone--install)
+6. [Step 2 — Set Up Supabase (Database)](#step-2--set-up-supabase-database)
+7. [Step 3 — Set Up Qdrant (Vector Memory)](#step-3--set-up-qdrant-vector-memory)
+8. [Step 4 — Set Up Upstash Redis (Chat Cache)](#step-4--set-up-upstash-redis-chat-cache)
+9. [Step 5 — Get Your LLM API Keys](#step-5--get-your-llm-api-keys)
+10. [Step 6 — Get Tavily & HuggingFace Keys](#step-6--get-tavily--huggingface-keys)
+11. [Step 7 — Create the .env File](#step-7--create-the-env-file)
+12. [Step 8 — Run in Development](#step-8--run-in-development)
+13. [Step 9 — Production Build](#step-9--production-build)
+14. [Features](#features)
+15. [Project Structure](#project-structure)
+16. [API Routes](#api-routes)
+17. [Effort Score Formula](#effort-score-formula)
+18. [localStorage Keys](#localstorage-keys)
+19. [Reset the App](#reset-the-app)
+20. [Troubleshooting](#troubleshooting)
+
+---
+
+## 1. What This App Does
+
+CONQUER CAT is a CAT exam prep tracker built for serious aspirants. Every day you log your study sessions, and your AI mentor Vikram Anand (modeled after a 99.99%ile, IIM-A alumnus) reviews your performance and pushes you harder. The app tracks your Quant, VARC, LRDI, sleep, and backlog progress against targets calculated from your actual start date, then transitions into interview prep mode after CAT results.
+
+---
+
+## 2. Tech Stack
+
+| Layer | Technology |
 |---|---|
-| Frontend | React 19, Vite 8 |
-| Backend | Express 5, Node.js |
-| AI | Anthropic Claude API (claude-sonnet-4-5 / claude-haiku-4-5) |
-| Charts | Recharts |
-| Styling | Inline styles + CSS (no UI library) |
+| Frontend | React 19, Vite 8, Recharts |
+| Backend | Express 5, Node.js (ESM) |
+| AI / LLM | LangChain + Groq (primary), Gemini (fallback), Anthropic Claude (final fallback) |
+| Vector DB | Qdrant Cloud (long-term mentor memories) |
+| Chat Cache | Upstash Redis (today's conversation history) |
+| Database | Supabase (Postgres — users, daily logs) |
+| Embeddings | HuggingFace / Xenova `all-MiniLM-L6-v2` (runs locally) |
+| Web Search | Tavily (mentor can search the web) |
+| Styling | CSS + inline styles (no UI library) |
 
 ---
 
-## Prerequisites
+## 3. Architecture Overview
 
-- Node.js 18+
-- An Anthropic API key
+```
+Browser (React)
+    │
+    │  /api/*  (proxied by Vite in dev)
+    ▼
+Express Server (server.js)
+    │
+    ├── /api/chat ──────────► mentor/chain.js
+    │                              │
+    │                    LangChain multi-provider pool
+    │                    (Groq → Gemini → Anthropic)
+    │                              │
+    │                    ┌─────────┴──────────┐
+    │                    │                    │
+    │               Qdrant Cloud          Upstash Redis
+    │           (long-term memories)   (today's chat log)
+    │
+    ├── /api/mentor/greet ──► direct Anthropic API call
+    │
+    ├── /api/user/* ──────────► Supabase (users table)
+    └── /api/log/* ─────────── Supabase (daily_logs table)
+```
+
+**Key design decisions:**
+- Groq is the default LLM (fast, free tier). Gemini and Anthropic are fallbacks.
+- You can add multiple Groq/Gemini API keys — the pool rotates through them automatically when rate-limited.
+- Chat history is stored in Redis with a 24-hour TTL, keyed by `userId + IST date`.
+- Long-term memories (past prep summaries) are stored as vectors in Qdrant and retrieved semantically.
+- All user data also syncs to Supabase so you don't lose progress if localStorage is cleared.
 
 ---
 
-## Setup
+## 4. Prerequisites
 
-**1. Install dependencies**
+Before you start, make sure you have:
+
+- **Node.js 18+** — [Download here](https://nodejs.org). Run `node -v` to confirm.
+- **npm** — comes with Node.js
+- **A terminal / command line** — bash, zsh, PowerShell, etc.
+- Accounts on the following free-tier services (all have free tiers, no credit card required unless stated):
+  - Supabase
+  - Qdrant Cloud
+  - Upstash
+  - Groq
+  - Google AI Studio (Gemini) — optional but recommended
+  - Anthropic — optional (fallback only)
+  - Tavily
+  - HuggingFace
+
+---
+
+## Step 1 — Clone & Install
+
 ```bash
-cd cat-tracker
+# Clone the repo (replace with your actual repo URL)
+git clone https://github.com/your-username/daily-tracker.git
+cd daily-tracker/cat-tracker
+
+# Install all dependencies
 npm install
 ```
 
-**2. Create a `.env` file in the `cat-tracker/` root**
+This installs React, Express, LangChain, Qdrant client, Redis client, Xenova transformers, and everything else listed in `package.json`.
+
+> **Note:** The first `npm install` may take 2–3 minutes because `@xenova/transformers` is large. The HuggingFace embedding model itself (~22 MB) downloads at server startup, not at install time.
+
+---
+
+## Step 2 — Set Up Supabase (Database)
+
+Supabase is a free Postgres database with a REST API. It stores user profiles and daily logs.
+
+### 2a. Create a project
+
+1. Go to [supabase.com](https://supabase.com) and sign up.
+2. Click **New Project**.
+3. Give it a name (e.g., `conquer`), set a strong database password, choose a region close to you.
+4. Wait ~1 minute for the project to spin up.
+
+### 2b. Create the tables
+
+Go to **SQL Editor** in your Supabase project and run these two queries one at a time:
+
+**Users table:**
+```sql
+create table if not exists users (
+  id text primary key,
+  name text,
+  start_date text,
+  avatar_gender text,
+  avatar_skin text,
+  avatar_hair text,
+  avatar_hair_color text,
+  avatar_shirt text,
+  avatar_glasses boolean default false,
+  avatar_beard boolean default false,
+  avatar_mustache boolean default false,
+  created_at timestamptz default now()
+);
 ```
-ANTHROPIC_API_KEY=sk-ant-...
+
+**Daily logs table:**
+```sql
+create table if not exists daily_logs (
+  id bigint generated always as identity primary key,
+  user_id text references users(id) on delete cascade,
+  log_date text not null,
+  q integer default 0,
+  v integer default 0,
+  l integer default 0,
+  vp_count integer default 0,
+  ah numeric default 0,
+  eh numeric default 0,
+  lc boolean default false,
+  vp boolean default false,
+  backlog jsonb default '[]',
+  notes text,
+  journal text,
+  wake_time text,
+  sleep_time text,
+  created_at timestamptz default now(),
+  unique (user_id, log_date)
+);
+```
+
+### 2c. Get your credentials
+
+In your Supabase project, go to **Settings → API**. Copy:
+- **Project URL** → this is your `SUPABASE_URL`
+- **service_role** key (under "Project API keys") → this is your `SUPABASE_SERVICE_KEY`
+- **anon** key → this is your `SUPABASE_ANON_KEY`
+
+> Keep the `service_role` key secret — it bypasses Row Level Security.
+
+---
+
+## Step 3 — Set Up Qdrant (Vector Memory)
+
+Qdrant stores semantic memories of the user's past prep sessions so the mentor can recall them contextually.
+
+### 3a. Create a cluster
+
+1. Go to [cloud.qdrant.io](https://cloud.qdrant.io) and sign up.
+2. Click **Create Cluster** → choose the **Free tier** (1 GB, no credit card).
+3. Select a region and click **Create**.
+4. Wait ~30 seconds for the cluster to start.
+
+### 3b. Get your credentials
+
+On the cluster dashboard:
+- **Cluster URL** → something like `https://abc123.us-east4-0.gcp.cloud.qdrant.io` → this is your `QDRANT_URL`
+- Click **API Keys → Create** → this is your `QDRANT_API_KEY`
+
+> The app auto-creates the `conquer_mentor_memory` collection and its index when the server starts for the first time.
+
+---
+
+## Step 4 — Set Up Upstash Redis (Chat Cache)
+
+Redis stores today's conversation with the mentor. Upstash offers a free serverless Redis instance.
+
+### 4a. Create a database
+
+1. Go to [upstash.com](https://upstash.com) and sign up.
+2. Click **Create Database**.
+3. Name it `conquer`, choose a region, select **TLS** (enabled by default).
+4. Click **Create**.
+
+### 4b. Get your credentials
+
+On the database details page, find **REST API** or **Connection** section:
+- Copy the **Redis URL** — it looks like `rediss://default:PASSWORD@HOST.upstash.io:6379`
+- This is your `REDIS_URL`
+
+---
+
+## Step 5 — Get Your LLM API Keys
+
+The app uses a provider pool — Groq first, then Gemini, then Anthropic. You need **at least one** of these. Having all three gives maximum reliability and rate-limit tolerance.
+
+### Groq (Primary — Recommended, Free)
+
+1. Go to [console.groq.com](https://console.groq.com) and sign up.
+2. Go to **API Keys → Create API Key**.
+3. Copy the key — this is your `GROQ_API_KEY`.
+
+**Pro tip:** Create 2–3 separate API keys for `GROQ_API_KEY_2`, `GROQ_API_KEY_3`, etc. The app rotates through all of them when one hits the rate limit, giving you ~3× the free throughput.
+
+### Google Gemini (Fallback — Free)
+
+1. Go to [aistudio.google.com](https://aistudio.google.com) and sign in with your Google account.
+2. Click **Get API Key → Create API Key**.
+3. Copy the key — this is your `GEMINI_API_KEY_1`.
+
+Same as Groq — create multiple keys (`GEMINI_API_KEY_2` through `GEMINI_API_KEY_8`) for more fallback options.
+
+### Anthropic Claude (Final Fallback — Paid)
+
+1. Go to [console.anthropic.com](https://console.anthropic.com) and sign up.
+2. Go to **API Keys → Create Key**.
+3. Copy the key — this is your `ANTHROPIC_API_KEY`.
+
+> Anthropic requires adding credits ($5 minimum) before your key works. Groq and Gemini are free, so Anthropic is only hit when everything else is rate-limited.
+
+---
+
+## Step 6 — Get Tavily & HuggingFace Keys
+
+### Tavily (Web Search for the Mentor)
+
+Tavily lets the mentor search the web for real CAT toppers, IIM placement stats, etc.
+
+1. Go to [app.tavily.com](https://app.tavily.com) and sign up.
+2. Your API key is shown on the dashboard — this is your `TAVILY_API_KEY`.
+
+### HuggingFace (Embeddings)
+
+HuggingFace is used for generating text embeddings. The model runs **locally via Xenova** — no API calls are made. The key is only needed if you use HuggingFace's hosted inference for other features.
+
+1. Go to [huggingface.co](https://huggingface.co) and sign up.
+2. Go to **Settings → Access Tokens → New token**.
+3. Copy the token — this is your `HF_API_KEY`.
+
+> The embedding model (`all-MiniLM-L6-v2`) downloads automatically the first time the server starts. It runs locally after that.
+
+### LangSmith (Optional — Tracing)
+
+LangSmith lets you inspect every LLM call, tool invocation, and chain execution. Useful for debugging. Skip if you don't need it.
+
+1. Go to [smith.langchain.com](https://smith.langchain.com) and sign up.
+2. Create a project named `conquer-mentor`.
+3. Go to **Settings → API Keys** and copy your key.
+
+---
+
+## Step 7 — Create the .env File
+
+Inside the `cat-tracker/` directory, create a file named `.env` (copy from `.env.example` to start):
+
+```bash
+cp .env.example .env
+```
+
+Now open `.env` and fill in all your keys:
+
+```env
+# ── LLM Providers ──────────────────────────────────────────────────────────
+
+# Groq (primary — fastest, free)
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+GROQ_API_KEY_2=gsk_xxxxxxxxxxxxxxxxxxxx   # optional: more keys = more rate limit
+GROQ_API_KEY_3=gsk_xxxxxxxxxxxxxxxxxxxx   # optional
+
+# Google Gemini (fallback — free)
+GEMINI_API_KEY_1=AIzaxxxxxxxxxxxxxxxx
+GEMINI_API_KEY_2=AIzaxxxxxxxxxxxxxxxx     # optional
+GEMINI_API_KEY_3=AIzaxxxxxxxxxxxxxxxx     # optional
+
+# Anthropic Claude (final fallback — requires credits)
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxx
+
+# ── Database ────────────────────────────────────────────────────────────────
+
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# ── Memory ──────────────────────────────────────────────────────────────────
+
+# Qdrant Cloud (vector DB for long-term memories)
+QDRANT_URL=https://your-cluster-id.us-east4-0.gcp.cloud.qdrant.io
+QDRANT_API_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Upstash Redis (chat cache — 24h TTL)
+REDIS_URL=rediss://default:your-password@your-host.upstash.io:6379
+
+# ── Tools ───────────────────────────────────────────────────────────────────
+
+# Tavily (web search for mentor)
+TAVILY_API_KEY=tvly-dev-xxxxxxxxxxxxxxxxxxxx
+
+# HuggingFace (embeddings)
+HF_API_KEY=hf_xxxxxxxxxxxxxxxxxxxx
+
+# ── Tracing (optional) ──────────────────────────────────────────────────────
+
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_xxxxxxxxxxxxxxxxxxxx
+LANGCHAIN_PROJECT=conquer-mentor
+
+# ── Server ──────────────────────────────────────────────────────────────────
+
 PORT=3001
+```
+
+**Minimum required keys to run:**
+- At least one of: `GROQ_API_KEY`, `GEMINI_API_KEY_1`, or `ANTHROPIC_API_KEY`
+- `ANTHROPIC_API_KEY` (also used for daily greeting via `/api/mentor/greet`)
+- `QDRANT_URL` + `QDRANT_API_KEY`
+- `REDIS_URL`
+- `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (the app works without it but won't persist logs across devices)
+
+---
+
+## Step 8 — Run in Development
+
+Make sure you're inside the `cat-tracker/` directory:
+
+```bash
+cd cat-tracker
+npm run dev
+```
+
+This starts both servers together using `concurrently`:
+
+| Server | URL | What it does |
+|---|---|---|
+| Vite (frontend) | `http://localhost:5173` | React app with hot reload |
+| Express (backend) | `http://localhost:3001` | API server |
+
+Open `http://localhost:5173` in your browser. Vite automatically proxies all `/api/*` requests to Express on port 3001.
+
+**First launch:**
+- The Xenova embedding model downloads (~22 MB) — this takes 20–60 seconds.
+- Qdrant initializes the `conquer_mentor_memory` collection automatically.
+- You'll see the onboarding screen asking for your name, start date, and avatar.
+
+**To run servers separately:**
+```bash
+npm run dev:client   # Vite only (port 5173)
+npm run dev:server   # Express only (port 3001)
+```
+
+### Localhost Testing Checklist
+
+Use this when you clone the repo and want to verify everything locally before deploying.
+
+**Terminal 1 — backend/API server:**
+```bash
+npm run dev:server
+```
+
+**Terminal 2 — frontend/client:**
+```bash
+npm run dev:client
+```
+
+Then open:
+- Frontend app: `http://localhost:5173`
+- Backend health/API base: `http://localhost:3001`
+
+Vite proxies frontend `/api/*` requests to the Express server, so keep both terminals running during local testing.
+
+**Restart both servers:**
+1. Press `Ctrl+C` in both terminals.
+2. Run `npm run dev:server` again in the backend terminal.
+3. Run `npm run dev:client` again in the frontend terminal.
+
+**If a port is stuck on macOS/Linux:**
+```bash
+lsof -ti :5173 | xargs kill -9   # kill Vite client
+lsof -ti :3001 | xargs kill -9   # kill Express server
+```
+
+**If a port is stuck on Windows PowerShell:**
+```powershell
+netstat -ano | findstr :5173
+taskkill /PID <PID_FROM_PREVIOUS_COMMAND> /F
+
+netstat -ano | findstr :3001
+taskkill /PID <PID_FROM_PREVIOUS_COMMAND> /F
+```
+
+After killing stuck ports, start again:
+```bash
+npm run dev:server
+npm run dev:client
 ```
 
 ---
 
-## Running
+## Step 9 — Production Build
 
-### Development (client + server together)
 ```bash
-npm run dev
-```
-- Vite dev server: `http://localhost:5173`
-- Express API server: `http://localhost:3001`
-- Vite proxies `/api/*` to Express automatically
-
-### Run servers separately
-```bash
-npm run dev:client   # Vite only
-npm run dev:server   # Express only
+# Inside cat-tracker/
+npm run build    # Compiles React into the dist/ folder
+npm start        # Starts Express, which serves dist/ + the API
 ```
 
-### Production build
-```bash
-npm run build        # builds React into dist/
-npm start            # serves dist/ + API on PORT (default 3001)
-```
-Open `http://localhost:3001` in production.
+Open `http://localhost:3001` — Express serves both the frontend and the API from a single port.
+
+To deploy to a cloud server (e.g., a $5/month DigitalOcean droplet or Railway):
+1. Upload the project (without `node_modules`).
+2. Run `npm install && npm run build` on the server.
+3. Set all your `.env` variables as environment variables in your hosting dashboard.
+4. Run `npm start`. Use a process manager like `pm2` to keep it alive:
+   ```bash
+   npm install -g pm2
+   pm2 start "npm start" --name conquer
+   pm2 save && pm2 startup
+   ```
 
 ---
 
 ## Features
 
 ### Onboarding
-- Enter your name and prep start date on first launch
-- Build a custom avatar: choose gender, skin tone, hair style, hair color, outfit color, glasses, beard
-- All preferences saved to `localStorage` — no account needed
+- Enter your name and prep start date on first launch.
+- Build a custom pixel avatar: gender, skin tone, hair style, hair color, outfit color, glasses, beard.
+- All data saved to `localStorage` — no login required.
 
 ### Today Tab
-- Log wake time and sleep time (color-coded: green = on target)
-- Toggle live class attendance, VARC passage reading
-- Log study hours (afternoon + evening sessions)
-- Counter inputs for Quant / VARC / LRDI sets completed
-- iQuanta notes + daily journal textarea
-- Effort score computed from all inputs (0–100)
+- Log wake time and sleep time with fixed dropdowns, not free text.
+- Valid wake times: 4:00 AM to 8:00 AM in 30-minute intervals.
+- Valid sleep times: 9:00 PM to 2:00 AM in 30-minute intervals.
+- Sleep duration is calculated live with a 4–6 hour target.
+- Color-coded sleep indicator: green for 4–6h, red outside range.
+- Toggle live class attendance and VARC passage reading.
+- Log study hours (afternoon + evening sessions separately).
+- Counter inputs for Quant / VARC / LRDI sets completed.
+- Navigate to the global iQuanta Backlog checklist from a compact row.
+- iQuanta notes + daily journal textarea.
+- Effort score auto-computed from all inputs (0–100), including sleep and backlog coverage.
 
 ### Progress Tab
-- Days remaining counter
-- Scoreboard: Quant (target 2000), VARC (target 1000), LRDI (target 1000)
-- Progress bars with "X/day to stay on track"
-- Journey Score chart: actual avg effort vs linear target over 200 days
-- Total study hours and total problems solved
+- Days remaining to CAT 2026 (November 29, 2026).
+- Scoreboard targets scale with actual prep length: Quant = days × 10, VARC = days × 5, LRDI = days × 5.
+- Progress bars with "X per day needed to stay on track".
+- Journey Score chart: actual avg effort vs. linear target over your actual prep window.
+- Total study hours and total problems solved.
 
 ### Calendar Tab
-- 200-cell grid — one cell per day
-- Orange = all targets met, dim orange = partial, empty = no entry
-- Tap any cell to jump to that day's log
+- Dynamic journey grid, one cell per day from your start date to CAT.
+- If you start with 190 days left, you see a 190-cell calendar, not 200.
+- Orange = all daily targets met, dim orange = partial effort, empty = no log.
+- Tap any cell to view or edit that day's log.
+
+### Dynamic Calendar
+- Calendar length is calculated from the user's actual start date to November 29, 2026.
+- Progress targets and chart trajectory use the actual prep window, not a hardcoded 200 days.
+- Scoreboard targets scale automatically with total days: Quant = days × 10, VARC = days × 5, LRDI = days × 5.
+
+### Sleep Tracking
+- Wake time and sleep time use dropdowns instead of free-form time inputs.
+- Valid wake times are 4:00 AM to 8:00 AM in 30-minute intervals.
+- Valid sleep times are 9:00 PM to 2:00 AM in 30-minute intervals.
+- Sleep duration is calculated live, with a target range of 4–6 hours.
+- Sleep indicator turns green for 4–6h and red outside that range.
+
+### iQuanta Backlog (Global)
+- Global persistent checklist across all days.
+- Type a topic or video name and press Enter to instantly create a checklist item.
+- Check items off as you complete backlog videos.
+- Coverage percentage is tracked as completed / total.
+- Pending and Completed sections are separated.
+- Stored in `localStorage` as `conquer_backlog`.
+
+### Effort Score (Updated)
+- Total score remains 0–100.
+- Sleep score adds up to 10 points for valid 4–6 hour sleep.
+- Backlog coverage adds up to 10 points based on completed backlog percentage.
+- Quant, VARC, LRDI, passages, study hours, live class, and VARC passage toggle weights were redistributed across the full 100 points.
 
 ### Mentor Tab (Vikram Anand)
-- Full-page chat with Claude as Vikram Anand — 99.99%ile, IIM-A, 4× CAT
-- Vikram persona: tough, demanding, zero tolerance for excuses
-- Knows your exact stats (days left, totals, today's effort score)
-- Quick actions: Mock Interview, WAT Topic, Doubt
-- Prompt caching enabled (saves API cost on repeated context)
+- Full-page chat with Claude as Vikram Anand — 99.99%ile, IIM-A alumnus, 4× CAT.
+- Vikram is tough, demanding, and has zero tolerance for excuses (Yujiro Hanma persona).
+- Knows your exact stats: days left, cumulative totals, today's effort score, backlog coverage, and consistency signals.
+- Quick-action buttons: Mock Interview, WAT Topic, Doubt.
+- The mentor can search the web (Tavily) for real CAT facts and success stories.
+
+### Vikram Personalisation
+- After day 3, Vikram references actual study patterns instead of treating every student the same.
+- He assesses consistency, trajectory, willpower, and endurance from the logged data.
+- Backlog coverage shapes his tone and gets referenced naturally when relevant.
+- After day 30, he starts calling out the endurance window where most aspirants quit.
+- Story variety rules rotate through multiple personal, student, topper, and alumni stories without repeating the same story in one session.
+
+### AI Provider Pool
+- Groq (`llama-3.3-70b-versatile`) is tried first — fastest and free.
+- Gemini (`gemini-2.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.0-flash`) is the fallback.
+- Anthropic (`claude-sonnet-4-6`) is the final fallback.
+- Multiple API keys per provider rotate automatically when one hits rate limits.
+- 60-second cooldown per slot before retrying.
+
+### Long-Term Memory
+- The mentor remembers past prep sessions using Qdrant vector search.
+- Daily summaries are embedded using `all-MiniLM-L6-v2` (384-dimensional vectors).
+- Semantically relevant memories are retrieved per conversation.
 
 ### Floating Mentor Button
-- Draggable, snaps to nearest screen edge (AssistiveTouch style)
-- Opens a compact chat panel — same Vikram, smaller window
-- Green dot appears when there are unread messages
-- Panel position is smart: opens on whichever side has more space
+- Draggable button that snaps to the nearest screen edge (AssistiveTouch style).
+- Opens a compact chat panel — same Vikram, smaller window.
+- Green dot appears when there are unread messages.
 
 ### Daily Greeting
-- On first open each day, Vikram sends an auto-generated greeting
-- Uses `claude-haiku-4-5` for speed and cost efficiency
-- Greeting is personalized with your current stats and day number
+- On first open each day, Vikram sends a personalized greeting.
+- Uses Anthropic `claude-haiku-4-5` for speed.
+- Personalized with your current stats, day number, and a motivational insight.
 
 ### CAT Results Screen
-- After Nov 29 2026, app prompts you to enter your percentile
-- Live feedback: green for 99.5+ (IIM-A range), orange for 95+, red below 95
-- If you cracked CAT (≥99%ile), app transitions to Interview Mode
+- After November 29, 2026, the app prompts you to enter your percentile.
+- Color-coded feedback: green for 99.5+, orange for 95+, red below 95.
 
 ### Interview Mode
-- Activated after entering your CAT result
-- Set your IIM interview date
-- Today tab shows Mock PI and WAT practice toggles instead of problem counters
-- Vikram's system prompt shifts entirely to interview coaching
-- Days counter shows days to interview instead of days to CAT
+- Activated after entering your CAT result (if you cracked it).
+- Set your IIM interview date.
+- Today tab shows Mock PI and WAT practice instead of problem counters.
+- Vikram shifts entirely to interview coaching (WAT structure, PI drills, mock interviews).
+- Days counter switches to days until your interview.
 
 ---
 
@@ -128,15 +572,31 @@ Open `http://localhost:3001` in production.
 ```
 cat-tracker/
 ├── src/
-│   ├── App.jsx          # All components: avatars, pages, FloatingMentor, onboarding
-│   ├── App.css          # Design tokens, layout, component styles
-│   ├── index.css        # Body reset only
-│   └── pages/
-│       └── InstaCard.css
-├── server.js            # Express API: /api/chat, /api/mentor/greet
-├── index.html
-├── vite.config.js       # Proxies /api → :3001 in dev
-└── .env                 # ANTHROPIC_API_KEY, PORT (not committed)
+│   ├── App.jsx              # Root component, routing, onboarding, FloatingMentor
+│   ├── App.css              # Design tokens, layout, component styles
+│   ├── index.css            # Body reset
+│   ├── main.jsx             # React entry point
+│   ├── mentor/
+│   │   ├── chain.js         # LangChain multi-provider pool (Groq/Gemini/Anthropic)
+│   │   ├── memory.js        # Redis (chat cache) + Qdrant (vector memory) + Xenova (embeddings)
+│   │   ├── pipeline.js      # Background pipeline: summarize daily sessions → store to Qdrant
+│   │   ├── prompt.js        # Builds Vikram's system prompt from tracker data + memories
+│   │   └── tools.js         # LangChain tool definitions (Tavily web search, etc.)
+│   ├── pages/
+│   │   ├── Today.jsx        # Today's log form
+│   │   ├── Today.css
+│   │   ├── Progress.jsx     # Charts and scoreboards
+│   │   ├── Progress.css
+│   │   ├── InstaCard.jsx    # Shareable progress card
+│   │   └── InstaCard.css
+│   └── utils/
+│       └── storage.js       # localStorage helpers
+├── server.js                # Express server: API routes + direct Anthropic calls
+├── index.html               # Vite entry HTML
+├── vite.config.js           # Vite config + /api proxy to :3001
+├── .env                     # Your secrets (never commit this)
+├── .env.example             # Template for .env
+└── .gitignore
 ```
 
 ---
@@ -144,46 +604,97 @@ cat-tracker/
 ## API Routes
 
 ### `POST /api/chat`
-Full mentor chat. Request body:
+Mentor chat via LangChain pool. Request body:
 ```json
 {
-  "messages": [{ "role": "user", "content": "..." }],
+  "userId": "user-uuid",
+  "message": "I want to do a mock interview",
+  "trackerData": {
+    "daysLeft": 200,
+    "totals": { "quant": 0, "varc": 0, "lrdi": 0 },
+    "dayNum": 1,
+    "todayData": { "q": 0, "v": 0, "l": 0, "ah": 0, "eh": 0, "lc": false, "vp": false, "vp_count": 0 },
+    "mode": "prep",
+    "userName": "Ranga",
+    "startDate": "2026-01-01"
+  },
+  "daysLeft": 200
+}
+```
+
+### `GET /api/chat/history/:userId`
+Returns today's chat history for a user (from Redis).
+
+### `POST /api/mentor/greet`
+Daily greeting (direct Anthropic call, not the pool). Body:
+```json
+{
   "daysLeft": 200,
   "totals": { "quant": 0, "varc": 0, "lrdi": 0 },
   "dayNum": 1,
-  "todayData": { "q": 0, "v": 0, "l": 0, "ah": 0, "eh": 0, "lc": false, "vp": false, "vp_count": 0 },
+  "todayData": {},
   "mode": "prep",
-  "userName": "...",
-  "startDate": "2026-01-01",
-  "interviewDate": "",
-  "catResult": "",
-  "catPercentile": ""
+  "userName": "Ranga",
+  "startDate": "2026-01-01"
 }
 ```
-Model: `claude-sonnet-4-5`, max tokens: 400.
 
-### `POST /api/mentor/greet`
-Daily greeting. Same body shape, no `messages` field needed.
-Model: `claude-haiku-4-5-20251001`, max tokens: 250.
+### `POST /api/user/check`
+Check if a user exists in Supabase. Body: `{ "userId": "..." }`
 
-Both routes use **prompt caching** (`anthropic-beta: prompt-caching-2024-07-31`) on the system prompt.
+### `POST /api/user/init`
+Create or update a user profile. Body: `{ "userId": "...", "name": "...", "startDate": "...", ...avatar fields }`
+
+### `POST /api/user/update`
+Update any user fields. Body: `{ "userId": "...", ...fields }`
+
+### `POST /api/log/save`
+Save a daily log. Body: `{ "userId": "...", "date": "YYYY-MM-DD", "dayData": { ...log fields } }`
+
+### `GET /api/log/all/:userId`
+Returns all daily logs for a user, keyed by date.
+
+---
+
+## Effort Score Formula
+
+The score is calculated server-side and in the frontend:
+
+| Component | Target | Max Points |
+|---|---|---|
+| Sleep | 4–6 hours | 10 |
+| Backlog coverage | % completed | 10 |
+| Quant | 10/day | 20 |
+| VARC | 5/day | 12 |
+| LRDI | 5/day | 12 |
+| VARC passages | 1/day | 8 |
+| Study hours | 5h/day | 16 |
+| Live class | — | 8 |
+| VARC passage toggle | — | 4 |
+| **Total** | | **100** |
+
+Each component is capped at its max even if you exceed the target.
 
 ---
 
 ## localStorage Keys
 
+All app state is persisted here so the app works without logging in:
+
 | Key | Value |
 |---|---|
 | `cat_start_date` | `YYYY-MM-DD` prep start date |
-| `cat_user_name` | User's full name |
-| `cat_prep_data` | JSON object keyed by date, contains all daily logs |
+| `cat_user_name` | User's name |
+| `cat_user_id` | UUID identifying the user |
+| `cat_prep_data` | JSON object keyed by date → daily log |
+| `conquer_backlog` | JSON array of global backlog items |
 | `cat_sel_date` | Currently selected calendar date |
 | `app_mode` | `"prep"` or `"interview"` |
 | `interview_date` | `YYYY-MM-DD` IIM interview date |
 | `cat_result` | `"cracked"` or `"missed"` |
 | `cat_percentile` | Percentile string e.g. `"99.94"` |
 | `mentor_btn_pos` | `{ x, y }` floating button position |
-| `mentor_greeted_today` | ISO date string, prevents double greet |
+| `mentor_greeted_today` | ISO date string, prevents double greeting |
 | `cat_avatar_gender` | `"male"` / `"female"` |
 | `cat_avatar_skin` | `"light"` / `"medium"` / `"dark"` |
 | `cat_avatar_hair` | `"short"` / `"wavy"` / `"curly"` / `"long"` / `"bun"` |
@@ -194,23 +705,51 @@ Both routes use **prompt caching** (`anthropic-beta: prompt-caching-2024-07-31`)
 
 ---
 
-## Reset
+## Reset the App
 
-To reset the app completely (start fresh onboarding):
-- Click "reset start date" in the sidebar, or
-- Open DevTools → Application → Local Storage → clear all `cat_*` keys
+To start fresh (wipe all progress and re-run onboarding):
+
+**Option 1 — In the app:**
+- Click "reset start date" in the sidebar.
+
+**Option 2 — Browser DevTools:**
+- Open DevTools → Application → Local Storage → select `localhost:5173` → clear all `cat_*` keys and `conquer_backlog`.
+
+**Option 3 — Supabase:**
+- Go to your Supabase project → Table Editor → `daily_logs` → delete rows for your user ID.
 
 ---
 
-## Effort Score Formula
+## Troubleshooting
 
-| Component | Max points |
-|---|---|
-| Quant problems (target 10) | 25 |
-| VARC sets (target 5) | 15 |
-| LRDI sets (target 5) | 15 |
-| VARC passage (target 1) | 10 |
-| Study hours (target 5h) | 20 |
-| Live class attended | 10 |
-| VARC passage reading toggle | 5 |
-| **Total** | **100** |
+**Server won't start — missing environment variable**
+
+The server logs which env variable is missing. Make sure your `.env` file is inside the `cat-tracker/` directory (not the repo root).
+
+**"All provider slots failed" in mentor chat**
+
+All your LLM keys are rate-limited at the same time. Add more Groq/Gemini keys to your `.env` (you can create multiple free keys per account). The slots have a 60-second cooldown, so waiting a minute also works.
+
+**Qdrant init failed**
+
+Check that `QDRANT_URL` doesn't have a trailing slash and that your `QDRANT_API_KEY` is correct. The URL should look like `https://xyz.cloud.qdrant.io` with no path.
+
+**Redis connection error**
+
+Make sure your `REDIS_URL` starts with `rediss://` (double s — TLS). Upstash requires TLS.
+
+**Xenova model download is slow**
+
+The `all-MiniLM-L6-v2` model downloads from HuggingFace on the first server start. If you're on a slow connection, just wait. It only downloads once and is cached in `node_modules/.cache`.
+
+**Supabase "relation does not exist"**
+
+You didn't run the SQL to create the tables. Go back to [Step 2b](#2b-create-the-tables) and run both `CREATE TABLE` statements in the Supabase SQL Editor.
+
+**Vite proxy not working (API calls failing in dev)**
+
+Make sure both servers are running (`npm run dev` starts both). If you only ran `npm run dev:client`, Express isn't running and `/api/*` calls will fail.
+
+**The mentor greeting fires twice**
+
+Clear the `mentor_greeted_today` key from localStorage (DevTools → Application → Local Storage).
