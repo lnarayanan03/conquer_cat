@@ -150,6 +150,12 @@ body {
   pointer-events: none;
 }
 .card-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; }
+button.card-row {
+  text-align: left;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
 .card-row + .card-row { border-top: 1px solid var(--b1); }
 .row-label { font-size: 14px; color: var(--tp); }
 .row-sub { font-size: 11px; color: var(--tt); margin-top: 1px; }
