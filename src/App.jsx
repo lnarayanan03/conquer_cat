@@ -375,7 +375,7 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBac
           </div>
         </div>
 
-        <div className="card" style={{marginTop: 0, marginBottom: 0}}>
+        <div className="card" style={{margin: 0, padding: 0}}>
           <button
             onClick={() => setTab("backlog")}
             style={{
