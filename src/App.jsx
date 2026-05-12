@@ -375,35 +375,38 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBac
           </div>
         </div>
 
-        <div className="card" style={{margin: 0, padding: 0}}>
-          <button
-            onClick={() => setTab("backlog")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              width: "100%",
-              padding: "14px 16px",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            <div>
-              <div className="row-label">iQuanta Backlog ({globalBacklog.length})</div>
-              <div className="row-sub">
-                {globalBacklog.length > 0
-                  ? `${backlogPending} pending · ${backlogCoverage}% covered`
-                  : "Log backlog topics and videos"}
+        <div>
+          <div className="sec-label">iQuanta Backlog</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("backlog")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <div>
+                <div className="row-label">iQuanta Backlog ({globalBacklog.length})</div>
+                <div className="row-sub">
+                  {globalBacklog.length > 0
+                    ? `${backlogPending} pending · ${backlogCoverage}% covered`
+                    : "Log backlog topics and videos"}
+                </div>
               </div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="#6e6e73" strokeWidth="2"
-              strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="#6e6e73" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         {mode === "interview" ? (
