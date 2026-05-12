@@ -2532,6 +2532,16 @@ export default function App() {
           setUserName(null);
           return;
         }
+        if (checkData?.exists && checkData.user) {
+          if (Array.isArray(checkData.user.backlog_videos)) {
+            setBacklogVideos(checkData.user.backlog_videos);
+            localStorage.setItem("conquer_backlog_videos", JSON.stringify(checkData.user.backlog_videos));
+          }
+          if (Array.isArray(checkData.user.backlog_concepts)) {
+            setBacklogConcepts(checkData.user.backlog_concepts);
+            localStorage.setItem("conquer_backlog_concepts", JSON.stringify(checkData.user.backlog_concepts));
+          }
+        }
       } catch {}
 
       fetch(`/api/log/all/${userId}`)
@@ -2542,7 +2552,7 @@ export default function App() {
     verifyAndLoad();
   }, [userId, startDate, userInitialized]);
   useEffect(() => {
-    const onVisible = () => {
+    const onVisible = async () => {
       if (document.visibilityState === 'visible' && userId) {
         fetch(`/api/log/all/${userId}`)
           .then(r => r.ok ? r.json() : null)
@@ -2550,6 +2560,22 @@ export default function App() {
             if (logs) setData(prev => ({ ...prev, ...logs }));
           })
           .catch(() => {});
+        try {
+          const res = await fetch("/api/user/check", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ userId })
+          });
+          const data = res.ok ? await res.json() : null;
+          if (Array.isArray(data?.user?.backlog_videos)) {
+            setBacklogVideos(data.user.backlog_videos);
+            localStorage.setItem("conquer_backlog_videos", JSON.stringify(data.user.backlog_videos));
+          }
+          if (Array.isArray(data?.user?.backlog_concepts)) {
+            setBacklogConcepts(data.user.backlog_concepts);
+            localStorage.setItem("conquer_backlog_concepts", JSON.stringify(data.user.backlog_concepts));
+          }
+        } catch {}
       }
     };
     document.addEventListener('visibilitychange', onVisible);

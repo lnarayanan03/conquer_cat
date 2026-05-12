@@ -427,12 +427,17 @@ app.post("/api/user/check", async (req, res) => {
   if (!supabase) return res.json({ exists: false });
   const { userId } = req.body;
   try {
-    const { data } = await supabase
-      .from("users").select("*").eq("id", userId).single();
-    if (data) return res.json({ exists: true, user: data });
-    return res.json({ exists: false });
+    const { data: user } = await supabase
+      .from("users")
+      .select("*, backlog_videos, backlog_concepts")
+      .eq("id", userId)
+      .single();
+    return res.json({
+      exists: !!user,
+      user: user || null
+    });
   } catch {
-    return res.json({ exists: false });
+    return res.json({ exists: false, user: null });
   }
 });
 
