@@ -2439,6 +2439,7 @@ export default function App() {
   const [catPercentile, setCatPercentile] = useState(() => localStorage.getItem("cat_percentile") || null)
   const [userId, setUserId] = useState(() => localStorage.getItem("conquer_user_id") || null)
   const userChecked = useRef(false)
+  const backlogLoadedRef = useRef(false)
   const [synced, setSynced] = useState(false)
   const avatarGender = localStorage.getItem("cat_avatar_gender") || "male"
   const avatarSkin = localStorage.getItem("cat_avatar_skin") || "medium"
@@ -2476,11 +2477,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => {
     localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
-  }, [backlogVideos]);
-  useEffect(() => {
     localStorage.setItem("conquer_backlog_concepts", JSON.stringify(backlogConcepts));
-  }, [backlogConcepts]);
-  useEffect(() => {
+    if (!backlogLoadedRef.current) return;
     if (!userId) return;
     fetch("/api/user/update", {
       method: "POST",
@@ -2541,6 +2539,7 @@ export default function App() {
             setBacklogConcepts(checkData.user.backlog_concepts);
             localStorage.setItem("conquer_backlog_concepts", JSON.stringify(checkData.user.backlog_concepts));
           }
+          backlogLoadedRef.current = true;
         }
       } catch {}
 
