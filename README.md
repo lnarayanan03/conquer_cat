@@ -8,6 +8,7 @@ A personal daily tracker for CAT 2026 preparation built with React + Vite + Expr
 
 ## Table of Contents
 
+- [Updating Your App](#updating-your-app)
 1. [What This App Does](#1-what-this-app-does)
 2. [Tech Stack](#2-tech-stack)
 3. [Architecture Overview](#3-architecture-overview)
@@ -28,6 +29,60 @@ A personal daily tracker for CAT 2026 preparation built with React + Vite + Expr
 18. [localStorage Keys](#localstorage-keys)
 19. [Reset the App](#reset-the-app)
 20. [Troubleshooting](#troubleshooting)
+
+---
+
+## Updating Your App
+
+If you set up CONQUER before May 2026, follow these steps to get the latest features.
+
+### Step 1 — Pull the latest code
+
+```bash
+cd cat-tracker
+git pull origin main
+npm install
+```
+
+### Step 2 — Run these SQL commands in Supabase
+
+Go to your Supabase project → SQL Editor and run:
+
+```sql
+-- Add backlog columns to users table
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS backlog_videos jsonb DEFAULT '[]';
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS backlog_concepts jsonb DEFAULT '[]';
+
+-- Fix daily_logs column names if you set up before May 2026
+-- (safe to run even if columns already exist)
+ALTER TABLE public.daily_logs
+  ADD COLUMN IF NOT EXISTS backlog jsonb DEFAULT '[]';
+```
+
+### Step 3 — Sync your existing local data to Supabase
+
+If you have been logging daily data on your phone or browser, it is stored locally. To sync it to Supabase:
+
+1. Open the app
+2. Go to the Calendar tab
+3. Tap each day you have logged
+4. Tap "Save Day" on each one
+
+This pushes your local data to Supabase with the correct column mapping.
+
+### Step 4 — Redeploy to Render (if using Render)
+
+If you deployed to Render, it auto-deploys on git push. Just run:
+
+```bash
+git add .
+git commit -m "Update to latest"
+git push origin main
+```
+
+Render will pick it up automatically.
 
 ---
 
@@ -140,43 +195,48 @@ Go to **SQL Editor** in your Supabase project and run these two queries one at a
 
 **Users table:**
 ```sql
-create table if not exists users (
-  id text primary key,
-  name text,
-  start_date text,
-  avatar_gender text,
-  avatar_skin text,
-  avatar_hair text,
-  avatar_hair_color text,
-  avatar_shirt text,
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  start_date date not null,
+  avatar_gender text default 'male',
+  avatar_skin text default 'medium',
+  avatar_hair text default 'wavy',
+  avatar_hair_color text default 'black',
+  avatar_shirt text default 'blue',
   avatar_glasses boolean default false,
   avatar_beard boolean default false,
-  avatar_mustache boolean default false,
-  created_at timestamptz default now()
+  app_mode text default 'prep',
+  interview_date date,
+  cat_result text,
+  cat_percentile text,
+  backlog_videos jsonb default '[]',
+  backlog_concepts jsonb default '[]',
+  created_at timestamp with time zone default now()
 );
 ```
 
 **Daily logs table:**
 ```sql
-create table if not exists daily_logs (
-  id bigint generated always as identity primary key,
-  user_id text references users(id) on delete cascade,
-  log_date text not null,
-  q integer default 0,
-  v integer default 0,
-  l integer default 0,
-  vp_count integer default 0,
-  ah numeric default 0,
-  eh numeric default 0,
-  lc boolean default false,
-  vp boolean default false,
+create table daily_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id) on delete cascade,
+  log_date date not null,
+  quant int default 0,
+  varc int default 0,
+  lrdi int default 0,
+  vp_count int default 0,
+  wake_time text default '',
+  sleep_time text default '',
+  live_class boolean default false,
+  afternoon_hrs float default 0,
+  evening_hrs float default 0,
+  varc_passage boolean default false,
+  iq_notes text default '',
+  notes text default '',
   backlog jsonb default '[]',
-  notes text,
-  journal text,
-  wake_time text,
-  sleep_time text,
-  created_at timestamptz default now(),
-  unique (user_id, log_date)
+  updated_at timestamp with time zone default now(),
+  unique(user_id, log_date)
 );
 ```
 
@@ -468,10 +528,6 @@ To deploy to a cloud server (e.g., a $5/month DigitalOcean droplet or Railway):
 
 ### Today Tab
 - Log wake time and sleep time with fixed dropdowns, not free text.
-- Valid wake times: 4:00 AM to 8:00 AM in 30-minute intervals.
-- Valid sleep times: 9:00 PM to 2:00 AM in 30-minute intervals.
-- Sleep duration is calculated live with a 4–6 hour target.
-- Color-coded sleep indicator: green for 4–6h, red outside range.
 - Toggle live class attendance and VARC passage reading.
 - Log study hours (afternoon + evening sessions separately).
 - Counter inputs for Quant / VARC / LRDI sets completed.
@@ -481,7 +537,8 @@ To deploy to a cloud server (e.g., a $5/month DigitalOcean droplet or Railway):
 
 ### Progress Tab
 - Days remaining to CAT 2026 (November 29, 2026).
-- Scoreboard targets scale with actual prep length: Quant = days × 10, VARC = days × 5, LRDI = days × 5.
+- Calendar grid and scoreboard targets are calculated from your actual start date.
+- Scoreboard targets scale with actual total days: Quant = days × 10, VARC = days × 5, LRDI = days × 5.
 - Progress bars with "X per day needed to stay on track".
 - Journey Score chart: actual avg effort vs. linear target over your actual prep window.
 - Total study hours and total problems solved.
@@ -492,31 +549,42 @@ To deploy to a cloud server (e.g., a $5/month DigitalOcean droplet or Railway):
 - Orange = all daily targets met, dim orange = partial effort, empty = no log.
 - Tap any cell to view or edit that day's log.
 
-### Dynamic Calendar
+### Dynamic Calendar and Progress
 - Calendar length is calculated from the user's actual start date to November 29, 2026.
 - Progress targets and chart trajectory use the actual prep window, not a hardcoded 200 days.
+- User starting with 190 days sees a 190-cell calendar, not hardcoded 200.
 - Scoreboard targets scale automatically with total days: Quant = days × 10, VARC = days × 5, LRDI = days × 5.
 
 ### Sleep Tracking
-- Wake time and sleep time use dropdowns instead of free-form time inputs.
-- Valid wake times are 4:00 AM to 8:00 AM in 30-minute intervals.
-- Valid sleep times are 9:00 PM to 2:00 AM in 30-minute intervals.
-- Sleep duration is calculated live, with a target range of 4–6 hours.
-- Sleep indicator turns green for 4–6h and red outside that range.
+- Wake time dropdown: 4:00 AM to 8:00 AM in 30-minute intervals.
+- Sleep time dropdown: 9:00 PM to 2:00 AM in 30-minute intervals.
+- Sleep duration calculated live (target: 4–6 hours).
+- Green indicator when 4–6h achieved, red otherwise.
+- Warning shown if outside valid range.
 
-### iQuanta Backlog (Global)
-- Global persistent checklist across all days.
-- Type a topic or video name and press Enter to instantly create a checklist item.
-- Check items off as you complete backlog videos.
-- Coverage percentage is tracked as completed / total.
-- Pending and Completed sections are separated.
-- Stored in `localStorage` as `conquer_backlog`.
+### iQuanta Backlog (Global, Two Sections)
+- Persistent global checklist across all days — not per-day.
+- Two independent sections: Videos and Concepts.
+- Videos: orange checkboxes for iQuanta backlog videos.
+- Concepts: blue checkboxes for missing concepts to revise.
+- Type a topic and press Enter to instantly add as checklist item.
+- Coverage % shown at top combining both sections.
+- Stored in `localStorage` and synced to Supabase `users` table.
+- Existing backlog data auto-migrated to Videos section on first load.
 
-### Effort Score (Updated)
-- Total score remains 0–100.
-- Sleep score adds up to 10 points for valid 4–6 hour sleep.
-- Backlog coverage adds up to 10 points based on completed backlog percentage.
-- Quant, VARC, LRDI, passages, study hours, live class, and VARC passage toggle weights were redistributed across the full 100 points.
+### Effort Score (0–100)
+| Component | Target | Max Points |
+|---|---|---|
+| Quant | 10/day | 20 |
+| VARC | 5/day | 12 |
+| LRDI | 5/day | 12 |
+| VARC Para | 1/day | 8 |
+| Study hours | 5h/day | 16 |
+| Live class | — | 8 |
+| VARC passage toggle | — | 4 |
+| Sleep (4–6h) | 4–6 hrs | 10 |
+| Backlog coverage | % done | 10 |
+| **Total** | | **100** |
 
 ### Mentor Tab (Vikram Anand)
 - Full-page chat with Claude as Vikram Anand — 99.99%ile, IIM-A alumnus, 4× CAT.
@@ -527,17 +595,17 @@ To deploy to a cloud server (e.g., a $5/month DigitalOcean droplet or Railway):
 
 ### Vikram Personalisation
 - After day 3, Vikram references actual study patterns instead of treating every student the same.
-- He assesses consistency, trajectory, willpower, and endurance from the logged data.
-- Backlog coverage shapes his tone and gets referenced naturally when relevant.
+- Consistency score, trajectory, and willpower assessment shape his tone.
+- Backlog coverage is mentioned naturally when relevant.
+- Response length is calibrated to the message: short for casual, deep for strategy.
 - After day 30, he starts calling out the endurance window where most aspirants quit.
-- Story variety rules rotate through multiple personal, student, topper, and alumni stories without repeating the same story in one session.
+- Story variety: 7+ stories, never repeats the same story in one session.
 
 ### AI Provider Pool
-- Groq (`llama-3.3-70b-versatile`) is tried first — fastest and free.
-- Gemini (`gemini-2.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.0-flash`) is the fallback.
-- Anthropic (`claude-sonnet-4-6`) is the final fallback.
+- Provider cascade: Groq (`llama-3.3-70b`, 3 keys) → Gemini 2.5 Flash (8 keys) → Gemini 2.5 Flash Lite (8 keys) → Gemini 2.0 Flash (8 keys) → Anthropic `claude-sonnet-4-5`.
+- Total: 28 slots.
+- 60-second cooldown per slot on rate limit.
 - Multiple API keys per provider rotate automatically when one hits rate limits.
-- 60-second cooldown per slot before retrying.
 
 ### Long-Term Memory
 - The mentor remembers past prep sessions using Qdrant vector search.
@@ -662,15 +730,15 @@ The score is calculated server-side and in the frontend:
 
 | Component | Target | Max Points |
 |---|---|---|
-| Sleep | 4–6 hours | 10 |
-| Backlog coverage | % completed | 10 |
 | Quant | 10/day | 20 |
 | VARC | 5/day | 12 |
 | LRDI | 5/day | 12 |
-| VARC passages | 1/day | 8 |
+| VARC Para | 1/day | 8 |
 | Study hours | 5h/day | 16 |
 | Live class | — | 8 |
 | VARC passage toggle | — | 4 |
+| Sleep (4-6h) | 4-6 hrs | 10 |
+| Backlog coverage | % done | 10 |
 | **Total** | | **100** |
 
 Each component is capped at its max even if you exceed the target.
@@ -687,7 +755,9 @@ All app state is persisted here so the app works without logging in:
 | `cat_user_name` | User's name |
 | `cat_user_id` | UUID identifying the user |
 | `cat_prep_data` | JSON object keyed by date → daily log |
-| `conquer_backlog` | JSON array of global backlog items |
+| `conquer_backlog_videos` | JSON array of global video backlog items |
+| `conquer_backlog_concepts` | JSON array of global concept backlog items |
+| `conquer_backlog` | Legacy JSON array, auto-migrated to Videos on first load |
 | `cat_sel_date` | Currently selected calendar date |
 | `app_mode` | `"prep"` or `"interview"` |
 | `interview_date` | `YYYY-MM-DD` IIM interview date |
@@ -713,7 +783,7 @@ To start fresh (wipe all progress and re-run onboarding):
 - Click "reset start date" in the sidebar.
 
 **Option 2 — Browser DevTools:**
-- Open DevTools → Application → Local Storage → select `localhost:5173` → clear all `cat_*` keys and `conquer_backlog`.
+- Open DevTools → Application → Local Storage → select `localhost:5173` → clear all `cat_*`, `conquer_backlog`, `conquer_backlog_videos`, and `conquer_backlog_concepts` keys.
 
 **Option 3 — Supabase:**
 - Go to your Supabase project → Table Editor → `daily_logs` → delete rows for your user ID.

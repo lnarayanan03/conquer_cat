@@ -197,7 +197,7 @@ const sleepTimeOptions = [
   ["02:00", "2:00"],
 ];
 
-const effortScore = (day, backlogItems = day?.backlog || []) => {
+const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = []) => {
   const q = Math.min((+day.q||0)/10, 1) * 20;
   const v = Math.min((+day.v||0)/5, 1) * 12;
   const l = Math.min((+day.l||0)/5, 1) * 12;
@@ -220,9 +220,10 @@ const effortScore = (day, backlogItems = day?.backlog || []) => {
     return 0;
   })();
   const backlogScore = (() => {
-    if (!backlogItems || backlogItems.length === 0) return 0;
-    const checked = backlogItems.filter(item => item.checked).length;
-    return Math.round((checked / backlogItems.length) * 10);
+    const allItems = [...(backlogVideos || []), ...(backlogConcepts || [])];
+    if (allItems.length === 0) return 0;
+    const checked = allItems.filter(item => item.checked).length;
+    return Math.round((checked / allItems.length) * 10);
   })();
   return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore));
 };
@@ -248,7 +249,7 @@ function NavIcon({ id }) {
 }
 
 
-function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBacklog, onSave }) {
+function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVideos, backlogConcepts, onSave }) {
   const [saved, setSaved] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
@@ -285,10 +286,12 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBac
     : hasSleepDuration && sleepDuration > 6
       ? "Too much sleep. Maximum 6 hours for CAT prep."
       : "";
-  const backlogDone = globalBacklog.filter(item => item.checked).length;
-  const backlogPending = globalBacklog.length - backlogDone;
-  const backlogCoverage = globalBacklog.length > 0
-    ? Math.round((backlogDone / globalBacklog.length) * 100)
+  const totalBacklog = backlogVideos.length + backlogConcepts.length;
+  const totalDone = backlogVideos.filter(i=>i.checked).length +
+                    backlogConcepts.filter(i=>i.checked).length;
+  const backlogPending = totalBacklog - totalDone;
+  const backlogCoverage = totalBacklog > 0
+    ? Math.round((totalDone / totalBacklog) * 100)
     : 0;
 
   return (
@@ -393,11 +396,11 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBac
               }}
             >
               <div>
-                <div className="row-label">iQuanta Backlog ({globalBacklog.length})</div>
+                <div className="row-label">iQuanta Backlog ({totalBacklog})</div>
                 <div className="row-sub">
-                  {globalBacklog.length > 0
+                  {totalBacklog > 0
                     ? `${backlogPending} pending · ${backlogCoverage}% covered`
-                    : "Log backlog topics and videos"}
+                    : "Log videos and concepts"}
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
@@ -465,23 +468,32 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, globalBac
   );
 }
 
-function BacklogPage({ backlog, setBacklog, onBack }) {
-  const [noteInput, setNoteInput] = useState("");
+function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
+  const [videoInput, setVideoInput] = useState("");
+  const [conceptInput, setConceptInput] = useState("");
 
-  const addItem = (text) => {
+  const createItem = (text) => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    text: text.trim(),
+    checked: false,
+    addedDate: new Date().toISOString().split("T")[0],
+    checkedDate: null
+  });
+
+  const addVideo = (text) => {
     if (!text.trim()) return;
-    setBacklog(prev => [...prev, {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      text: text.trim(),
-      checked: false,
-      addedDate: new Date().toISOString().split("T")[0],
-      checkedDate: null
-    }]);
-    setNoteInput("");
+    setVideos(prev => [...prev, createItem(text)]);
+    setVideoInput("");
   };
 
-  const toggleItem = (id) => {
-    setBacklog(prev => prev.map(item =>
+  const addConcept = (text) => {
+    if (!text.trim()) return;
+    setConcepts(prev => [...prev, createItem(text)]);
+    setConceptInput("");
+  };
+
+  const toggleVideo = (id) => {
+    setVideos(prev => prev.map(item =>
       item.id === id
         ? {
             ...item,
@@ -494,100 +506,105 @@ function BacklogPage({ backlog, setBacklog, onBack }) {
     ));
   };
 
-  const deleteItem = (id) => {
-    setBacklog(prev => prev.filter(item => item.id !== id));
+  const toggleConcept = (id) => {
+    setConcepts(prev => prev.map(item =>
+      item.id === id
+        ? {
+            ...item,
+            checked: !item.checked,
+            checkedDate: !item.checked
+              ? new Date().toISOString().split("T")[0]
+              : null
+          }
+        : item
+    ));
   };
 
-  const pending = backlog.filter(i => !i.checked);
-  const done = backlog.filter(i => i.checked);
-  const coverage = backlog.length > 0
-    ? Math.round((done.length / backlog.length) * 100)
-    : 0;
+  const deleteVideo = (id) => {
+    setVideos(prev => prev.filter(item => item.id !== id));
+  };
 
-  return (
-    <div className="page">
-      <div className="page-header">
-        <button onClick={onBack} style={{
-          background:"transparent", border:"none",
-          color:"#f97316", fontSize:15, cursor:"pointer",
-          fontFamily:"inherit", display:"flex",
-          alignItems:"center", gap:4, padding:0, marginBottom:8
-        }}>
-          <svg width="16" height="16" viewBox="0 0 24 24"
-            fill="none" stroke="#f97316" strokeWidth="2"
-            strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
-          Today
-        </button>
-        <div className="page-title">iQuanta Backlog</div>
-        <div className="page-sub">Global backlog — all chapters and videos</div>
+  const deleteConcept = (id) => {
+    setConcepts(prev => prev.filter(item => item.id !== id));
+  };
 
-        {backlog.length > 0 && (
+  const totalDone = videos.filter(i=>i.checked).length +
+                    concepts.filter(i=>i.checked).length;
+  const total = videos.length + concepts.length;
+  const coverage = total > 0 ? Math.round((totalDone/total)*100) : 0;
+
+  const renderSection = ({
+    title,
+    subtitle,
+    icon,
+    accent,
+    items,
+    input,
+    setInput,
+    addItem,
+    toggleItem,
+    deleteItem,
+    placeholder
+  }) => {
+    const pending = items.filter(i => !i.checked);
+    const done = items.filter(i => i.checked);
+
+    return (
+      <div className="card" style={{padding:"16px", borderTop:`2px solid ${accent}`}}>
+        <div style={{display:"flex", alignItems:"center", gap:10, marginBottom:14}}>
           <div style={{
-            marginTop:12, padding:"10px 14px",
-            background:"rgba(249,115,22,0.08)",
-            border:"1px solid rgba(249,115,22,0.2)",
-            borderRadius:10, display:"flex",
-            justifyContent:"space-between", alignItems:"center"
+            width:34, height:34, borderRadius:8,
+            display:"flex", alignItems:"center", justifyContent:"center",
+            background:`${accent}18`, color:accent, flexShrink:0
           }}>
-            <span style={{fontSize:12,color:"#6e6e73"}}>
-              Coverage: {done.length}/{backlog.length} completed
-            </span>
-            <span style={{
-              fontSize:14, fontWeight:700,
-              color: coverage >= 70 ? "#30d158" : coverage >= 40 ? "#f97316" : "#ff453a"
-            }}>{coverage}%</span>
+            {icon}
           </div>
-        )}
-      </div>
-
-      <div className="sections">
-        <div>
-          <div className="sec-label">Add to Backlog</div>
-          <div className="card" style={{padding:"12px 16px"}}>
-            <div style={{display:"flex", gap:8}}>
-              <input
-                type="text"
-                placeholder="Type a topic or video name, press Enter..."
-                value={noteInput}
-                onChange={e => setNoteInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    addItem(noteInput);
-                  }
-                }}
-                style={{
-                  flex:1, background:"#111",
-                  border:"1px solid #2a2a2a", borderRadius:8,
-                  padding:"10px 12px", color:"#f5f5f7",
-                  fontSize:14, fontFamily:"inherit",
-                  outline:"none"
-                }}
-              />
-              <button
-                onClick={() => addItem(noteInput)}
-                style={{
-                  background:"#f97316", border:"none",
-                  borderRadius:8, color:"white",
-                  fontSize:18, fontWeight:700,
-                  width:44, cursor:"pointer"
-                }}
-              >+</button>
-            </div>
-            <div style={{fontSize:11,color:"#444",marginTop:6}}>
-              Press Enter to instantly add as a checklist item
-            </div>
+          <div>
+            <div style={{fontSize:15, fontWeight:800, color:"#f5f5f7"}}>{title}</div>
+            <div style={{fontSize:11, color:"#6e6e73", marginTop:2}}>{subtitle}</div>
           </div>
         </div>
 
+        <div className="sec-label">{title.toUpperCase()} ({items.length})</div>
+        <div style={{display:"flex", gap:8, marginBottom:14}}>
+          <input
+            type="text"
+            placeholder={placeholder}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addItem(input);
+              }
+            }}
+            style={{
+              flex:1, background:"#111",
+              border:"1px solid #2a2a2a", borderRadius:8,
+              padding:"10px 12px", color:"#f5f5f7",
+              fontSize:14, fontFamily:"inherit",
+              outline:"none", minWidth:0
+            }}
+          />
+          <button
+            onClick={() => addItem(input)}
+            style={{
+              background:accent, border:"none",
+              borderRadius:8, color:"white",
+              fontSize:18, fontWeight:700,
+              width:44, cursor:"pointer", flexShrink:0
+            }}
+          >+</button>
+        </div>
+
         {pending.length > 0 && (
-          <div>
+          <div style={{marginBottom:14}}>
             <div className="sec-label">Pending ({pending.length})</div>
-            <div className="card" style={{padding:"4px 0"}}>
+            <div style={{borderTop:"1px solid #1a1a1a"}}>
               {pending.map(item => (
                 <div key={item.id} style={{
                   display:"flex", alignItems:"center",
-                  gap:12, padding:"12px 16px",
+                  gap:12, padding:"12px 0",
                   borderBottom:"1px solid #1a1a1a"
                 }}>
                   <button
@@ -624,11 +641,11 @@ function BacklogPage({ backlog, setBacklog, onBack }) {
         {done.length > 0 && (
           <div>
             <div className="sec-label">Completed ({done.length})</div>
-            <div className="card" style={{padding:"4px 0"}}>
+            <div style={{borderTop:"1px solid #1a1a1a"}}>
               {done.map(item => (
                 <div key={item.id} style={{
                   display:"flex", alignItems:"center",
-                  gap:12, padding:"12px 16px",
+                  gap:12, padding:"12px 0",
                   borderBottom:"1px solid #1a1a1a",
                   opacity:0.5
                 }}>
@@ -637,15 +654,15 @@ function BacklogPage({ backlog, setBacklog, onBack }) {
                     style={{
                       width:22, height:22,
                       borderRadius:6,
-                      border:"2px solid #f97316",
-                      background:"rgba(249,115,22,0.15)",
+                      border:`2px solid ${accent}`,
+                      background:`${accent}26`,
                       cursor:"pointer", flexShrink:0,
                       display:"flex", alignItems:"center",
                       justifyContent:"center"
                     }}
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24"
-                      fill="none" stroke="#f97316" strokeWidth="3"
+                      fill="none" stroke={accent} strokeWidth="3"
                       strokeLinecap="round">
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
@@ -669,23 +686,92 @@ function BacklogPage({ backlog, setBacklog, onBack }) {
           </div>
         )}
 
-        {backlog.length === 0 && (
+        {items.length === 0 && (
           <div style={{
             textAlign:"center", color:"#444",
-            fontSize:13, padding:"60px 0", lineHeight:2
+            fontSize:13, padding:"34px 0", lineHeight:2
           }}>
-            No backlog items yet.<br/>
-            <span style={{color:"#6e6e73"}}>
-              Type a topic above and press Enter.
-            </span>
+            Nothing here yet.<br/>
+            <span style={{color:"#6e6e73"}}>Add the first item above.</span>
           </div>
         )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent", border:"none",
+          color:"#f97316", fontSize:15, cursor:"pointer",
+          fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">iQuanta Backlog</div>
+        <div className="page-sub">Videos to watch. Concepts to fix.</div>
+
+        {total > 0 && (
+          <div style={{
+            marginTop:12, padding:"10px 14px",
+            background:"rgba(249,115,22,0.08)",
+            border:"1px solid rgba(249,115,22,0.2)",
+            borderRadius:10, display:"flex",
+            justifyContent:"space-between", alignItems:"center"
+          }}>
+            <span style={{fontSize:12,color:"#6e6e73"}}>
+              Coverage: {totalDone}/{total} completed
+            </span>
+            <span style={{
+              fontSize:14, fontWeight:700,
+              color: coverage >= 70 ? "#30d158" : coverage >= 40 ? "#f97316" : "#ff453a"
+            }}>{coverage}%</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:"repeat(auto-fit, minmax(260px, 1fr))",
+        gap:16
+      }}>
+        {renderSection({
+          title: "Videos",
+          subtitle: "iQuanta backlog videos",
+          icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>,
+          accent: "#f97316",
+          items: videos,
+          input: videoInput,
+          setInput: setVideoInput,
+          addItem: addVideo,
+          toggleItem: toggleVideo,
+          deleteItem: deleteVideo,
+          placeholder: "Video name or topic..."
+        })}
+        {renderSection({
+          title: "Concepts",
+          subtitle: "Missing concepts to revise",
+          icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>,
+          accent: "#3b82f6",
+          items: concepts,
+          input: conceptInput,
+          setInput: setConceptInput,
+          addItem: addConcept,
+          toggleItem: toggleConcept,
+          deleteItem: deleteConcept,
+          placeholder: "Concept or topic name..."
+        })}
       </div>
     </div>
   );
 }
 
-function ProgressPage({ data, totals, dl, dn, start, totalDays, globalBacklog }) {
+function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, backlogConcepts }) {
   const subj = [
     {id:"quant",lbl:"Quant",tar:totalDays * 10,act:totals.quant},
     {id:"varc",lbl:"VARC",tar:totalDays * 5,act:totals.varc},
@@ -697,14 +783,14 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, globalBacklog })
     return Array.from({length: totalDays}, (_, i) => {
       const d = new Date(start); d.setDate(d.getDate() + i);
       const k = toLocalDateKey(d); const e = data[k];
-      if (i+1 <= dn) totalEffort += effortScore(e || defaultDay(), globalBacklog);
+      if (i+1 <= dn) totalEffort += effortScore(e || defaultDay(), backlogVideos, backlogConcepts);
       return {
         day:i+1,
         targetLine: ((i+1)/totalDays) * 100,
         actualLine: i+1 <= dn ? Math.round(totalEffort / (i+1)) : null,
       };
     });
-  }, [data, dn, start, totalDays, globalBacklog]);
+  }, [data, dn, start, totalDays, backlogVideos, backlogConcepts]);
 
   const totalH = Object.values(data).reduce((a,d) => a + (+d.ah||0) + (+d.eh||0), 0);
 
@@ -2325,9 +2411,18 @@ export default function App() {
   const [tab, setTab] = useState("today");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem("cat_prep_data") || "{}") } catch { return {} } });
-  const [globalBacklog, setGlobalBacklog] = useState(() => {
+  const [backlogVideos, setBacklogVideos] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("conquer_backlog") || "[]");
+      const old = JSON.parse(localStorage.getItem("conquer_backlog") || "[]");
+      const newVideos = JSON.parse(localStorage.getItem("conquer_backlog_videos") || "null");
+      return newVideos !== null ? newVideos : old;
+    } catch {
+      return [];
+    }
+  });
+  const [backlogConcepts, setBacklogConcepts] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("conquer_backlog_concepts") || "[]");
     } catch {
       return [];
     }
@@ -2380,14 +2475,23 @@ export default function App() {
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => {
-    localStorage.setItem("conquer_backlog", JSON.stringify(globalBacklog));
+    localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
+  }, [backlogVideos]);
+  useEffect(() => {
+    localStorage.setItem("conquer_backlog_concepts", JSON.stringify(backlogConcepts));
+  }, [backlogConcepts]);
+  useEffect(() => {
     if (!userId) return;
     fetch("/api/user/update", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ userId, backlog: globalBacklog })
+      body: JSON.stringify({
+        userId,
+        backlog_videos: backlogVideos,
+        backlog_concepts: backlogConcepts
+      })
     }).catch(err => console.error("Backlog sync failed:", err.message));
-  }, [globalBacklog, userId]);
+  }, [backlogVideos, backlogConcepts, userId]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
     if (!userId && startDate) {
@@ -2670,7 +2774,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} globalBacklog={globalBacklog} onSave={() => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -2679,12 +2783,14 @@ export default function App() {
         }} />}
         {tab === "backlog" && (
           <BacklogPage
-            backlog={globalBacklog}
-            setBacklog={setGlobalBacklog}
+            videos={backlogVideos}
+            setVideos={setBacklogVideos}
+            concepts={backlogConcepts}
+            setConcepts={setBacklogConcepts}
             onBack={() => setTab("today")}
           />
         )}
-        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} globalBacklog={globalBacklog} />}
+        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
       </main>
