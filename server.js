@@ -455,7 +455,23 @@ app.post("/api/log/save", async (req, res) => {
   const { userId, date, dayData } = req.body;
   try {
     await supabase.from("daily_logs").upsert(
-      { user_id: userId, log_date: date, ...dayData, backlog: dayData.backlog || [] },
+      {
+        user_id: userId,
+        log_date: date,
+        quant: dayData.q || 0,
+        varc: dayData.v || 0,
+        lrdi: dayData.l || 0,
+        vp_count: dayData.vp_count || 0,
+        wake_time: dayData.wt || "",
+        sleep_time: dayData.st || "",
+        live_class: dayData.lc || false,
+        afternoon_hrs: dayData.ah || 0,
+        evening_hrs: dayData.eh || 0,
+        varc_passage: dayData.vp || false,
+        iq_notes: dayData.iq || "",
+        notes: dayData.n || "",
+        backlog: dayData.backlog || [],
+      },
       { onConflict: "user_id,log_date" }
     );
     res.json({ ok: true });
@@ -475,8 +491,22 @@ app.get("/api/log/all/:userId", async (req, res) => {
     if (error) throw error;
     const formatted = {};
     (data || []).forEach(row => {
-      const { user_id, log_date, ...rest } = row;
-      formatted[log_date] = rest;
+      const { log_date } = row;
+      formatted[log_date] = {
+        q: row.quant || 0,
+        v: row.varc || 0,
+        l: row.lrdi || 0,
+        vp_count: row.vp_count || 0,
+        wt: row.wake_time || "",
+        st: row.sleep_time || "",
+        lc: row.live_class || false,
+        ah: row.afternoon_hrs || 0,
+        eh: row.evening_hrs || 0,
+        vp: row.varc_passage || false,
+        iq: row.iq_notes || "",
+        n: row.notes || "",
+        backlog: row.backlog || [],
+      };
     });
     res.json(formatted);
   } catch (err) {

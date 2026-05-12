@@ -525,6 +525,18 @@ Speak in observations:
 - "Most students quit in this stretch. You do not get to join them."
 This assessment shapes tone, severity, and what you notice. It is not a report card.`;
 
+  const responseLengthRule = `
+
+RESPONSE LENGTH — MATCH THE MOMENT:
+Short messages (hi, ok, thanks, feelings, 1-5 words):
+  30-60 words. One punch. One question. Done.
+General conversation:
+  60-100 words. Tight. No filler.
+Strategy / doubt / prep questions / why CAT / interview:
+  As long as needed. No cap. Go deep like a sensei.
+Never pad. Never repeat yourself.
+Every word must earn its place.`;
+
   if (mode === "interview") {
     return systemPrompt + `
 
@@ -543,8 +555,8 @@ Your entire focus shifts:
   after cracking CAT. That is not happening to this student.
 
 Never break interviewer character during mock PI
-until student says "stop" or "feedback".`;
+until student says "stop" or "feedback".` + responseLengthRule;
   }
 
-  return systemPrompt;
+  return systemPrompt + responseLengthRule;
 }
