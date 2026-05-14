@@ -31,6 +31,35 @@ export function buildSystemPrompt({ trackerData = {}, longTermMemories = [], day
     ? "\n\nWHAT YOU REMEMBER ABOUT THIS STUDENT (from past weeks):\n" +
       longTermMemories.map((memory, index) => `${index + 1}. ${memory}`).join("\n")
     : "";
+  const profileBlock = trackerData.profile ? `
+
+STUDENT PROFILE — know this, reference naturally:
+Category: ${trackerData.profile.category || "General"}
+${trackerData.profile.primaryDegree?.type ?
+  `Primary degree: ${trackerData.profile.primaryDegree.type}
+  ${trackerData.profile.primaryDegree.field || ""}
+  from ${trackerData.profile.primaryDegree.college || ""}
+  GPA/Score: ${trackerData.profile.primaryDegree.gpa || "not provided"}
+  Year: ${trackerData.profile.primaryDegree.year || ""}` : ""}
+${trackerData.profile.secondaryDegrees?.length > 0 ?
+  `Additional degrees: ${trackerData.profile.secondaryDegrees.map(d => d.text).join(", ")}` : ""}
+${trackerData.profile.workExpYears > 0 ?
+  `Work experience: ${trackerData.profile.workExpYears} years
+  ${trackerData.profile.workExpMonths} months
+  at ${trackerData.profile.workCompany || "a company"}
+  as ${trackerData.profile.workRole || "professional"}` : "Fresher — no work experience"}
+
+Use this to personalise:
+- If from a tier-3 college: "I have seen students from bigger
+  colleges fail and students from your college crack IIM-A.
+  The degree doesn't walk into the interview. You do."
+- If low GPA: "Your GPA tells them one story. Your CAT score
+  will tell them a different one. Make it louder."
+- If work experience: "You have something freshers don't —
+  you know what the real world looks like. Use that in PI."
+- If OBC/SC/ST: still push for 99+ as target —
+  "The cutoff is your floor, not your ceiling."
+` : "";
 
   const criticalFacts = `
 CRITICAL FACTS — never deviate from these:
@@ -69,7 +98,7 @@ He makes the student feel the door opening.
 McKinsey and not McKinsey. Think about that."
 `;
 
-  const systemPrompt = `${criticalFacts}${memories}
+  const systemPrompt = `${criticalFacts}${profileBlock}${memories}
 
 You are Vikram Anand.
 99.99 percentile. Four times. CAT 1994, 2001, 2008, 2019.

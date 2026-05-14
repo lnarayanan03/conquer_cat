@@ -118,4 +118,88 @@ export const timeTool = tool(
   }
 );
 
-export const ALL_TOOLS = [searchTool, timeTool];
+export const iimPercentileTool = tool(
+  async ({ category, tier }) => {
+    const cutoffs = {
+      "General": { oldIIM: 99.5, babyIIM: 97.0, newIIM: 95.0 },
+      "OBC-NCL": { oldIIM: 97.0, babyIIM: 92.0, newIIM: 88.0 },
+      "SC": { oldIIM: 90.0, babyIIM: 85.0, newIIM: 80.0 },
+      "ST": { oldIIM: 85.0, babyIIM: 75.0, newIIM: 70.0 },
+      "EWS": { oldIIM: 98.0, babyIIM: 95.0, newIIM: 92.0 },
+      "PWD": { oldIIM: 80.0, babyIIM: 72.0, newIIM: 65.0 },
+    };
+    const data = cutoffs[category] || cutoffs["General"];
+    if (tier) {
+      const val = data[tier];
+      return `Minimum percentile for ${category} in ${tier}: ${val}%`;
+    }
+    return `Minimum percentiles for ${category}:
+IIM A/B/C: ${data.oldIIM}%
+IIM K/L/I/S/T: ${data.babyIIM}%
+New IIMs: ${data.newIIM}%
+Note: Sectional cutoffs also apply (typically 80-85%ile per section).`;
+  },
+  {
+    name: "iimPercentileCalculator",
+    description: "Calculate minimum CAT percentile needed for IIM admission based on student category and IIM tier. Use when student asks about their chances, cutoffs, or what percentile they need.",
+    schema: z.object({
+      category: z.enum(["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"])
+        .describe("Student reservation category"),
+      tier: z.enum(["oldIIM", "babyIIM", "newIIM"])
+        .optional()
+        .describe("IIM tier: oldIIM=ABC, babyIIM=KLIST, newIIM=others"),
+    }),
+  }
+);
+
+function evaluateMathFallback(expression) {
+  const allowedFunctions = {
+    sqrt: Math.sqrt,
+    abs: Math.abs,
+    round: Math.round,
+    floor: Math.floor,
+    ceil: Math.ceil,
+    min: Math.min,
+    max: Math.max,
+    pow: Math.pow,
+  };
+  const fnNames = Object.keys(allowedFunctions);
+  if (!/^[0-9+\-*/%().,\sA-Za-z^]+$/.test(expression)) {
+    throw new Error("Expression contains unsupported characters");
+  }
+  const names = expression.match(/[A-Za-z]+/g) || [];
+  const unknown = names.find(name => !fnNames.includes(name));
+  if (unknown) throw new Error(`Unsupported function: ${unknown}`);
+  const normalized = expression.replace(/\^/g, "**");
+  return Function(...fnNames, `"use strict"; return (${normalized});`)(...fnNames.map(name => allowedFunctions[name]));
+}
+
+export const mathCalculatorTool = tool(
+  async ({ expression }) => {
+    try {
+      let result;
+      try {
+        const math = await import("mathjs");
+        result = math.evaluate(expression);
+      } catch (err) {
+        if (err?.code !== "ERR_MODULE_NOT_FOUND" && !/Cannot find package 'mathjs'/.test(err?.message || "")) {
+          throw err;
+        }
+        result = evaluateMathFallback(expression);
+      }
+      return `${expression} = ${result}`;
+    } catch (err) {
+      return `Could not evaluate: ${err.message}`;
+    }
+  },
+  {
+    name: "mathCalculator",
+    description: "Evaluate mathematical expressions. Use for percentages, averages, score calculations, time calculations, or any math the student needs.",
+    schema: z.object({
+      expression: z.string()
+        .describe("Math expression to evaluate e.g. '(45/60)*100' or 'sqrt(144)'"),
+    }),
+  }
+);
+
+export const ALL_TOOLS = [searchTool, timeTool, iimPercentileTool, mathCalculatorTool];

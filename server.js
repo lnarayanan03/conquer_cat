@@ -423,13 +423,63 @@ app.post("/api/mentor/greet", async (req, res) => {
   });
 });
 
+app.post("/api/mentor/card", async (req, res) => {
+  const {
+    userName, daysLeft, dayNum,
+    quant, varc, lrdi, hoursStudied,
+    liveClass, afternoonSession,
+    applicationClass, varcPassage
+  } = req.body;
+
+  const sessions = [
+    liveClass && "Live class",
+    afternoonSession && "Afternoon session",
+    applicationClass && "Application class",
+    varcPassage && "VARC passage",
+  ].filter(Boolean).join(", ") || "personal practice";
+
+  const systemText = `You are Vikram Anand. 99.99 percentile. IIM-A.
+You are writing a one-line caption for ${userName || "the student"}'s
+daily CAT prep card that they will share on Instagram.
+
+Rules:
+- Exactly one sentence. Max 12 words.
+- Punchy. No fluff. Vikram energy.
+- End with something that makes them feel the grind was worth it.
+- Reference what they actually did today.
+- Do NOT use hashtags or emojis.
+- Examples of good ones:
+  "Six sets down. The 99 percentile is being built today."
+  "Two hours. Every minute counts when 198 days remain."
+  "Showed up. That is more than most will do today."`;
+
+  const userMsg = `Today: Quant ${quant||0}, VARC ${varc||0}, LRDI ${lrdi||0}.
+Sessions: ${sessions}. Hours: ${hoursStudied}. Day ${dayNum} of the journey.
+Write the one-liner.`;
+
+  try {
+    const result = await callAnthropic({
+      systemText,
+      messages: [{ role:"user", content:userMsg }],
+      maxTokens: 60,
+      model: "claude-haiku-4-5-20251001",
+      enableTools: false
+    });
+    res.json({ line: result.reply.trim() });
+  } catch (err) {
+    res.json({
+      line: `Day ${dayNum||""} done. Keep going.`
+    });
+  }
+});
+
 app.post("/api/user/check", async (req, res) => {
   if (!supabase) return res.json({ exists: false });
   const { userId } = req.body;
   try {
     const { data: user } = await supabase
       .from("users")
-      .select("*, backlog_videos, backlog_concepts")
+      .select("*, backlog_videos, backlog_concepts, avatar_gender, avatar_skin, avatar_hair, avatar_hair_color, avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache, category, primary_degree, secondary_degrees, work_experience_years, work_experience_months, work_company, work_role, min_percentile")
       .eq("id", userId)
       .single();
     return res.json({

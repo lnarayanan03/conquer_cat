@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./App.css";
+import InstaCard from "./pages/InstaCard.jsx";
 
 function MentorAvatar({ size = 40 }) {
   return (
@@ -187,17 +188,12 @@ function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
   const selMin = parts[1] ?? null;
 
   const wakeHours = [4,5,6,7,8,9,10,11,12];
-  const sleepHours = [18,19,20,21,22,23,0,1,2,3];
+  const sleepHours = [18,19,20,21,22,23,0,1,2,3,4,5,6];
   const minutes = [0,10,20,30,40,50];
 
   const hours = label === "Wake time" ? wakeHours : sleepHours;
 
-  const formatHour = (h) => {
-    if (h === 0) return "12 AM";
-    if (h < 12) return `${h} AM`;
-    if (h === 12) return "12 PM";
-    return `${h - 12} PM`;
-  };
+  const formatHour = (h) => h === 0 ? "12" : String(h);
 
   const handleChange = (h, m) => {
     if (h === null || m === null) return;
@@ -233,6 +229,14 @@ function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
             <option key={m} value={m}>{String(m).padStart(2,"0")}</option>
           ))}
         </select>
+        {selHour !== null && selMin !== null && (
+          <span style={{
+            fontSize:11, fontWeight:600,
+            color:"#6e6e73", minWidth:24
+          }}>
+            {selHour >= 12 && selHour !== 0 ? "PM" : "AM"}
+          </span>
+        )}
         <div style={{
           width:8, height:8, borderRadius:"50%",
           background:dotColor, flexShrink:0
@@ -279,6 +283,143 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
   return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore));
 };
 
+function calcMinPercentile(category) {
+  const cutoffs = {
+    "General": { oldIIM: 99.5, babyIIM: 97.0, newIIM: 95.0 },
+    "OBC-NCL": { oldIIM: 97.0, babyIIM: 92.0, newIIM: 88.0 },
+    "SC": { oldIIM: 90.0, babyIIM: 85.0, newIIM: 80.0 },
+    "ST": { oldIIM: 85.0, babyIIM: 75.0, newIIM: 70.0 },
+    "EWS": { oldIIM: 98.0, babyIIM: 95.0, newIIM: 92.0 },
+    "PWD": { oldIIM: 80.0, babyIIM: 72.0, newIIM: 65.0 },
+  };
+  return cutoffs[category] || cutoffs["General"];
+}
+
+function calcIIMProfile({
+  category,
+  gender,
+  primaryDegree,
+  secondaryDegrees,
+  workExpYears,
+  workExpMonths,
+}) {
+  const engDegrees = ["B.Tech", "B.E.", "B.Sc (Engg)", "B.Sc Engineering"];
+  const isEngineer = engDegrees.some(d => primaryDegree?.type?.includes(d));
+  const isFemale = gender === "female";
+  const totalWorkMonths = ((+workExpYears || 0) * 12) + (+workExpMonths || 0);
+
+  const pgTypes = ["MBA", "M.Tech", "MS", "M.Sc", "MA", "M.Com", "M.Phil", "LLM", "MCA"];
+  const hasMasters = secondaryDegrees?.some(d =>
+    typeof d === "string"
+      ? pgTypes.some(pg => d.includes(pg))
+      : pgTypes.some(pg => d?.degree?.includes(pg) || d?.text?.includes(pg))
+  );
+
+  const rawGPA = parseFloat(primaryDegree?.gpa);
+  const gpaScale = primaryDegree?.gpaScale || "percentage";
+  let gradPct = NaN;
+  if (!isNaN(rawGPA)) {
+    if (gpaScale === "10") gradPct = rawGPA * 10;
+    else if (gpaScale === "4") gradPct = (rawGPA / 4) * 100;
+    else gradPct = rawGPA;
+  }
+
+  const categoryBase = {
+    "General": { ABC: 99.0, KLIS: 97.5, newIIM: 94.0 },
+    "OBC-NCL": { ABC: 96.5, KLIS: 93.0, newIIM: 88.5 },
+    "EWS": { ABC: 97.5, KLIS: 95.0, newIIM: 91.0 },
+    "SC": { ABC: 90.0, KLIS: 85.0, newIIM: 78.0 },
+    "ST": { ABC: 83.0, KLIS: 77.0, newIIM: 66.0 },
+    "PWD": { ABC: 76.0, KLIS: 68.0, newIIM: 58.0 },
+  };
+  const base = categoryBase[category] || categoryBase["General"];
+  let adjustment = 0;
+
+  if (category === "General") {
+    if (isEngineer && !isFemale) adjustment += 0.65;
+    else if (isEngineer && isFemale) adjustment -= 0.8;
+    else if (!isEngineer && !isFemale) adjustment -= 0.5;
+    else adjustment -= 2.0;
+  } else if (category === "OBC-NCL") {
+    if (!isEngineer) adjustment -= 3.0;
+    if (isFemale) adjustment -= 0.5;
+  }
+
+  if (totalWorkMonths >= 36) adjustment -= 1.2;
+  else if (totalWorkMonths >= 24) adjustment -= 1.0;
+  else if (totalWorkMonths >= 12) adjustment -= 0.6;
+  else if (totalWorkMonths >= 6) adjustment -= 0.3;
+
+  if (hasMasters) adjustment -= 0.4;
+
+  if (!isNaN(gradPct)) {
+    if (gradPct >= 85) adjustment -= 0.5;
+    else if (gradPct >= 75) adjustment -= 0.2;
+    else if (gradPct < 55) adjustment += 0.8;
+    else if (gradPct < 60) adjustment += 0.5;
+  }
+
+  const adjustedCutoffs = {
+    ABC: Math.min(99.9, Math.max(75, base.ABC + adjustment)),
+    KLIS: Math.min(99.5, Math.max(70, base.KLIS + adjustment)),
+    newIIM: Math.min(98, Math.max(60, base.newIIM + adjustment)),
+  };
+
+  let profileScore = 50;
+
+  if (totalWorkMonths >= 36) profileScore += 18;
+  else if (totalWorkMonths >= 24) profileScore += 14;
+  else if (totalWorkMonths >= 12) profileScore += 9;
+  else if (totalWorkMonths >= 6) profileScore += 5;
+  else profileScore -= 5;
+
+  if (!isNaN(gradPct)) {
+    if (gradPct >= 85) profileScore += 12;
+    else if (gradPct >= 75) profileScore += 6;
+    else if (gradPct >= 65) profileScore += 2;
+    else profileScore -= 4;
+  }
+
+  if (hasMasters) profileScore += 8;
+  if (isFemale) profileScore += 6;
+  if (!isEngineer) profileScore += 4;
+
+  const college = (primaryDegree?.college || "").toLowerCase();
+  const tier1 = ["iit", "bits pilani", "nit", "srcc", "st. xavier", "lady shri ram", "miranda", "hindu college", "presidency", "christ university", "loyola"];
+  if (tier1.some(k => college.includes(k))) profileScore += 8;
+
+  profileScore = Math.min(100, Math.max(5, profileScore));
+
+  const baseConversion = { ABC: 0.36, KLIS: 0.45, newIIM: 0.56 };
+  const profileBonus = (profileScore - 50) / 150;
+  const interviewProb = {
+    ABC: Math.min(0.82, Math.max(0.12, baseConversion.ABC + profileBonus)),
+    KLIS: Math.min(0.88, Math.max(0.18, baseConversion.KLIS + profileBonus)),
+    newIIM: Math.min(0.92, Math.max(0.25, baseConversion.newIIM + profileBonus)),
+  };
+
+  return {
+    adjustedCutoffs,
+    profileScore,
+    interviewProb,
+    isGEM: isEngineer && !isFemale && category === "General",
+    hasMasters,
+    totalWorkMonths,
+    gradPct: isNaN(gradPct) ? null : gradPct,
+    adjustmentSummary: {
+      gemPenalty: isEngineer && !isFemale && category === "General" ? +0.65 : 0,
+      femaleDiversity: isFemale ? (category === "OBC-NCL" ? -0.5 : -0.8) : 0,
+      nonEngineerDiversity: !isEngineer ? (category === "OBC-NCL" ? -3.0 : -0.5) : 0,
+      workEx: totalWorkMonths >= 24 ? -1.0
+        : totalWorkMonths >= 12 ? -0.6
+          : totalWorkMonths >= 6 ? -0.3 : 0,
+      mastersDegree: hasMasters ? -0.4 : 0,
+      academics: !isNaN(gradPct) && gradPct >= 85 ? -0.5
+        : !isNaN(gradPct) && gradPct < 60 ? +0.5 : 0,
+    },
+  };
+}
+
 function Tog({ v, onChange }) {
   return (
     <label className="tog">
@@ -295,13 +436,20 @@ function NavIcon({ id }) {
     progress: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>,
     calendar: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
     chat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+    profile: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   };
   return icons[id] || null;
 }
 
 
-function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVideos, backlogConcepts, onSave, data }) {
+function TodayPage({
+  date, d, upd, dl, start, totalDays, mode, setTab,
+  backlogVideos, backlogConcepts, onSave, data, totals, userName,
+  avatarGender, avatarSkin, avatarHair, avatarHairColor,
+  avatarShirt, avatarGlasses, avatarBeard, avatarMustache
+}) {
   const [saved, setSaved] = useState(false);
+  const [showInstaCard, setShowInstaCard] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
   const fmt = new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long" });
@@ -555,9 +703,60 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVi
           </div>
         </div>
 
-        <button className={`save-btn${saved?" saved":""}`} onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2000); onSave && onSave(); }}>
-          {saved ? "Saved ✓" : "Save Day"}
-        </button>
+        {showInstaCard && (
+          <InstaCard
+            dayNumber={dn}
+            totalDays={totalDays}
+            daysLeft={dl}
+            totals={totals}
+            todayData={d}
+            userName={userName}
+            effortScore={effortScore(d)}
+            avatarGender={avatarGender}
+            avatarSkin={avatarSkin}
+            avatarHair={avatarHair}
+            avatarHairColor={avatarHairColor}
+            avatarShirt={avatarShirt}
+            avatarGlasses={avatarGlasses}
+            avatarBeard={avatarBeard}
+            avatarMustache={avatarMustache}
+            onClose={() => setShowInstaCard(false)}
+          />
+        )}
+
+        <div style={{
+          display:"flex", gap:10,
+          justifyContent:"center",
+          marginTop:8
+        }}>
+          <button
+            className={`save-btn${saved?" saved":""}`}
+            onClick={() => {
+              setSaved(true);
+              setTimeout(() => setSaved(false), 2000);
+              onSave && onSave();
+            }}
+            style={{flex:2, maxWidth:200}}
+          >
+            {saved ? "Saved ✓" : "Save Day"}
+          </button>
+
+          <button
+            onClick={() => setShowInstaCard(true)}
+            style={{
+              flex:1, maxWidth:80,
+              background:"transparent",
+              border:"1px solid rgba(249,115,22,0.4)",
+              borderRadius:14, color:"#f97316",
+              fontSize:18, cursor:"pointer",
+              display:"flex", alignItems:"center",
+              justifyContent:"center"
+            }}
+            title="Share today's card"
+          >
+            📸
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1035,7 +1234,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole }) {
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -1070,6 +1269,15 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             daysLeft: dl, totals, dayNum, todayData: d, mode,
             userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
             catResult: catResult || "", catPercentile: catPercentile || "",
+            profile: {
+              category,
+              primaryDegree,
+              secondaryDegrees,
+              workExpYears,
+              workExpMonths,
+              workCompany,
+              workRole
+            },
             messages: [...mentorMessages, {r:"user",t:q}]
               .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
           }),
@@ -1246,7 +1454,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, activeTab }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, activeTab }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -1340,7 +1548,30 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, message: q, messages, daysLeft, totals, dayNum, todayData, mode, userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "", catResult: catResult || "", catPercentile: catPercentile || "" }),
+          body: JSON.stringify({
+            userId,
+            message: q,
+            messages,
+            daysLeft,
+            totals,
+            dayNum,
+            todayData,
+            mode,
+            userName: userName || "",
+            startDate: startDate || "",
+            interviewDate: interviewDate || "",
+            catResult: catResult || "",
+            catPercentile: catPercentile || "",
+            profile: {
+              category,
+              primaryDegree,
+              secondaryDegrees,
+              workExpYears,
+              workExpMonths,
+              workCompany,
+              workRole
+            }
+          }),
           signal: controller.signal
         });
         clearTimeout(timeout);
@@ -1636,6 +1867,1049 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
   )
 }
 
+function ProfilePage({
+  userName, userId,
+  startDate, dayNumber, totalDays, setTab,
+  targetPercentile, setTargetPercentile,
+  setSharedCalcResult,
+  avatarGender, avatarSkin, avatarHair, avatarHairColor,
+  avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
+  onAvatarChange,
+  category, setCategory,
+  primaryDegree, setPrimaryDegree,
+  secondaryDegrees, setSecondaryDegrees,
+  workExpYears, setWorkExpYears,
+  workExpMonths, setWorkExpMonths,
+  workCompany, setWorkCompany,
+  workRole, setWorkRole,
+}) {
+  const [calcResult, setCalcResult] = useState(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const degreeTypes = ["B.Tech", "B.E.", "B.Sc", "B.Com", "BBA", "BA", "B.Arch", "BCA", "B.Pharm", "MBBS", "LLB", "Other"];
+  const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"];
+  const inputStyle = {
+    width:"100%", background:"#111",
+    border:"1px solid #2a2a2a", borderRadius:8,
+    padding:"10px 12px", color:"#f5f5f7",
+    fontSize:14, fontFamily:"inherit",
+    outline:"none", boxSizing:"border-box"
+  };
+  const selectStyle = {
+    ...inputStyle, cursor:"pointer",
+    appearance:"none", WebkitAppearance:"none"
+  };
+  const chipStyle = (active) => ({
+    padding:"6px 14px", borderRadius:20,
+    border: active ? "1px solid #f97316" : "1px solid #2a2a2a",
+    background: active ? "rgba(249,115,22,0.15)" : "#111",
+    color: active ? "#f97316" : "#6e6e73",
+    fontSize:12, cursor:"pointer", fontFamily:"inherit"
+  });
+  const swatchStyle = (active, color) => ({
+    width:26, height:26, borderRadius:"50%",
+    background:color, border:"none", cursor:"pointer",
+    outline: active ? "2px solid #f97316" : "2px solid transparent",
+    outlineOffset:2
+  });
+  const updateAvatar = (key, value) => onAvatarChange(key, value);
+  useEffect(() => {
+    setCalcLoading(true);
+    const timer = setTimeout(() => {
+      const result = calcIIMProfile({
+        category,
+        gender: avatarGender,
+        primaryDegree,
+        secondaryDegrees,
+        workExpYears,
+        workExpMonths,
+        workCompany,
+        workRole,
+      });
+      setCalcResult(result);
+      setSharedCalcResult?.(result);
+      setCalcLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [
+    category,
+    avatarGender,
+    primaryDegree,
+    secondaryDegrees,
+    workExpYears,
+    workExpMonths,
+    workCompany,
+    workRole,
+    setSharedCalcResult,
+  ]);
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">Profile</div>
+        <div className="page-sub">Your identity and IIM target</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Your Profile</div>
+          <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:14}}>
+            <AvatarPreview
+              gender={avatarGender} skinTone={avatarSkin}
+              hairStyle={avatarHair} hairColor={avatarHairColor}
+              shirtColor={avatarShirt} hasGlasses={avatarGlasses}
+              hasBeard={avatarBeard} hasMustache={avatarMustache}
+              size={58}
+            />
+            <div style={{flex:1}}>
+              <div style={{fontSize:18,fontWeight:700,color:"#f5f5f7"}}>{userName}</div>
+              <div className="row-sub" style={{marginTop:3}}>
+                {startDate
+                  ? new Date(startDate+"T00:00:00").toLocaleDateString("en-IN", {
+                      day:"numeric", month:"long", year:"numeric"
+                    })
+                  : "Start date not set"}
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#f97316",fontWeight:600,textAlign:"right"}}>
+              Day {dayNumber}<br/>
+              <span style={{color:"#6e6e73",fontWeight:500}}>of {totalDays}</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Category</div>
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {categories.map(c => (
+                <button key={c} onClick={() => setCategory(c)} style={chipStyle(category === c)}>{c}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Your Target Percentile</div>
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="e.g. 99.5"
+                value={targetPercentile || ""}
+                onChange={e => setTargetPercentile(parseFloat(e.target.value) || 0)}
+                style={{
+                  flex:1, background:"#111",
+                  border:"1px solid #2a2a2a",
+                  borderRadius:8, padding:"10px 14px",
+                  color:"#f5f5f7", fontSize:20,
+                  fontWeight:700, outline:"none",
+                  fontFamily:"inherit",
+                  colorScheme:"dark"
+                }}
+              />
+              <span style={{fontSize:12,color:"#6e6e73"}}>
+                percentile
+              </span>
+            </div>
+            {targetPercentile > 0 && (
+              <div style={{
+                fontSize:12,
+                color: targetPercentile >= 99.5 ? "#30d158"
+                  : targetPercentile >= 97 ? "#f97316"
+                    : "#ff453a",
+                marginTop:8, fontWeight:600
+              }}>
+                {targetPercentile >= 99.5
+                  ? "✓ Competitive for all IIMs including IIM-A"
+                  : targetPercentile >= 97
+                    ? "✓ Competitive for IIM KLIS and New IIMs"
+                    : targetPercentile >= 93
+                      ? "✓ Competitive for New IIMs and Baby IIMs"
+                      : "Below competitive range for IIMs"}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {calcResult && (
+          <div>
+            <div className="sec-label">Your IIM Cutoffs</div>
+            <div style={{fontSize:11,color:"#444",marginBottom:8,fontStyle:"italic"}}>
+              Secure ABC target → eligible for all 21 IIMs
+            </div>
+            {calcResult.isGEM && (
+              <div style={{
+                padding:"10px 14px",
+                background:"rgba(255,69,58,0.08)",
+                border:"1px solid rgba(255,69,58,0.2)",
+                borderRadius:10, marginBottom:8
+              }}>
+                <div style={{fontSize:12,color:"#ff453a",fontWeight:600,marginBottom:2}}>
+                  GEM Profile (General Engineer Male)
+                </div>
+                <div style={{fontSize:11,color:"#6e6e73",lineHeight:1.5}}>
+                  Toughest competition pool. IIM-A realistically needs 99.7+. Work experience and strong academics are your best levers.
+                </div>
+              </div>
+            )}
+            <div className="card" style={{padding:"4px 0"}}>
+              {[
+                { label:"IIM A / B / C", sub:"Ahmedabad · Bangalore · Calcutta", key:"ABC", color:"#30d158" },
+                { label:"IIM K / L / I / S", sub:"Kozhikode · Lucknow · Indore · Shillong", key:"KLIS", color:"#f97316" },
+                { label:"New IIMs", sub:"Ranchi · Raipur · Trichy · Nagpur & others", key:"newIIM", color:"#3b82f6" },
+              ].map(g => {
+                const needed = calcResult.adjustedCutoffs[g.key];
+                const meets = targetPercentile > 0 && targetPercentile >= needed;
+                const close = targetPercentile > 0 && !meets && targetPercentile >= needed - 1;
+                return (
+                  <div key={g.key} style={{
+                    display:"flex",justifyContent:"space-between",
+                    alignItems:"center",padding:"14px 16px",
+                    borderBottom:"1px solid #1a1a1a",gap:12
+                  }}>
+                    <div style={{flex:1}}>
+                      <div className="row-label">{g.label}</div>
+                      <div className="row-sub">{g.sub}</div>
+                      {targetPercentile > 0 && (
+                        <div style={{
+                          fontSize:11,fontWeight:600,marginTop:4,
+                          color: meets ? "#30d158"
+                            : close ? "#f97316"
+                              : "#ff453a"
+                        }}>
+                          {meets
+                            ? `✓ Your ${targetPercentile}% meets this`
+                            : close
+                              ? `${(needed-targetPercentile).toFixed(2)}% short`
+                              : `Need ${(needed-targetPercentile).toFixed(1)}% more`
+                          }
+                        </div>
+                      )}
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{
+                        fontSize:20,fontWeight:800,
+                        color: meets ? "#30d158" : g.color
+                      }}>
+                        {needed.toFixed(1)}%
+                      </div>
+                      <div style={{fontSize:9,color:"#6e6e73"}}>
+                        needed
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="card">
+          <button
+            onClick={() => setTab("academic-profile")}
+            style={{
+              display:"flex",alignItems:"center",
+              justifyContent:"space-between",
+              width:"100%",padding:"14px 16px",
+              background:"transparent",border:"none",
+              cursor:"pointer",fontFamily:"inherit",
+              textAlign:"left",boxSizing:"border-box",
+            }}
+          >
+            <div style={{flex:1,minWidth:0}}>
+              <div className="row-label">Academic & Work Profile</div>
+              <div className="row-sub">
+                {primaryDegree?.type
+                  ? `${primaryDegree.type}${primaryDegree.college ? ` · ${primaryDegree.college}` : ""}`
+                  : "Add degree, work experience, college"}
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="#6e6e73" strokeWidth="2"
+              strokeLinecap="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
+
+        <button
+          className={`save-btn${saved?" saved":""}`}
+          onClick={() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+            if (!userId) return;
+            fetch("/api/user/update", {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({
+                userId,
+                category,
+                min_percentile: calcResult ? calcResult.adjustedCutoffs : null,
+              })
+            }).catch(console.error);
+          }}
+        >
+          {saved ? "Saved ✓" : "Save Profile"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <div className="page-title">Profile</div>
+        <div className="page-sub">Your academic identity</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Your Avatar</div>
+          <div className="card" style={{padding:"16px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
+            <AvatarPreview
+              gender={avatarGender} skinTone={avatarSkin}
+              hairStyle={avatarHair} hairColor={avatarHairColor}
+              shirtColor={avatarShirt} hasGlasses={avatarGlasses}
+              hasBeard={avatarBeard} hasMustache={avatarMustache}
+              size={86}
+            />
+            <div style={{fontSize:18,fontWeight:700,color:"#f5f5f7"}}>{userName}</div>
+            <div style={{width:"100%",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Gender</span>
+                <div style={{display:"flex",gap:6}}>
+                  {["male","female"].map(g => (
+                    <button key={g} onClick={() => {
+                      updateAvatar("gender", g);
+                      if (g === "female") {
+                        updateAvatar("beard", false);
+                        updateAvatar("mustache", false);
+                      }
+                    }} style={chipStyle(avatarGender === g)}>{g}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Skin</span>
+                <div style={{display:"flex",gap:8}}>
+                  {[{id:"light",color:"#f1c27d"},{id:"medium",color:"#c68642"},{id:"dark",color:"#8d5524"}].map(s => (
+                    <button key={s.id} onClick={() => updateAvatar("skin", s.id)} style={swatchStyle(avatarSkin === s.id, s.color)} />
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Hair</span>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {(avatarGender === "female" ? ["short","wavy","long","curly","bun"] : ["short","wavy","curly"]).map(h => (
+                    <button key={h} onClick={() => updateAvatar("hair", h)} style={chipStyle(avatarHair === h)}>{h}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Hair color</span>
+                <div style={{display:"flex",gap:8}}>
+                  {[{id:"black",color:"#0a0a0a"},{id:"brown",color:"#6b3a2a"},{id:"blonde",color:"#c8a850"},{id:"grey",color:"#888888"}].map(h => (
+                    <button key={h.id} onClick={() => updateAvatar("hairColor", h.id)} style={swatchStyle(avatarHairColor === h.id, h.color)} />
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Outfit</span>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {[{id:"orange",color:"#f97316"},{id:"blue",color:"#3b82f6"},{id:"green",color:"#22c55e"},{id:"purple",color:"#a855f7"},{id:"red",color:"#ef4444"},{id:"white",color:"#e5e5e5"}].map(s => (
+                    <button key={s.id} onClick={() => updateAvatar("shirt", s.id)} style={swatchStyle(avatarShirt === s.id, s.color)} />
+                  ))}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <input type="checkbox" checked={avatarGlasses} onChange={e => updateAvatar("glasses", e.target.checked)} style={{accentColor:"#f97316"}} />
+                  <span style={{fontSize:12,color:"#6e6e73"}}>Glasses</span>
+                </label>
+                {avatarGender === "male" && <>
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <input type="checkbox" checked={avatarBeard} onChange={e => updateAvatar("beard", e.target.checked)} style={{accentColor:"#f97316"}} />
+                    <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
+                  </label>
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <input type="checkbox" checked={avatarMustache} onChange={e => updateAvatar("mustache", e.target.checked)} style={{accentColor:"#f97316"}} />
+                    <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
+                  </label>
+                </>}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{padding:"14px 16px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+            <div>
+              <div className="row-label">Prep Start Date</div>
+              <div className="row-sub">
+                {startDate
+                  ? new Date(startDate+"T00:00:00").toLocaleDateString("en-IN", {
+                      day:"numeric", month:"long", year:"numeric"
+                    })
+                  : "Not set"}
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#f97316",fontWeight:600}}>
+              Day {dayNumber} of {totalDays}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Category</div>
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {categories.map(c => (
+                <button key={c} onClick={() => setCategory(c)} style={chipStyle(category === c)}>{c}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div className="sec-label" style={{marginBottom:0}}>Your IIM Targets</div>
+            {calcLoading && (
+              <div style={{
+                width:14, height:14, borderRadius:"50%",
+                border:"2px solid #f97316",
+                borderTopColor:"transparent",
+                animation:"spin 0.8s linear infinite"
+              }}/>
+            )}
+          </div>
+
+          {calcResult && !calcLoading && (
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {calcResult.isGEM && (
+                <div style={{
+                  padding:"10px 14px",
+                  background:"rgba(255,69,58,0.08)",
+                  border:"1px solid rgba(255,69,58,0.2)",
+                  borderRadius:10, marginBottom:8
+                }}>
+                  <div style={{fontSize:12,color:"#ff453a",
+                    fontWeight:600,marginBottom:2}}>
+                    GEM Profile (General Engineer Male)
+                  </div>
+                  <div style={{fontSize:11,color:"#6e6e73",lineHeight:1.5}}>
+                    Toughest competition pool. IIM-A realistically needs 99.7+. Work experience and strong academics are your best levers. Non-engineer/female candidates get structural advantages.
+                  </div>
+                </div>
+              )}
+              {[
+                { label:"IIM A / B / C", sub:"Ahmedabad · Bangalore · Calcutta", key:"ABC", color:"#30d158" },
+                { label:"IIM K / L / I / S", sub:"Kozhikode · Lucknow · Indore · Shillong", key:"KLIS", color:"#f97316" },
+                { label:"New IIMs", sub:"Jammu · Sirmaur · Ranchi · Nagpur & others", key:"newIIM", color:"#3b82f6" },
+              ].map(g => (
+                <div key={g.key} className="card" style={{padding:"12px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:12}}>
+                    <div>
+                      <div className="row-label">{g.label}</div>
+                      <div className="row-sub">{g.sub}</div>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:20,fontWeight:800,color:g.color}}>
+                        {calcResult.adjustedCutoffs[g.key].toFixed(1)}%
+                      </div>
+                      <div style={{fontSize:10,color:"#6e6e73"}}>target percentile</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    display:"flex",
+                    justifyContent:"space-between",
+                    alignItems:"center",
+                    padding:"8px 0 0",
+                    borderTop:"1px solid #1a1a1a"
+                  }}>
+                    <span style={{fontSize:11,color:"#6e6e73"}}>
+                      Interview → Admit probability
+                    </span>
+                    <span style={{
+                      fontSize:13,
+                      fontWeight:700,
+                      color: calcResult.interviewProb[g.key] >= 0.5 ? "#30d158" : "#f97316"
+                    }}>
+                      {Math.round(calcResult.interviewProb[g.key] * 100)}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <div className="card" style={{padding:"14px 16px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div>
+                    <div className="row-label">Profile Score</div>
+                    <div className="row-sub">Academic + work ex + diversity</div>
+                  </div>
+                  <div style={{
+                    fontSize:24,
+                    fontWeight:800,
+                    color: calcResult.profileScore >= 70 ? "#30d158" : calcResult.profileScore >= 50 ? "#f97316" : "#ff453a"
+                  }}>
+                    {calcResult.profileScore}/100
+                  </div>
+                </div>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{
+                    width:`${calcResult.profileScore}%`,
+                    background: calcResult.profileScore >= 70 ? "#30d158" : calcResult.profileScore >= 50 ? "#f97316" : "#ff453a"
+                  }}/>
+                </div>
+                <div style={{fontSize:11,color:"#444",marginTop:8,fontStyle:"italic"}}>
+                  Higher profile score improves interview conversion. Work experience and strong academics boost this.
+                </div>
+              </div>
+
+              <div className="card" style={{padding:"12px 16px"}}>
+                <div className="row-label" style={{marginBottom:8}}>Profile Breakdown</div>
+                {[
+                  { label:"GEM competition penalty", val: calcResult.adjustmentSummary.gemPenalty, show: calcResult.adjustmentSummary.gemPenalty > 0, bad:true },
+                  { label:"Gender diversity", val: calcResult.adjustmentSummary.femaleDiversity, show: calcResult.adjustmentSummary.femaleDiversity < 0 },
+                  { label:"Non-engineering background", val: calcResult.adjustmentSummary.nonEngineerDiversity, show: calcResult.adjustmentSummary.nonEngineerDiversity < 0 },
+                  { label:"Work experience", val: calcResult.adjustmentSummary.workEx, show: calcResult.adjustmentSummary.workEx < 0 },
+                  { label:"Masters / PG degree", val: calcResult.adjustmentSummary.mastersDegree, show: calcResult.adjustmentSummary.mastersDegree < 0 },
+                  { label:"Academics", val: calcResult.adjustmentSummary.academics, show: calcResult.adjustmentSummary.academics !== 0, bad:calcResult.adjustmentSummary.academics > 0 },
+                ].filter(i => i.show).map(item => (
+                  <div key={item.label} style={{
+                    display:"flex",
+                    justifyContent:"space-between",
+                    padding:"4px 0",
+                    fontSize:12,
+                    gap:12
+                  }}>
+                    <span style={{color:"#6e6e73"}}>{item.label}</span>
+                    <span style={{color:item.bad ? "#ff453a" : "#30d158",fontWeight:600}}>
+                      {item.val > 0 ? "+" : ""}{item.val.toFixed(1)} percentile {item.val > 0 ? "penalty" : "relief"}
+                    </span>
+                  </div>
+                ))}
+                {[
+                  { show: calcResult.adjustmentSummary.gemPenalty > 0 },
+                  { show: calcResult.adjustmentSummary.femaleDiversity < 0 },
+                  { show: calcResult.adjustmentSummary.nonEngineerDiversity < 0 },
+                  { show: calcResult.adjustmentSummary.workEx < 0 },
+                  { show: calcResult.adjustmentSummary.mastersDegree < 0 },
+                  { show: calcResult.adjustmentSummary.academics !== 0 },
+                ].every(i => !i.show) && (
+                  <div style={{fontSize:12,color:"#6e6e73",padding:"4px 0"}}>
+                    No profile relief yet. Add academics, work experience, or PG details to see what helps.
+                  </div>
+                )}
+                <div style={{fontSize:11,color:"#444",marginTop:6,fontStyle:"italic"}}>
+                  Cutoffs are indicative based on 2024-2026 trends. Actual calls depend on competition each year.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className="sec-label">Primary Degree</div>
+          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+            <select style={selectStyle} value={primaryDegree.type || ""} onChange={e => setPrimaryDegree(p => ({...p, type:e.target.value}))}>
+              <option value="">Degree type</option>
+              {degreeTypes.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <input type="text" placeholder="Field / Specialization (e.g. Computer Science)" value={primaryDegree.field || ""} onChange={e => setPrimaryDegree(p => ({...p, field:e.target.value}))} style={inputStyle} />
+            <input type="text" placeholder="College / University name" value={primaryDegree.college || ""} onChange={e => setPrimaryDegree(p => ({...p, college:e.target.value}))} style={inputStyle} />
+            <div style={{display:"flex",gap:8}}>
+              <input type="text" placeholder="GPA or %" value={primaryDegree.gpa || ""} onChange={e => setPrimaryDegree(p => ({...p, gpa:e.target.value}))} style={{...inputStyle,flex:1}} />
+              <input type="number" placeholder="Year" value={primaryDegree.year || ""} onChange={e => setPrimaryDegree(p => ({...p, year:e.target.value}))} style={{...inputStyle,flex:1}} />
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:-2}}>
+              {["percentage","10","4"].map(scale => (
+                <button key={scale}
+                  onClick={() => setPrimaryDegree(p => ({...p, gpaScale: scale}))}
+                  style={{
+                    padding:"3px 10px", borderRadius:20,
+                    border: (primaryDegree?.gpaScale||"percentage")===scale
+                      ? "1px solid #f97316"
+                      : "1px solid #2a2a2a",
+                    background: (primaryDegree?.gpaScale||"percentage")===scale
+                      ? "rgba(249,115,22,0.15)"
+                      : "#111",
+                    color: (primaryDegree?.gpaScale||"percentage")===scale
+                      ? "#f97316" : "#6e6e73",
+                    fontSize:11, cursor:"pointer",
+                    fontFamily:"inherit"
+                  }}>
+                  {scale === "percentage" ? "%" : `/${scale} CGPA`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Secondary Degrees</div>
+          <div className="card">
+            <button
+              onClick={() => setTab("secondary-degrees")}
+              style={{
+                display:"flex", alignItems:"center",
+                justifyContent:"space-between",
+                width:"100%", padding:"14px 16px",
+                background:"transparent", border:"none",
+                cursor:"pointer", fontFamily:"inherit",
+              }}
+            >
+              <div>
+                <div className="row-label">PG / Masters / Additional Degrees</div>
+                <div className="row-sub">
+                  {secondaryDegrees.length > 0
+                    ? `${secondaryDegrees.length} degree${secondaryDegrees.length>1?"s":""} added`
+                    : "Add PG, MS, MBA or any other degree"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="#6e6e73" strokeWidth="2"
+                strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Work Experience</div>
+          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",gap:8}}>
+              <select style={{...selectStyle,flex:1}} value={workExpYears} onChange={e => setWorkExpYears(Number(e.target.value))}>
+                {Array.from({length:16},(_,i)=>i).map(y => <option key={y} value={y}>{y} yr{y!==1?"s":""}</option>)}
+              </select>
+              <select style={{...selectStyle,flex:1}} value={workExpMonths} onChange={e => setWorkExpMonths(Number(e.target.value))}>
+                {Array.from({length:12},(_,i)=>i).map(m => <option key={m} value={m}>{m} mo{m!==1?"s":""}</option>)}
+              </select>
+            </div>
+            <input type="text" placeholder="Company name" value={workCompany} onChange={e => setWorkCompany(e.target.value)} style={inputStyle} />
+            <input type="text" placeholder="Role / Designation" value={workRole} onChange={e => setWorkRole(e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AcademicProfilePage({
+  primaryDegree, setPrimaryDegree,
+  secondaryDegrees, setSecondaryDegrees,
+  workExpYears, setWorkExpYears,
+  workExpMonths, setWorkExpMonths,
+  workCompany, setWorkCompany,
+  workRole, setWorkRole,
+  calcResult,
+  onBack, setTab, userId
+}) {
+  const [saved, setSaved] = useState(false);
+  const inputStyle = {
+    width:"100%", background:"#111",
+    border:"1px solid #2a2a2a", borderRadius:8,
+    padding:"10px 12px", color:"#f5f5f7",
+    fontSize:14, fontFamily:"inherit",
+    outline:"none", boxSizing:"border-box"
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",
+          fontFamily:"inherit",display:"flex",
+          alignItems:"center",gap:4,padding:0,marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Profile
+        </button>
+        <div className="page-title">Academic & Work Profile</div>
+        <div className="page-sub">Degree, college, GPA and work experience</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Primary Degree *</div>
+          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+            <select style={{...inputStyle,appearance:"none",WebkitAppearance:"none"}}
+              value={primaryDegree?.type || ""}
+              onChange={e => setPrimaryDegree(p => ({...p,type:e.target.value}))}>
+              <option value="">Degree type</option>
+              {["B.Tech","B.E.","B.Sc","B.Com","BBA","BA","B.Arch","BCA","B.Pharm","MBBS","LLB","B.Sc (Engg)","Other"].map(d =>
+                <option key={d} value={d}>{d}</option>)}
+            </select>
+            <input type="text"
+              placeholder="Field / Specialization e.g. Computer Science"
+              value={primaryDegree?.field || ""}
+              onChange={e => setPrimaryDegree(p => ({...p,field:e.target.value}))}
+              style={inputStyle}/>
+            <input type="text"
+              placeholder="College / University name"
+              value={primaryDegree?.college || ""}
+              onChange={e => setPrimaryDegree(p => ({...p,college:e.target.value}))}
+              style={inputStyle}/>
+            <div style={{display:"flex",gap:8}}>
+              <input type="text"
+                placeholder="GPA or %"
+                value={primaryDegree?.gpa || ""}
+                onChange={e => setPrimaryDegree(p => ({...p,gpa:e.target.value}))}
+                style={{...inputStyle,flex:1}}/>
+              <input type="number"
+                placeholder="Year"
+                value={primaryDegree?.year || ""}
+                onChange={e => setPrimaryDegree(p => ({...p,year:e.target.value}))}
+                style={{...inputStyle,flex:1}}/>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {["percentage","10","4"].map(scale => (
+                <button key={scale}
+                  onClick={() => setPrimaryDegree(p => ({...p,gpaScale:scale}))}
+                  style={{
+                    padding:"3px 10px",borderRadius:20,
+                    border:(primaryDegree?.gpaScale||"percentage")===scale
+                      ?"1px solid #f97316":"1px solid #2a2a2a",
+                    background:(primaryDegree?.gpaScale||"percentage")===scale
+                      ?"rgba(249,115,22,0.15)":"#111",
+                    color:(primaryDegree?.gpaScale||"percentage")===scale
+                      ?"#f97316":"#6e6e73",
+                    fontSize:11,cursor:"pointer",
+                    fontFamily:"inherit"
+                  }}>
+                  {scale==="percentage" ? "%" : `/${scale} CGPA`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Secondary Degrees</div>
+          <div className="card">
+            <button
+              onClick={() => setTab("secondary-degrees")}
+              style={{
+                display:"flex",alignItems:"center",
+                justifyContent:"space-between",
+                width:"100%",padding:"14px 16px",
+                background:"transparent",border:"none",
+                cursor:"pointer",fontFamily:"inherit",
+                textAlign:"left",boxSizing:"border-box",
+              }}>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="row-label">PG / Masters / Additional</div>
+                <div className="row-sub">
+                  {secondaryDegrees.length > 0
+                    ? `${secondaryDegrees.length} degree${secondaryDegrees.length>1?"s":""} added`
+                    : "MBA, MS, M.Tech, CA etc"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="#6e6e73" strokeWidth="2"
+                strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Work Experience</div>
+          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",gap:8}}>
+              <select style={{...inputStyle,flex:1,appearance:"none",WebkitAppearance:"none"}}
+                value={workExpYears}
+                onChange={e => setWorkExpYears(Number(e.target.value))}>
+                {Array.from({length:16},(_,i)=>i).map(y =>
+                  <option key={y} value={y}>{y} yr{y!==1?"s":""}</option>)}
+              </select>
+              <select style={{...inputStyle,flex:1,appearance:"none",WebkitAppearance:"none"}}
+                value={workExpMonths}
+                onChange={e => setWorkExpMonths(Number(e.target.value))}>
+                {Array.from({length:12},(_,i)=>i).map(m =>
+                  <option key={m} value={m}>{m} mo{m!==1?"s":""}</option>)}
+              </select>
+            </div>
+            <input type="text" placeholder="Company name"
+              value={workCompany}
+              onChange={e => setWorkCompany(e.target.value)}
+              style={inputStyle}/>
+            <input type="text" placeholder="Role / Designation"
+              value={workRole}
+              onChange={e => setWorkRole(e.target.value)}
+              style={inputStyle}/>
+          </div>
+        </div>
+
+        {calcResult && (
+          <div>
+            <div className="sec-label">Profile Breakdown</div>
+            <div className="card" style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div className="row-label">Profile Score</div>
+                <div style={{
+                  fontSize:22,fontWeight:800,
+                  color: calcResult.profileScore >= 70
+                    ? "#30d158"
+                    : calcResult.profileScore >= 50
+                      ? "#f97316" : "#ff453a"
+                }}>
+                  {calcResult.profileScore}/100
+                </div>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{
+                  width:`${calcResult.profileScore}%`,
+                  background: calcResult.profileScore >= 70
+                    ? "#30d158"
+                    : calcResult.profileScore >= 50
+                      ? "#f97316" : "#ff453a"
+                }}/>
+              </div>
+              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:4}}>
+                {Object.entries(calcResult.adjustmentSummary)
+                  .filter(([,v]) => v !== 0)
+                  .map(([k,v]) => (
+                    <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,gap:10}}>
+                      <span style={{color:"#6e6e73"}}>
+                        {k === "gemPenalty" ? "GEM profile penalty"
+                          : k === "femaleDiversity" ? "Female diversity bonus"
+                            : k === "nonEngineerDiversity" ? "Non-engineer diversity"
+                              : k === "workEx" ? "Work experience"
+                                : k === "mastersDegree" ? "Masters degree"
+                                  : "Academic record"}
+                      </span>
+                      <span style={{color:v < 0 ? "#30d158" : "#ff453a",fontWeight:600}}>
+                        {v > 0 ? "+" : ""}{v.toFixed(2)}%
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <button
+          className={`save-btn${saved?" saved":""}`}
+          onClick={() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+            if (!userId) return;
+            fetch("/api/user/update", {
+              method:"POST",
+              headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({
+                userId,
+                primary_degree: primaryDegree,
+                secondary_degrees: secondaryDegrees,
+                work_experience_years: workExpYears,
+                work_experience_months: workExpMonths,
+                work_company: workCompany,
+                work_role: workRole,
+              })
+            }).catch(console.error);
+          }}
+        >
+          {saved ? "Saved ✓" : "Save Academic Profile"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SecondaryDegreesPage({
+  secondaryDegrees, setSecondaryDegrees, onBack
+}) {
+  const emptyForm = {
+    degree:"", field:"", college:"",
+    gpa:"", gpaScale:"percentage", year:""
+  };
+  const [form, setForm] = useState(emptyForm);
+  const degreeTypes = [
+    "M.Tech","M.E.","M.Sc","MBA","MCA","MA","M.Com",
+    "MS","M.Phil","LLM","PGDM","CA","CS","CFA","Other"
+  ];
+  const inputStyle = {
+    width:"100%", background:"#111",
+    border:"1px solid #2a2a2a", borderRadius:8,
+    padding:"10px 12px", color:"#f5f5f7",
+    fontSize:14, fontFamily:"inherit",
+    outline:"none", boxSizing:"border-box"
+  };
+  const normalizeDegree = (deg) => typeof deg === "string"
+    ? { id: deg, text: deg }
+    : deg;
+  const addDegree = () => {
+    if (!form.degree) return;
+    setSecondaryDegrees(prev => [...prev, {
+      id: Date.now().toString(),
+      ...form
+    }]);
+    setForm(emptyForm);
+  };
+  const removeDegree = (id) => {
+    setSecondaryDegrees(prev => prev.filter(d => normalizeDegree(d).id !== id));
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent", border:"none",
+          color:"#f97316", fontSize:15, cursor:"pointer",
+          fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Profile
+        </button>
+        <div className="page-title">Secondary Degrees</div>
+        <div className="page-sub">PG, Masters, professional qualifications</div>
+      </div>
+
+      <div className="sections">
+        {secondaryDegrees.length > 0 && (
+          <div>
+            <div className="sec-label">Added ({secondaryDegrees.length})</div>
+            {secondaryDegrees.map(raw => {
+              const deg = normalizeDegree(raw);
+              const displayText = deg.text || [
+                deg.degree,
+                deg.field ? `- ${deg.field}` : "",
+              ].filter(Boolean).join(" ");
+              return (
+                <div key={deg.id || displayText} className="card"
+                  style={{padding:"14px 16px",display:"flex",
+                    justifyContent:"space-between",alignItems:"flex-start",
+                    marginBottom:8,gap:12}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:600,
+                      color:"#f5f5f7",marginBottom:2}}>
+                      {displayText || "Additional degree"}
+                    </div>
+                    {deg.college && (
+                      <div style={{fontSize:12,color:"#6e6e73"}}>
+                        {deg.college}
+                      </div>
+                    )}
+                    <div style={{fontSize:11,color:"#444",marginTop:2}}>
+                      {deg.gpa ? `${deg.gpa} ${
+                        deg.gpaScale==="10" ? "/ 10 CGPA"
+                        : deg.gpaScale==="4" ? "/ 4.0 CGPA"
+                        : "%"
+                      }` : ""}
+                      {deg.year ? `  ·  ${deg.year}` : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeDegree(deg.id)}
+                    style={{background:"transparent",border:"none",
+                      color:"#ff453a",fontSize:20,cursor:"pointer",
+                      padding:"0 0 0 12px",lineHeight:1}}>
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div>
+          <div className="sec-label">Add Degree</div>
+          <div className="card" style={{padding:"14px 16px",
+            display:"flex",flexDirection:"column",gap:10}}>
+            <select style={{...inputStyle,appearance:"none",WebkitAppearance:"none"}}
+              value={form.degree}
+              onChange={e => setForm(p => ({...p, degree:e.target.value}))}>
+              <option value="">Degree type *</option>
+              {degreeTypes.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <input type="text" placeholder="Field / Specialization"
+              value={form.field}
+              onChange={e => setForm(p => ({...p, field:e.target.value}))}
+              style={inputStyle}
+            />
+            <input type="text" placeholder="College / University"
+              value={form.college}
+              onChange={e => setForm(p => ({...p, college:e.target.value}))}
+              style={inputStyle}
+            />
+            <div style={{display:"flex",gap:8}}>
+              <input type="text" placeholder="GPA or %"
+                value={form.gpa}
+                onChange={e => setForm(p => ({...p, gpa:e.target.value}))}
+                style={{...inputStyle,flex:1}}
+              />
+              <input type="number" placeholder="Year"
+                value={form.year}
+                onChange={e => setForm(p => ({...p, year:e.target.value}))}
+                style={{...inputStyle,flex:1}}
+              />
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {["percentage","10","4"].map(scale => (
+                <button key={scale}
+                  onClick={() => setForm(p => ({...p, gpaScale:scale}))}
+                  style={{
+                    padding:"3px 10px", borderRadius:20,
+                    border: form.gpaScale===scale
+                      ? "1px solid #f97316"
+                      : "1px solid #2a2a2a",
+                    background: form.gpaScale===scale
+                      ? "rgba(249,115,22,0.15)" : "#111",
+                    color: form.gpaScale===scale ? "#f97316" : "#6e6e73",
+                    fontSize:11, cursor:"pointer",
+                    fontFamily:"inherit"
+                  }}>
+                  {scale==="percentage" ? "%" : `/${scale} CGPA`}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={addDegree}
+              disabled={!form.degree}
+              style={{
+                width:"100%", padding:"12px",
+                background: form.degree ? "#f97316" : "#2a2a2a",
+                border:"none", borderRadius:10,
+                color:"white", fontSize:14,
+                fontWeight:700, cursor: form.degree ? "pointer" : "not-allowed",
+                fontFamily:"inherit"
+              }}>
+              + Add Degree
+            </button>
+          </div>
+        </div>
+
+        <div style={{
+          padding:"12px 14px",
+          background:"rgba(249,115,22,0.05)",
+          border:"1px solid rgba(249,115,22,0.15)",
+          borderRadius:10
+        }}>
+          <div style={{fontSize:12,color:"#6e6e73",lineHeight:1.6}}>
+            IIM-B and IIM-K give extra weightage to candidates with Masters degrees during PI shortlisting. It strengthens your profile score and reduces effective cutoff by about 0.4 percentile.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MobileNav({ tab, setTab, dl, userName, startDate, mode }) {
   const [open, setOpen] = useState(false)
   const [btnPos, setBtnPos] = useState(() => {
@@ -1866,10 +3140,18 @@ function OnboardingScreen({ onStart }) {
   const [hasMustache, setHasMustache] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [pendingStart, setPendingStart] = useState(null)
+  const [onboardCategory, setOnboardCategory] = useState("General")
+  const [onboardPrimaryDegree, setOnboardPrimaryDegree] = useState({})
 
   const months = ["January","February","March","April","May","June",
     "July","August","September","October","November","December"]
   const days = Array.from({length:31},(_,i)=>String(i+1).padStart(2,"0"))
+  const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"]
+  const degreeTypes = [
+    "B.Tech", "B.E.", "B.Sc", "B.Com", "BBA", "BA",
+    "B.Arch", "BCA", "B.Pharm", "MBBS", "LLB", "Other"
+  ]
 
   const getDateString = () => {
     if (!day || !month) return ""
@@ -1920,7 +3202,27 @@ function OnboardingScreen({ onStart }) {
     localStorage.setItem("cat_avatar_beard", String(hasBeard))
     localStorage.setItem("cat_avatar_mustache", String(hasMustache))
     setLoading(false)
-    onStart(d, name.trim(), userId)
+    setPendingStart({ date: d, name: name.trim(), userId })
+    setScreen("profile_optional")
+  }
+
+  const completeOnboarding = (profile = {}) => {
+    if (!pendingStart) return
+    onStart(pendingStart.date, pendingStart.name, pendingStart.userId, profile)
+  }
+
+  const handleCompleteWithProfile = () => {
+    const primaryDegree = onboardPrimaryDegree || {}
+    localStorage.setItem("cat_category", onboardCategory)
+    localStorage.setItem("cat_primary_degree", JSON.stringify(primaryDegree))
+    completeOnboarding({
+      category: onboardCategory,
+      primaryDegree
+    })
+  }
+
+  const handleSkipProfile = () => {
+    completeOnboarding({})
   }
 
   const handleReturn = async () => {
@@ -1949,6 +3251,7 @@ function OnboardingScreen({ onStart }) {
       if (data.user.avatar_shirt) localStorage.setItem("cat_avatar_shirt", data.user.avatar_shirt)
       if (data.user.avatar_glasses != null) localStorage.setItem("cat_avatar_glasses", String(data.user.avatar_glasses))
       if (data.user.avatar_beard != null) localStorage.setItem("cat_avatar_beard", String(data.user.avatar_beard))
+      if (data.user.avatar_mustache != null) localStorage.setItem("cat_avatar_mustache", String(data.user.avatar_mustache))
       setLoading(false)
       onStart(data.user.start_date, data.user.name, userId)
     } catch {
@@ -2061,6 +3364,98 @@ function OnboardingScreen({ onStart }) {
             fontFamily:"inherit",padding:"8px"}}>
           ← Back
         </button>
+      </div>
+    </div>
+  )
+
+  if (screen === "profile_optional") return (
+    <div style={{position:"fixed",inset:0,background:"#000",
+      overflowY:"auto",fontFamily:"inherit"}}>
+      <div style={{display:"flex",flexDirection:"column",
+        alignItems:"center",justifyContent:"center",
+        minHeight:"100dvh",padding:"40px 24px 60px"}}>
+        <div style={{fontSize:13,color:"#f97316",fontWeight:700,
+          letterSpacing:"0.1em"}}>ONE MORE THING</div>
+        <div style={{fontSize:22,fontWeight:800,color:"#f5f5f7",
+          textAlign:"center",marginTop:16,marginBottom:8}}>
+          Tell Vikram about yourself
+        </div>
+        <div style={{fontSize:13,color:"#6e6e73",textAlign:"center",
+          marginBottom:32,lineHeight:1.6,maxWidth:340}}>
+          Your degree and background help Vikram personalise
+          your IIM targets. You can skip this and add it later
+          in your Profile.
+        </div>
+
+        <div style={{width:"100%",maxWidth:360,
+          display:"flex",flexDirection:"column",gap:16}}>
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Category</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {categories.map(c => (
+                <button key={c}
+                  onClick={() => setOnboardCategory(c)}
+                  style={{
+                    padding:"7px 13px", borderRadius:20,
+                    border: onboardCategory===c
+                      ? "1px solid #f97316"
+                      : "1px solid #2a2a2a",
+                    background: onboardCategory===c
+                      ? "rgba(249,115,22,0.15)"
+                      : "#111",
+                    color: onboardCategory===c ? "#f97316" : "#6e6e73",
+                    fontSize:12, cursor:"pointer",
+                    fontFamily:"inherit"
+                  }}>{c}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div style={{fontSize:11,color:"#6e6e73",letterSpacing:"0.08em",
+              textTransform:"uppercase",marginBottom:8}}>Primary Degree</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              <select
+                value={onboardPrimaryDegree.type || ""}
+                onChange={e => setOnboardPrimaryDegree(p => ({...p, type:e.target.value}))}
+                style={selectStyle}
+              >
+                <option value="">Degree type</option>
+                {degreeTypes.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="Field / specialization"
+                value={onboardPrimaryDegree.field || ""}
+                onChange={e => setOnboardPrimaryDegree(p => ({...p, field:e.target.value}))}
+                style={inputStyle}
+              />
+              <input
+                type="text"
+                placeholder="College name"
+                value={onboardPrimaryDegree.college || ""}
+                onChange={e => setOnboardPrimaryDegree(p => ({...p, college:e.target.value}))}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleCompleteWithProfile}
+            style={{...btnStyle(true), background:"#f97316"}}>
+            Save & Begin →
+          </button>
+          <button
+            onClick={handleSkipProfile}
+            style={{background:"transparent",border:"none",
+              color:"#6e6e73",fontSize:13,cursor:"pointer",
+              fontFamily:"inherit",padding:"8px"}}>
+            Skip for now
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -2535,15 +3930,40 @@ export default function App() {
   const [userId, setUserId] = useState(() => localStorage.getItem("conquer_user_id") || null)
   const userChecked = useRef(false)
   const backlogLoadedRef = useRef(false)
+  const profileLoadedRef = useRef(false)
   const [synced, setSynced] = useState(false)
-  const avatarGender = localStorage.getItem("cat_avatar_gender") || "male"
-  const avatarSkin = localStorage.getItem("cat_avatar_skin") || "medium"
-  const avatarHair = localStorage.getItem("cat_avatar_hair") || "wavy"
-  const avatarHairColor = localStorage.getItem("cat_avatar_hair_color") || "black"
-  const avatarShirt = localStorage.getItem("cat_avatar_shirt") || "blue"
-  const avatarGlasses = localStorage.getItem("cat_avatar_glasses") === "true"
-  const avatarBeard = localStorage.getItem("cat_avatar_beard") === "true"
-  const avatarMustache = localStorage.getItem("cat_avatar_mustache") === "true"
+  const [avatarGender, setAvatarGender] = useState(() => localStorage.getItem("cat_avatar_gender") || "male")
+  const [avatarSkin, setAvatarSkin] = useState(() => localStorage.getItem("cat_avatar_skin") || "medium")
+  const [avatarHair, setAvatarHair] = useState(() => localStorage.getItem("cat_avatar_hair") || "wavy")
+  const [avatarHairColor, setAvatarHairColor] = useState(() => localStorage.getItem("cat_avatar_hair_color") || "black")
+  const [avatarShirt, setAvatarShirt] = useState(() => localStorage.getItem("cat_avatar_shirt") || "blue")
+  const [avatarGlasses, setAvatarGlasses] = useState(() => localStorage.getItem("cat_avatar_glasses") === "true")
+  const [avatarBeard, setAvatarBeard] = useState(() => localStorage.getItem("cat_avatar_beard") === "true")
+  const [avatarMustache, setAvatarMustache] = useState(() => localStorage.getItem("cat_avatar_mustache") === "true")
+  const [category, setCategory] = useState(() => localStorage.getItem("cat_category") || "General")
+  const [primaryDegree, setPrimaryDegree] = useState(() => {
+    try {
+      return {
+        type:"", field:"", college:"", gpa:"", year:"", gpaScale:"percentage",
+        ...JSON.parse(localStorage.getItem("cat_primary_degree") || "{}")
+      }
+    }
+    catch {
+      return { type:"", field:"", college:"", gpa:"", year:"", gpaScale:"percentage" }
+    }
+  })
+  const [secondaryDegrees, setSecondaryDegrees] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("cat_secondary_degrees") || "[]") }
+    catch { return [] }
+  })
+  const [workExpYears, setWorkExpYears] = useState(() => parseInt(localStorage.getItem("cat_work_years") || "0"))
+  const [workExpMonths, setWorkExpMonths] = useState(() => parseInt(localStorage.getItem("cat_work_months") || "0"))
+  const [workCompany, setWorkCompany] = useState(() => localStorage.getItem("cat_work_company") || "")
+  const [workRole, setWorkRole] = useState(() => localStorage.getItem("cat_work_role") || "")
+  const [targetPercentile, setTargetPercentile] = useState(
+    () => parseFloat(localStorage.getItem("cat_target_pct") || "0") || 0
+  )
+  const [calcResult, setCalcResult] = useState(null)
   const userInitials = userName
     ? userName.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
     : "ME"
@@ -2568,8 +3988,108 @@ export default function App() {
     {quant:0, varc:0, lrdi:0}
   ), [data]);
   const todayData = data[todayKey()] || defaultDay();
+  const handleAvatarChange = (key, value) => {
+    const setters = {
+      gender: setAvatarGender,
+      skin: setAvatarSkin,
+      hair: setAvatarHair,
+      hairColor: setAvatarHairColor,
+      shirt: setAvatarShirt,
+      glasses: setAvatarGlasses,
+      beard: setAvatarBeard,
+      mustache: setAvatarMustache,
+    };
+    setters[key]?.(value);
+    if (!userId || !profileLoadedRef.current) return;
+    const nextAvatar = {
+      avatar_gender: key === "gender" ? value : avatarGender,
+      avatar_skin: key === "skin" ? value : avatarSkin,
+      avatar_hair: key === "hair" ? value : avatarHair,
+      avatar_hair_color: key === "hairColor" ? value : avatarHairColor,
+      avatar_shirt: key === "shirt" ? value : avatarShirt,
+      avatar_glasses: key === "glasses" ? value : avatarGlasses,
+      avatar_beard: key === "beard" ? value : avatarBeard,
+      avatar_mustache: key === "mustache" ? value : avatarMustache,
+    };
+    fetch("/api/user/update", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ userId, ...nextAvatar })
+    }).catch(err => console.error("Avatar sync failed:", err.message));
+  };
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
+  useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
+  useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
+  useEffect(() => { localStorage.setItem("cat_avatar_hair", avatarHair) }, [avatarHair]);
+  useEffect(() => { localStorage.setItem("cat_avatar_hair_color", avatarHairColor) }, [avatarHairColor]);
+  useEffect(() => { localStorage.setItem("cat_avatar_shirt", avatarShirt) }, [avatarShirt]);
+  useEffect(() => { localStorage.setItem("cat_avatar_glasses", String(avatarGlasses)) }, [avatarGlasses]);
+  useEffect(() => { localStorage.setItem("cat_avatar_beard", String(avatarBeard)) }, [avatarBeard]);
+  useEffect(() => { localStorage.setItem("cat_avatar_mustache", String(avatarMustache)) }, [avatarMustache]);
+  useEffect(() => { localStorage.setItem("cat_category", category) }, [category]);
+  useEffect(() => { localStorage.setItem("cat_primary_degree", JSON.stringify(primaryDegree)) }, [primaryDegree]);
+  useEffect(() => { localStorage.setItem("cat_secondary_degrees", JSON.stringify(secondaryDegrees)) }, [secondaryDegrees]);
+  useEffect(() => { localStorage.setItem("cat_work_years", String(workExpYears)) }, [workExpYears]);
+  useEffect(() => { localStorage.setItem("cat_work_months", String(workExpMonths)) }, [workExpMonths]);
+  useEffect(() => { localStorage.setItem("cat_work_company", workCompany) }, [workCompany]);
+  useEffect(() => { localStorage.setItem("cat_work_role", workRole) }, [workRole]);
+  useEffect(() => {
+    localStorage.setItem("cat_target_pct", String(targetPercentile));
+  }, [targetPercentile]);
+  useEffect(() => {
+    setCalcResult(calcIIMProfile({
+      category,
+      gender: avatarGender,
+      primaryDegree,
+      secondaryDegrees,
+      workExpYears,
+      workExpMonths,
+    }));
+  }, [
+    category,
+    avatarGender,
+    primaryDegree,
+    secondaryDegrees,
+    workExpYears,
+    workExpMonths,
+  ]);
+  useEffect(() => {
+    if (!userId) return;
+    if (!profileLoadedRef.current) return;
+    const timer = setTimeout(() => {
+      const minPercentile = calcMinPercentile(category);
+      fetch("/api/user/update", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          userId,
+          avatar_gender: avatarGender,
+          avatar_skin: avatarSkin,
+          avatar_hair: avatarHair,
+          avatar_hair_color: avatarHairColor,
+          avatar_shirt: avatarShirt,
+          avatar_glasses: avatarGlasses,
+          avatar_beard: avatarBeard,
+          avatar_mustache: avatarMustache,
+          category,
+          primary_degree: primaryDegree,
+          secondary_degrees: secondaryDegrees,
+          work_experience_years: workExpYears,
+          work_experience_months: workExpMonths,
+          work_company: workCompany,
+          work_role: workRole,
+          min_percentile: minPercentile
+        })
+      }).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [
+    avatarGender, avatarSkin, avatarHair, avatarHairColor,
+    avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
+    category, primaryDegree, secondaryDegrees,
+    workExpYears, workExpMonths, workCompany, workRole, userId
+  ]);
   useEffect(() => {
     localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
     localStorage.setItem("conquer_backlog_concepts", JSON.stringify(backlogConcepts));
@@ -2635,6 +4155,30 @@ export default function App() {
             localStorage.setItem("conquer_backlog_concepts", JSON.stringify(checkData.user.backlog_concepts));
           }
           backlogLoadedRef.current = true;
+          if (checkData.user.avatar_gender) localStorage.setItem("cat_avatar_gender", checkData.user.avatar_gender);
+          if (checkData.user.avatar_skin) localStorage.setItem("cat_avatar_skin", checkData.user.avatar_skin);
+          if (checkData.user.avatar_hair) localStorage.setItem("cat_avatar_hair", checkData.user.avatar_hair);
+          if (checkData.user.avatar_hair_color) localStorage.setItem("cat_avatar_hair_color", checkData.user.avatar_hair_color);
+          if (checkData.user.avatar_shirt) localStorage.setItem("cat_avatar_shirt", checkData.user.avatar_shirt);
+          if (checkData.user.avatar_glasses != null) localStorage.setItem("cat_avatar_glasses", String(checkData.user.avatar_glasses));
+          if (checkData.user.avatar_beard != null) localStorage.setItem("cat_avatar_beard", String(checkData.user.avatar_beard));
+          if (checkData.user.avatar_mustache != null) localStorage.setItem("cat_avatar_mustache", String(checkData.user.avatar_mustache));
+          setAvatarGender(localStorage.getItem("cat_avatar_gender") || "male");
+          setAvatarSkin(localStorage.getItem("cat_avatar_skin") || "medium");
+          setAvatarHair(localStorage.getItem("cat_avatar_hair") || "wavy");
+          setAvatarHairColor(localStorage.getItem("cat_avatar_hair_color") || "black");
+          setAvatarShirt(localStorage.getItem("cat_avatar_shirt") || "blue");
+          setAvatarGlasses(localStorage.getItem("cat_avatar_glasses") === "true");
+          setAvatarBeard(localStorage.getItem("cat_avatar_beard") === "true");
+          setAvatarMustache(localStorage.getItem("cat_avatar_mustache") === "true");
+          if (checkData.user.category) setCategory(checkData.user.category);
+          if (checkData.user.primary_degree) setPrimaryDegree(checkData.user.primary_degree);
+          if (checkData.user.secondary_degrees) setSecondaryDegrees(checkData.user.secondary_degrees);
+          if (checkData.user.work_experience_years != null) setWorkExpYears(checkData.user.work_experience_years);
+          if (checkData.user.work_experience_months != null) setWorkExpMonths(checkData.user.work_experience_months);
+          if (checkData.user.work_company) setWorkCompany(checkData.user.work_company);
+          if (checkData.user.work_role) setWorkRole(checkData.user.work_role);
+          profileLoadedRef.current = true;
         }
       } catch {}
 
@@ -2719,15 +4263,31 @@ export default function App() {
     greet();
   }, [startDate, mentorHistoryChecked, mentorGreeted, dl, totals, dn, todayData]);
 
-  if (!startDate) return <OnboardingScreen onStart={async (date, name, userId) => {
+  if (!startDate) return <OnboardingScreen onStart={async (date, name, userId, onboardingProfile = {}) => {
     localStorage.setItem("cat_start_date", date)
     localStorage.setItem("cat_user_name", name)
     localStorage.setItem("conquer_user_id", userId)
+    if (onboardingProfile.category) {
+      localStorage.setItem("cat_category", onboardingProfile.category)
+      setCategory(onboardingProfile.category)
+    }
+    if (onboardingProfile.primaryDegree) {
+      localStorage.setItem("cat_primary_degree", JSON.stringify(onboardingProfile.primaryDegree))
+      setPrimaryDegree(onboardingProfile.primaryDegree)
+    }
     fromLocalStorageRef.current = false
     setUserInitialized(false)
     setUserId(userId)
     setStartDate(date)
     setUserName(name)
+    setAvatarGender(localStorage.getItem("cat_avatar_gender") || "male")
+    setAvatarSkin(localStorage.getItem("cat_avatar_skin") || "medium")
+    setAvatarHair(localStorage.getItem("cat_avatar_hair") || "wavy")
+    setAvatarHairColor(localStorage.getItem("cat_avatar_hair_color") || "black")
+    setAvatarShirt(localStorage.getItem("cat_avatar_shirt") || "blue")
+    setAvatarGlasses(localStorage.getItem("cat_avatar_glasses") === "true")
+    setAvatarBeard(localStorage.getItem("cat_avatar_beard") === "true")
+    setAvatarMustache(localStorage.getItem("cat_avatar_mustache") === "true")
     try {
       const res = await fetch("/api/user/init", {
         method: "POST",
@@ -2742,10 +4302,25 @@ export default function App() {
           avatarHairColor: localStorage.getItem("cat_avatar_hair_color") || "black",
           avatarShirt: localStorage.getItem("cat_avatar_shirt") || "blue",
           avatarGlasses: localStorage.getItem("cat_avatar_glasses") === "true",
-          avatarBeard: localStorage.getItem("cat_avatar_beard") === "true"
+          avatarBeard: localStorage.getItem("cat_avatar_beard") === "true",
+          avatarMustache: localStorage.getItem("cat_avatar_mustache") === "true"
         })
       })
-      if (res.ok) setUserInitialized(true)
+      if (res.ok) {
+        if (onboardingProfile.category || onboardingProfile.primaryDegree) {
+          fetch("/api/user/update", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+              userId,
+              category: onboardingProfile.category || "General",
+              primary_degree: onboardingProfile.primaryDegree || {}
+            })
+          }).catch(err => console.error("Onboarding profile sync failed:", err))
+        }
+        profileLoadedRef.current = true
+        setUserInitialized(true)
+      }
     } catch (err) {
       console.error("User init failed:", err)
     }
@@ -2815,7 +4390,7 @@ export default function App() {
             ×
           </button>
         </div>
-        <nav className="s-nav mobile-drawer-nav">
+        <nav className="s-nav mobile-drawer-nav" style={{flex:1}}>
           {nav.map(n => (
             <button
               key={n.id}
@@ -2830,14 +4405,39 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <button
+          onClick={() => { setTab("profile"); setMobileMenuOpen(false); }}
+          style={{
+            display:"flex", alignItems:"center", gap:10,
+            padding:"12px 16px", background:"transparent",
+            border:"none", borderTop:"1px solid #1a1a1a",
+            cursor:"pointer", width:"100%", fontFamily:"inherit"
+          }}
+        >
+          <AvatarPreview size={32} gender={avatarGender}
+            skinTone={avatarSkin} hairStyle={avatarHair}
+            hairColor={avatarHairColor} shirtColor={avatarShirt}
+            hasGlasses={avatarGlasses} hasBeard={avatarBeard}
+            hasMustache={avatarMustache}
+          />
+          <div style={{flex:1,textAlign:"left"}}>
+            <div style={{fontSize:14,fontWeight:600,
+              color:"#f5f5f7"}}>{userName}</div>
+            <div style={{fontSize:11,color:"#6e6e73"}}>
+              Profile & IIM Calculator
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24"
+            fill="none" stroke="#6e6e73" strokeWidth="2"
+            strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
         <div className="days-pill">
           <div className="dp-num">{dl}</div>
           <div className="dp-lab">days to CAT</div>
         </div>
         <div className="mobile-started">
-          {userName && <div>{userName}</div>}
-          Started: {new Date(startDate+"T00:00:00")
-            .toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"})}
           <button
             onClick={() => {
               localStorage.removeItem("cat_start_date")
@@ -2855,6 +4455,31 @@ export default function App() {
           <div className="s-title">CONQUER CAT</div>
           <div className="s-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
         </div>
+        <button
+          onClick={() => setTab("profile")}
+          style={{
+            display:"flex", alignItems:"center", gap:8,
+            padding:"10px 14px", background:"transparent",
+            border:"none", cursor:"pointer", width:"100%",
+            fontFamily:"inherit",
+            borderBottom:"1px solid #1a1a1a",
+            marginBottom:8
+          }}
+        >
+          <AvatarPreview size={28}
+            gender={avatarGender} skinTone={avatarSkin}
+            hairStyle={avatarHair} hairColor={avatarHairColor}
+            shirtColor={avatarShirt} hasGlasses={avatarGlasses}
+            hasBeard={avatarBeard} hasMustache={avatarMustache}
+          />
+          <div style={{flex:1,textAlign:"left"}}>
+            <div style={{fontSize:12,fontWeight:600,
+              color:"#f5f5f7"}}>{userName}</div>
+            <div style={{fontSize:10,color:"#6e6e73"}}>
+              View profile →
+            </div>
+          </div>
+        </button>
         <nav className="s-nav">
           {nav.map(n => (
             <button key={n.id} className={`nav-item${tab===n.id?" active":""}`} onClick={() => setTab(n.id)}>
@@ -2867,16 +4492,6 @@ export default function App() {
           <div className="dp-num">{dl}</div>
           <div className="dp-lab">days to CAT</div>
         </div>
-        <div style={{
-          padding:"0 14px 8px",
-          fontSize:10,
-          color:"#444",
-          letterSpacing:"0.04em"
-        }}>
-          {userName && <div style={{color:"#555",marginBottom:2}}>{userName}</div>}
-          Started: {new Date(startDate+"T00:00:00")
-            .toLocaleDateString("en-IN", {day:"numeric",month:"short",year:"numeric"})}
-        </div>
         <button
           onClick={() => {
             localStorage.removeItem("cat_start_date")
@@ -2886,7 +4501,8 @@ export default function App() {
             background:"transparent", border:"none",
             color:"#333", fontSize:10, cursor:"pointer",
             padding:"8px 14px", fontFamily:"inherit",
-            textAlign:"left", width:"100%"
+            textAlign:"left", width:"100%",
+            marginTop:"auto"
           }}
         >
           reset start date
@@ -2894,7 +4510,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} onSave={() => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -2912,10 +4528,73 @@ export default function App() {
         )}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
+        {tab==="profile" && (
+          <ProfilePage
+            userName={userName}
+            userId={userId}
+            startDate={startDate}
+            dayNumber={dn}
+            totalDays={totalDays}
+            setTab={setTab}
+            targetPercentile={targetPercentile}
+            setTargetPercentile={setTargetPercentile}
+            setSharedCalcResult={setCalcResult}
+            avatarGender={avatarGender}
+            avatarSkin={avatarSkin}
+            avatarHair={avatarHair}
+            avatarHairColor={avatarHairColor}
+            avatarShirt={avatarShirt}
+            avatarGlasses={avatarGlasses}
+            avatarBeard={avatarBeard}
+            avatarMustache={avatarMustache}
+            onAvatarChange={handleAvatarChange}
+            category={category}
+            setCategory={setCategory}
+            primaryDegree={primaryDegree}
+            setPrimaryDegree={setPrimaryDegree}
+            secondaryDegrees={secondaryDegrees}
+            setSecondaryDegrees={setSecondaryDegrees}
+            workExpYears={workExpYears}
+            setWorkExpYears={setWorkExpYears}
+            workExpMonths={workExpMonths}
+            setWorkExpMonths={setWorkExpMonths}
+            workCompany={workCompany}
+            setWorkCompany={setWorkCompany}
+            workRole={workRole}
+            setWorkRole={setWorkRole}
+          />
+        )}
+        {tab==="academic-profile" && (
+          <AcademicProfilePage
+            primaryDegree={primaryDegree}
+            setPrimaryDegree={setPrimaryDegree}
+            secondaryDegrees={secondaryDegrees}
+            setSecondaryDegrees={setSecondaryDegrees}
+            workExpYears={workExpYears}
+            setWorkExpYears={setWorkExpYears}
+            workExpMonths={workExpMonths}
+            setWorkExpMonths={setWorkExpMonths}
+            workCompany={workCompany}
+            setWorkCompany={setWorkCompany}
+            workRole={workRole}
+            setWorkRole={setWorkRole}
+            calcResult={calcResult}
+            onBack={() => setTab("profile")}
+            setTab={setTab}
+            userId={userId}
+          />
+        )}
+        {tab==="secondary-degrees" && (
+          <SecondaryDegreesPage
+            secondaryDegrees={secondaryDegrees}
+            setSecondaryDegrees={setSecondaryDegrees}
+            onBack={() => setTab("academic-profile")}
+          />
+        )}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} activeTab={tab === "chat" ? "mentor" : tab} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} />
 
     </div>
   );
