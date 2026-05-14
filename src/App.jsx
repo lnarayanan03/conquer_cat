@@ -4214,7 +4214,8 @@ export default function App() {
           work_experience_months: workExpMonths,
           work_company: workCompany,
           work_role: workRole,
-          min_percentile: minPercentile
+          min_percentile: minPercentile,
+          target_percentile: targetPercentile || 0,
         })
       }).catch(console.error);
     }, 2000);
@@ -4223,7 +4224,8 @@ export default function App() {
     avatarGender, avatarSkin, avatarHair, avatarHairColor,
     avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
     category, primaryDegree, secondaryDegrees,
-    workExpYears, workExpMonths, workCompany, workRole, userId
+    workExpYears, workExpMonths, workCompany, workRole, userId,
+    targetPercentile,
   ]);
   useEffect(() => {
     localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
@@ -4313,6 +4315,10 @@ export default function App() {
           if (checkData.user.work_experience_months != null) setWorkExpMonths(checkData.user.work_experience_months);
           if (checkData.user.work_company) setWorkCompany(checkData.user.work_company);
           if (checkData.user.work_role) setWorkRole(checkData.user.work_role);
+          if (checkData.user.target_percentile != null && checkData.user.target_percentile > 0) {
+            setTargetPercentile(checkData.user.target_percentile);
+            localStorage.setItem("cat_target_pct", String(checkData.user.target_percentile));
+          }
           profileLoadedRef.current = true;
         }
       } catch {}

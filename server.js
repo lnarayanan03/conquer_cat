@@ -1,3 +1,61 @@
+/*
+ * SUPABASE FIELD AUDIT — 2026-05-14
+ *
+ * users table fields saved via /api/user/init:
+ *   id, name, start_date,
+ *   avatar_gender, avatar_skin, avatar_hair, avatar_hair_color,
+ *   avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache
+ *
+ * users table fields saved via /api/user/update:
+ *   (pass-through — saves whatever App.jsx sends)
+ *   avatar_gender, avatar_skin, avatar_hair, avatar_hair_color,
+ *   avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache,
+ *   category, primary_degree, secondary_degrees,
+ *   work_experience_years, work_experience_months,
+ *   work_company, work_role, min_percentile,
+ *   target_percentile,          ← FIXED: was missing
+ *   backlog_videos, backlog_concepts (sent from separate useEffect)
+ *
+ * users table fields loaded via /api/user/check:
+ *   * (all columns) + explicit list for safety:
+ *   target_percentile,           ← FIXED: added to explicit list
+ *   backlog_videos, backlog_concepts,
+ *   avatar_gender, avatar_skin, avatar_hair, avatar_hair_color,
+ *   avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache,
+ *   category, primary_degree, secondary_degrees,
+ *   work_experience_years, work_experience_months,
+ *   work_company, work_role, min_percentile
+ *
+ * daily_logs fields saved via /api/log/save:
+ *   user_id, log_date,
+ *   quant, varc, lrdi, vp_count,
+ *   wake_time, sleep_time,
+ *   live_class, afternoon_session, application_class, varc_passage,
+ *   practice_hrs, practice_mins,
+ *   iq_notes, notes, backlog
+ *
+ * daily_logs fields loaded via /api/log/all:
+ *   quant→q, varc→v, lrdi→l, vp_count→vp_count,
+ *   wake_time→wt, sleep_time→st,
+ *   live_class→lc, afternoon_session→as, application_class→ap, varc_passage→vp,
+ *   practice_hrs→ph, practice_mins→pm,
+ *   iq_notes→iq, notes→n, backlog→backlog
+ *
+ * Fields fixed in this audit:
+ *   - target_percentile: was never saved to Supabase from App.jsx
+ *     (not in profile save useEffect body or dep array) — FIXED
+ *   - target_percentile: was never loaded from Supabase check response
+ *     into state (setTargetPercentile) — FIXED
+ *   - target_percentile: not in explicit SELECT column list — FIXED
+ *
+ * Required Supabase migration (run if column does not exist):
+ *   ALTER TABLE public.users
+ *     ADD COLUMN IF NOT EXISTS target_percentile numeric DEFAULT 0;
+ *
+ * All daily_logs fields (afternoon_session, application_class,
+ * practice_hrs, practice_mins) confirmed present — no gaps found.
+ */
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -479,7 +537,7 @@ app.post("/api/user/check", async (req, res) => {
   try {
     const { data: user } = await supabase
       .from("users")
-      .select("*, backlog_videos, backlog_concepts, avatar_gender, avatar_skin, avatar_hair, avatar_hair_color, avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache, category, primary_degree, secondary_degrees, work_experience_years, work_experience_months, work_company, work_role, min_percentile")
+      .select("*, target_percentile, backlog_videos, backlog_concepts, avatar_gender, avatar_skin, avatar_hair, avatar_hair_color, avatar_shirt, avatar_glasses, avatar_beard, avatar_mustache, category, primary_degree, secondary_degrees, work_experience_years, work_experience_months, work_company, work_role, min_percentile")
       .eq("id", userId)
       .single();
     return res.json({
