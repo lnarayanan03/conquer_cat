@@ -1,217 +1,129 @@
 # CONQUER CAT
 
-A personal CAT 2026 discipline tracker + AI mentor built for serious aspirants.
+A private CAT 2026 discipline tracker + AI mentor.
 
-CONQUER CAT is not just a to-do list. It is a daily accountability system for CAT prep. You log what you did, see whether you are actually moving, and talk to Vikram, a strict AI mentor who calls out your discipline with no sugarcoating.
+CONQUER CAT is a personal web app for serious CAT aspirants. It tracks daily discipline, stores progress, calculates IIM targets, and gives access to Vikram, a strict AI mentor built to challenge the student every day.
 
-## What Is This?
+This app uses:
 
-CONQUER CAT helps you track:
+- **Supabase** for users, daily logs, profile data, and cross-device sync
+- **Redis** for short-term mentor chat memory
+- **Qdrant** for long-term mentor memory
+- **Groq / Gemini / Anthropic** for AI replies
+- **Tavily** for web search
+- **Render** or similar Node hosting for deployment
 
-- Daily Quant, VARC, and LRDI work
-- Wake time and sleep discipline
-- iQuanta backlog videos and concepts
-- Progress calendar and consistency
-- Profile, category, education, work experience, and IIM targets
-- AI mentor Vikram
-- Weekly CAT-style assessment / quiz
-- Daily Instagram-style share card
+This is not a shared public SaaS app. Each student should run a private copy with their own keys and accounts.
 
-Think of it as your private CAT command center.
+Why?
 
-## Who Is This For?
-
-This is for:
-
-- CAT aspirants
-- iQuanta students
-- Students preparing seriously for IIMs
-- People who want strict daily accountability
-- People who want to track effort, not just feel motivated
-
-If you want a soft motivational app, this is not that.
-
-If you want a mirror that shows whether your day was IIM-level or not, this is for you.
-
-## Why There Is No One Common App For Everyone
-
-I cannot give one public app link to every student and let everyone use the same backend.
-
-Simple reason: this app uses paid or limited services.
-
-It uses:
-
-- AI model APIs
-- Database storage
-- Chat memory
-- Vector memory
-- Search tools
-- User sync
-
-If thousands of students use one shared app, it will hit:
-
-- LLM limits
-- Database limits
-- Storage limits
-- Cost issues
-- Privacy issues
-
-Your study data should also stay private.
-
-So the best way is:
-
-**Each student creates their own copy and runs it with their own accounts/API keys.**
+- AI APIs have rate limits and costs.
+- Databases and memory services have storage limits.
+- One shared app would hit limits quickly.
+- Your study data should stay private.
+- Your API keys should belong to you.
 
 Think of this like making your own private notebook, not writing in someone else's notebook.
 
-## Setup Words In Plain English
+---
 
-You will see a few technical words. Here is what they mean:
+## What The App Does
 
-- **GitHub**: the place where the app code lives.
-- **Repository**: the folder of code on GitHub.
-- **Clone / download**: taking a copy of the app to your laptop.
-- **npm install**: installing the parts the app needs to run.
-- **.env file**: a private file where your API keys are kept.
-- **API key**: a password that lets the app use services like AI, database, or search.
-- **Deploy**: putting the app online so you can open it from your phone.
+CONQUER CAT helps track:
 
-You do not need to become a software engineer. But you do need to follow the steps carefully.
+- Quant, VARC, and LRDI daily work
+- Wake time and sleep discipline
+- Live classes, sessions, and personal practice
+- iQuanta backlog videos and concepts
+- Calendar consistency
+- Profile, category, PG, work experience, and IIM targets
+- Mentor chat with Vikram
+- Weekly CAT-style assessment
+- Daily Instagram-style share card
 
-## Quick Start
+---
 
-Use this if you already know the basics of terminal commands.
+## Prerequisites
+
+Before setup, create or install these:
+
+- GitHub account
+- Git installed on your laptop
+- Node.js 20 or newer
+- npm, installed automatically with Node.js
+- Supabase account
+- Upstash Redis or Redis Cloud account
+- Qdrant Cloud account
+- Groq account
+- Gemini API key or Anthropic API key
+- Tavily account
+- Render account for deployment
+
+At least one working LLM provider is required. Groq is the easiest first choice. Gemini and Anthropic can be added as fallbacks.
+
+---
+
+## Project Path In This Repository
+
+In this workspace, the runnable app is inside:
+
+```text
+conquer_cat/cat-tracker
+```
+
+That folder contains the real app files:
+
+- `package.json`
+- `server.js`
+- `src/`
+- `public/`
+- `index.html`
+- `render.yaml`
+- `README.md`
+
+Run npm commands from `cat-tracker`, not from the parent folder.
+
+---
+
+## 1. Clone The Repository
+
+Open Terminal.
+
+Run:
 
 ```bash
 git clone https://github.com/lnarayanan03/conquer_cat.git
 cd conquer_cat
 cd cat-tracker
 npm install
-npm run dev
 ```
 
-Then open:
+If the repository is private:
+
+- The owner must add you as a collaborator, or
+- You must fork it to your own GitHub account with permission.
+
+After `npm install`, the app's required packages are installed.
+
+---
+
+## 2. Create The `.env` File
+
+Create a file named `.env` inside:
 
 ```text
-http://localhost:5173
+conquer_cat/cat-tracker
 ```
 
-The app code is inside the `cat-tracker` folder. That is why you enter `conquer_cat/cat-tracker` before running npm commands.
-
-## Step-By-Step Setup For Non-Tech Users
-
-### Step 1: Create Or Login To GitHub
-
-Go to:
-
-```text
-https://github.com
-```
-
-Create an account or login.
-
-### Step 2: Open The App Code
-
-Open this link:
-
-```text
-https://github.com/lnarayanan03/conquer_cat.git
-```
-
-This is where the CONQUER CAT code lives.
-
-### Step 3: Fork Or Clone The App
-
-You have two options:
-
-- **Fork**: make your own GitHub copy.
-- **Clone**: download the app to your laptop.
-
-For local setup, clone it:
+On macOS/Linux:
 
 ```bash
-git clone https://github.com/lnarayanan03/conquer_cat.git
+touch .env
 ```
 
-### Step 4: Install Node.js
+On Windows, create a new file named `.env` in the `cat-tracker` folder.
 
-Install Node.js 20 or newer:
-
-```text
-https://nodejs.org
-```
-
-After installing, open a terminal and check:
-
-```bash
-node -v
-npm -v
-```
-
-If both commands show version numbers, you are good.
-
-### Step 5: Open Terminal In The App Folder
-
-Go inside the cloned app:
-
-```bash
-cd conquer_cat
-cd cat-tracker
-```
-
-### Step 6: Install App Parts
-
-Run:
-
-```bash
-npm install
-```
-
-This may take a few minutes. Let it finish.
-
-### Step 7: Create The Private Key File
-
-Inside `conquer_cat/cat-tracker`, create a file named:
-
-```text
-.env
-```
-
-This file stores private keys. It should never be posted online.
-
-### Step 8: Add API Keys
-
-Paste your keys into `.env`.
-
-You can start with fewer keys, but full features need AI, Supabase, Redis, Qdrant, and Tavily.
-
-### Step 9: Start The App
-
-Run:
-
-```bash
-npm run dev
-```
-
-### Step 10: Open The Browser Link
-
-Open:
-
-```text
-http://localhost:5173
-```
-
-You should see CONQUER CAT.
-
-## Environment Variables
-
-Create `.env` inside:
-
-```text
-conquer_cat/cat-tracker/.env
-```
-
-Use this format. Do not paste real keys into GitHub.
+Paste this template:
 
 ```env
 GROQ_API_KEY=
@@ -219,22 +131,391 @@ GROQ_API_KEY_2=
 GROQ_API_KEY_3=
 
 GEMINI_API_KEY_1=
+GEMINI_API_KEY_2=
+GEMINI_API_KEY_3=
+GEMINI_API_KEY_4=
+GEMINI_API_KEY_5=
+GEMINI_API_KEY_6=
+GEMINI_API_KEY_7=
+GEMINI_API_KEY_8=
+
 ANTHROPIC_API_KEY=
 TAVILY_API_KEY=
-
-REDIS_URL=
-QDRANT_URL=
-QDRANT_API_KEY=
 
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 
-LANGCHAIN_TRACING_V2=
+REDIS_URL=
+
+QDRANT_URL=
+QDRANT_API_KEY=
+
+LANGCHAIN_TRACING_V2=false
 LANGCHAIN_API_KEY=
-LANGCHAIN_PROJECT=
+LANGCHAIN_PROJECT=conquer-cat
+
+PORT=3001
 ```
 
-Optional extra Gemini keys are also supported by the code:
+### What Each Variable Means
+
+| Variable | Required? | Where To Get It | Used For |
+|---|---:|---|---|
+| `GROQ_API_KEY` | Recommended | Groq Console | Fast mentor replies |
+| `GROQ_API_KEY_2` | Optional | Groq Console | Extra Groq fallback key |
+| `GROQ_API_KEY_3` | Optional | Groq Console | Extra Groq fallback key |
+| `GEMINI_API_KEY_1` | Optional but useful | Google AI Studio | Gemini fallback replies |
+| `GEMINI_API_KEY_2` to `GEMINI_API_KEY_8` | Optional | Google AI Studio | Extra Gemini fallback keys |
+| `ANTHROPIC_API_KEY` | Recommended | Anthropic Console | Claude fallback, greeting, share-card line |
+| `TAVILY_API_KEY` | Recommended | Tavily | Web search for CAT/IIM facts |
+| `SUPABASE_URL` | Required for sync | Supabase Project Settings | Database URL |
+| `SUPABASE_SERVICE_KEY` | Required for sync | Supabase Project Settings | Server-side database access |
+| `REDIS_URL` | Required for memory | Upstash / Redis Cloud | Same-day mentor chat memory |
+| `QDRANT_URL` | Required for memory | Qdrant Cloud | Long-term vector memory |
+| `QDRANT_API_KEY` | Usually required | Qdrant Cloud | Qdrant authentication |
+| `LANGCHAIN_TRACING_V2` | Optional | LangSmith | Debug LLM calls |
+| `LANGCHAIN_API_KEY` | Optional | LangSmith | Debug LLM calls |
+| `LANGCHAIN_PROJECT` | Optional | LangSmith | Trace project name |
+| `PORT` | Optional | Local/Render | Express server port |
+
+Safety rules:
+
+- Never commit `.env`.
+- Never paste API keys in GitHub.
+- Never send screenshots that show keys.
+- `SUPABASE_SERVICE_KEY` is sensitive. Keep it server-side only.
+
+---
+
+## 3. Supabase Setup
+
+Supabase stores:
+
+- User profile
+- Avatar settings
+- Category and IIM profile data
+- Daily logs
+- Backlog videos and concepts
+- Cross-device sync
+
+### Create A Supabase Project
+
+1. Go to `https://supabase.com`.
+2. Sign in or create an account.
+3. Click **New Project**.
+4. Choose your organization.
+5. Project name: `conquer-cat`.
+6. Set a strong database password.
+7. Choose a region close to you or close to your Render region.
+8. Click **Create new project**.
+9. Wait until the project is ready.
+
+### Get Supabase URL And Service Key
+
+1. Open your Supabase project.
+2. Click **Project Settings**.
+3. Click **API**.
+4. Copy **Project URL**.
+5. Paste it into `.env`:
+
+```env
+SUPABASE_URL=
+```
+
+6. Copy the **service_role** key.
+7. Paste it into `.env`:
+
+```env
+SUPABASE_SERVICE_KEY=
+```
+
+Important:
+
+- Use the `service_role` key only in the backend/server.
+- Do not expose it in frontend code.
+- Do not paste it into public GitHub files.
+
+### Create Supabase Tables
+
+The backend uses two Supabase tables:
+
+- `users`
+- `daily_logs`
+
+Copy this SQL exactly.
+
+```sql
+-- CONQUER CAT Supabase schema
+-- Run this in Supabase SQL Editor.
+
+create table if not exists public.users (
+  id uuid primary key,
+  name text,
+  start_date date,
+
+  avatar_gender text default 'male',
+  avatar_skin text default 'medium',
+  avatar_hair text default 'wavy',
+  avatar_hair_color text default 'black',
+  avatar_shirt text default 'blue',
+  avatar_glasses boolean default false,
+  avatar_beard boolean default false,
+  avatar_mustache boolean default false,
+
+  app_mode text default 'prep',
+  interview_date date,
+  cat_result text,
+  cat_percentile text,
+
+  backlog_videos jsonb default '[]'::jsonb,
+  backlog_concepts jsonb default '[]'::jsonb,
+
+  category text default 'General',
+  primary_degree jsonb default '{}'::jsonb,
+  secondary_degrees jsonb default '[]'::jsonb,
+  work_experience_years integer default 0,
+  work_experience_months integer default 0,
+  work_company text default '',
+  work_role text default '',
+
+  target_percentile numeric,
+  min_percentile jsonb,
+
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.daily_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.users(id) on delete cascade,
+  log_date date not null,
+
+  quant integer default 0,
+  varc integer default 0,
+  lrdi integer default 0,
+  vp_count integer default 0,
+
+  wake_time text default '',
+  sleep_time text default '',
+
+  live_class boolean default false,
+  afternoon_session boolean default false,
+  application_class boolean default false,
+  practice_hrs integer default 0,
+  practice_mins integer default 0,
+  varc_passage boolean default false,
+
+  iq_notes text default '',
+  notes text default '',
+  backlog jsonb default '[]'::jsonb,
+
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+
+  unique(user_id, log_date)
+);
+
+create index if not exists daily_logs_user_id_idx
+  on public.daily_logs(user_id);
+
+create index if not exists daily_logs_user_date_idx
+  on public.daily_logs(user_id, log_date);
+
+create index if not exists users_category_idx
+  on public.users(category);
+```
+
+### How To Run SQL In Supabase
+
+1. Open your Supabase project.
+2. Click **SQL Editor**.
+3. Click **New Query**.
+4. Paste the SQL above.
+5. Click **Run**.
+6. Go to **Table Editor**.
+7. Confirm `users` and `daily_logs` exist.
+
+### RLS Note
+
+Supabase has Row Level Security, also called RLS.
+
+This app uses `SUPABASE_SERVICE_KEY` on the Express backend. The service role key bypasses RLS server-side.
+
+Do not use the service role key in frontend code.
+
+### Supabase Verification
+
+After setup:
+
+1. Start the app.
+2. Complete onboarding.
+3. Save one day.
+4. Refresh the page.
+5. Check that the data is still there.
+6. Open Supabase **Table Editor**.
+7. Check that a row exists in `users`.
+8. Check that a row exists in `daily_logs` after saving a day.
+
+---
+
+## 4. Redis Setup
+
+Redis stores short-term mentor chat memory for the current day.
+
+Recommended simple option: **Upstash Redis**.
+
+### Create Upstash Redis
+
+1. Go to `https://upstash.com`.
+2. Create an account or sign in.
+3. Click **Create Database**.
+4. Name it `conquer-cat`.
+5. Choose a region close to you or close to Render.
+6. Choose the free tier if available.
+7. Click **Create**.
+
+### Get `REDIS_URL`
+
+1. Open the Upstash database.
+2. Find **Connect** or **Connection String**.
+3. Copy the Redis URL.
+4. It usually starts with:
+
+```text
+rediss://
+```
+
+5. Paste it into `.env`:
+
+```env
+REDIS_URL=
+```
+
+Use the TLS URL if Upstash gives one. That usually means `rediss://`.
+
+### Redis Troubleshooting
+
+If Redis is missing or wrong:
+
+- Mentor history may fail.
+- Daily memory pipeline may fail.
+- Server logs may mention `REDIS_URL`.
+
+Check:
+
+- The URL is copied fully.
+- The URL starts with `rediss://` for Upstash.
+- The same value is added to Render environment variables later.
+
+---
+
+## 5. Qdrant Setup
+
+Qdrant stores long-term mentor memory as vectors.
+
+In simple words: it helps Vikram remember important patterns from your past preparation.
+
+### Create Qdrant Cloud Cluster
+
+1. Go to `https://cloud.qdrant.io`.
+2. Create an account or sign in.
+3. Click **Create Cluster**.
+4. Choose the free tier if available.
+5. Select a region close to your app server.
+6. Wait for the cluster to start.
+
+### Get `QDRANT_URL` And `QDRANT_API_KEY`
+
+1. Open the Qdrant cluster dashboard.
+2. Copy the cluster URL.
+3. Paste it into `.env`:
+
+```env
+QDRANT_URL=
+```
+
+4. Open **API Keys**.
+5. Create or copy an API key.
+6. Paste it into `.env`:
+
+```env
+QDRANT_API_KEY=
+```
+
+### Do You Need To Create A Collection Manually?
+
+Usually, no.
+
+The app auto-creates this collection on server startup:
+
+```text
+conquer_mentor_memory
+```
+
+This is done by `src/mentor/memory.js`.
+
+### Qdrant Verification
+
+1. Start the server.
+2. Open Qdrant dashboard.
+3. Check collections.
+4. After the app runs, `conquer_mentor_memory` should appear.
+
+If it does not:
+
+- Check `QDRANT_URL`.
+- Check `QDRANT_API_KEY`.
+- Check server logs.
+
+---
+
+## 6. AI Provider Keys
+
+The mentor needs an AI model to reply.
+
+The app supports multiple providers:
+
+- Groq
+- Gemini
+- Anthropic
+
+You do not need every key on day one. But more keys improve reliability.
+
+### Groq
+
+Groq is fast and a good first choice.
+
+1. Go to `https://console.groq.com`.
+2. Sign in.
+3. Open **API Keys**.
+4. Click **Create API Key**.
+5. Copy the key.
+6. Paste it into:
+
+```env
+GROQ_API_KEY=
+```
+
+Optional extra keys:
+
+```env
+GROQ_API_KEY_2=
+GROQ_API_KEY_3=
+```
+
+### Gemini
+
+1. Go to `https://aistudio.google.com/app/apikey`.
+2. Sign in with Google.
+3. Click **Create API Key**.
+4. Copy the key.
+5. Paste it into:
+
+```env
+GEMINI_API_KEY_1=
+```
+
+Optional extra keys:
 
 ```env
 GEMINI_API_KEY_2=
@@ -246,328 +527,108 @@ GEMINI_API_KEY_7=
 GEMINI_API_KEY_8=
 ```
 
-Safety rules:
+### Anthropic
 
-- Never share your `.env` file.
-- Never post API keys on GitHub.
-- Never send API keys in screenshots.
-- Treat `SUPABASE_SERVICE_KEY` like a password.
+Anthropic is used as a fallback and for some direct mentor calls.
 
-What the keys do:
+1. Go to `https://console.anthropic.com`.
+2. Sign in.
+3. Open **API Keys**.
+4. Create a key.
+5. Paste it into:
 
-- **Groq / Gemini / Anthropic**: AI mentor replies.
-- **Tavily**: web search for real CAT/IIM facts.
-- **Redis**: short-term chat memory.
-- **Qdrant**: long-term mentor memory.
-- **Supabase**: user data, daily logs, backlog, and cross-device sync.
-- **LangSmith / LangChain tracing**: optional debugging for advanced users.
+```env
+ANTHROPIC_API_KEY=
+```
 
-## How To Use The App
+Some Anthropic accounts require billing credits before the key works.
 
-### Today
+---
 
-Use this every day.
+## 7. Tavily Search Setup
 
-Log:
+Tavily lets Vikram search for real-world CAT/IIM information.
 
-- Wake time
-- Sleep time
-- Live class
-- Afternoon session
-- Application class
-- VARC passage
-- Personal practice time
-- Quant, VARC, LRDI counts
-- Notes
+1. Go to `https://tavily.com`.
+2. Create an account.
+3. Open the API key section.
+4. Create or copy your key.
+5. Paste it into:
 
-Then tap **Save Day**.
+```env
+TAVILY_API_KEY=
+```
 
-### Progress
+If Tavily is missing, mentor search tools will fail when Vikram needs current or real-world information.
 
-See overall growth:
+---
 
-- Total problems solved
-- Days left
-- Progress against targets
-- Backlog status
-- Journey trend
+## 8. LangSmith / LangChain Tracing Optional
 
-### Calendar
+This is optional.
 
-Check consistency.
+Use it only if you want to debug LLM calls.
 
-Every day becomes a cell. Missed days are visible. There is nowhere to hide.
+1. Go to `https://smith.langchain.com`.
+2. Create an account.
+3. Create an API key.
+4. Set:
 
-### Mentor
+```env
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=conquer-cat
+```
 
-Talk to Vikram, the strict AI mentor.
+If you do not use it:
 
-Ask him:
+```env
+LANGCHAIN_TRACING_V2=false
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=conquer-cat
+```
 
-- What went wrong today?
-- Am I on track?
-- Test me.
-- Assess my profile.
-- Start mock PI.
-- Give me a WAT topic.
+---
 
-### Profile
+## 9. Run Locally
 
-Add:
-
-- Category
-- Target percentile
-- Education
-- PG / Masters
-- Work experience
-- Company and role
-
-This helps Vikram and the IIM target calculator understand your real profile.
-
-### Backlog
-
-Track:
-
-- iQuanta backlog videos
-- Concepts you still need to revise
-
-Backlog is separate from daily logs, so it stays with you across days.
-
-### Share Card
-
-Create a daily Instagram-style card showing:
-
-- Day number
-- Date
-- Quant / VARC / LRDI work
-- Study sessions
-- Days left
-- Vikram one-liner
-- iQuanta branding
-
-Use it if public accountability helps you.
-
-## Use CONQUER CAT Like A Mobile App
-
-CONQUER CAT is a web app, but you can add it to your phone home screen and use it like an app.
-
-The app manifest name is **CONQUER — CAT 2026**, with short name **CONQUER**.
-
-### On iPhone / iOS
-
-Use Safari for best home screen installation.
-
-1. Open your app link in Safari.
-2. Tap the Share button.
-3. Scroll and tap **Add to Home Screen**.
-4. Tap **Add**.
-5. Open CONQUER CAT from your home screen like an app.
-
-### On Android
-
-Use Chrome.
-
-1. Open your app link in Chrome.
-2. Tap the three-dot menu.
-3. Tap **Add to Home screen** or **Install app**.
-4. Tap **Add** or **Install**.
-5. Open it from your home screen.
-
-The app works best when used daily from the home screen.
-
-## Daily Usage Routine
-
-### Morning
-
-- Open the app.
-- Set wake time.
-- Check day count.
-- See what kind of day you need.
-
-### During The Day
-
-- Log live class or sessions.
-- Add personal practice time.
-- Update backlog as you finish videos or concepts.
-
-### Night
-
-- Enter Quant / VARC / LRDI count.
-- Add notes.
-- Save Day.
-- Ask Vikram for a reality check.
-- Share the card if you want accountability.
-
-## Mentor: Vikram Anand
-
-Vikram is not a soft motivation bot.
-
-He is strict.
-
-He checks:
-
-- Your discipline
-- Your daily effort
-- Your education profile
-- Your category and target
-- Your work experience
-- Your consistency
-- Your weekly quiz performance
-
-He is designed to push you, not comfort you.
-
-## Calibre System
-
-Your education creates your starting calibre.
-
-Your daily work raises or lowers it.
-
-A strong PG or good college can help your profile, especially for interviews. But it does not replace execution.
-
-Simple truth:
-
-> Your profile opens the door. Your daily work decides whether you walk through it.
-
-Vikram uses calibre to judge whether you are rising, stable, or falling.
-
-## Weekly Assessment
-
-Vikram can test you weekly with CAT-level questions.
-
-The assessment can include:
-
-- Quant
-- VARC
-- LRDI
-
-Questions are checked for quality before being used. Your performance helps Vikram judge whether your calibre is rising, stable, or falling.
-
-Ask:
+Make sure you are inside:
 
 ```text
-Test me this week.
+conquer_cat/cat-tracker
 ```
 
-## Instagram / Share Card
-
-The share card lets you export your daily progress.
-
-It can show:
-
-- Day number
-- Date
-- Quant / VARC / LRDI count
-- Study time
-- Sessions completed
-- Days left
-- Vikram one-liner
-- iQuanta brand mark
-
-Use it as a scoreboard, not decoration.
-
-## Troubleshooting For Non-Tech Users
-
-### `npm install` fails
-
-Try:
-
-- Check Node.js version with `node -v`.
-- Use Node.js 20 or newer.
-- Run `npm install` again.
-- Make sure you are inside `conquer_cat/cat-tracker`.
-
-### App does not start
-
-Check:
-
-- You created `.env`.
-- You are in the `cat-tracker` folder.
-- You ran `npm install`.
-- You ran `npm run dev`.
-
-### Mentor does not reply
-
-Check:
-
-- API keys are added.
-- Internet is working.
-- LLM quota is not exhausted.
-- Groq / Gemini / Anthropic keys are valid.
-
-### Search does not work
-
-Check:
-
-- `TAVILY_API_KEY` is set.
-
-### Data is not saving across devices
-
-Check:
-
-- `SUPABASE_URL` is set.
-- `SUPABASE_SERVICE_KEY` is set.
-- Supabase tables exist.
-
-### Memory does not work
-
-Check:
-
-- `REDIS_URL` is set.
-- `QDRANT_URL` is set.
-- `QDRANT_API_KEY` is set if your Qdrant cluster requires it.
-
-### Mobile home screen option does not show
-
-Try:
-
-- Safari on iPhone.
-- Chrome on Android.
-- Open the deployed app link, not `localhost`.
-
-## Developer Notes
-
-This section is for people who want to modify or deploy the app.
-
-### Tech Stack
-
-- React 19
-- Vite 8
-- Express 5
-- Supabase
-- Redis via `ioredis`
-- Qdrant
-- LangChain
-- Groq
-- Gemini
-- Anthropic
-- Tavily
-- html2canvas for share cards
-
-### Real Scripts
-
-These are the actual scripts in `cat-tracker/package.json`:
-
-| Command | Meaning |
-|---|---|
-| `npm run dev` | Runs frontend and backend together |
-| `npm run dev:client` | Runs only Vite frontend |
-| `npm run dev:server` | Runs only Express backend |
-| `npm run build` | Builds frontend into `dist/` |
-| `npm start` | Starts Express server |
-
-### Local Development
+Run:
 
 ```bash
-cd conquer_cat
-cd cat-tracker
-npm install
 npm run dev
 ```
+
+This starts:
+
+- Vite frontend
+- Express backend
 
 Open:
 
 ```text
 http://localhost:5173
+```
+
+### Run Frontend And Backend Separately
+
+These scripts exist in `package.json`.
+
+Terminal 1:
+
+```bash
+npm run dev:server
+```
+
+Terminal 2:
+
+```bash
+npm run dev:client
 ```
 
 ### Build
@@ -576,7 +637,15 @@ http://localhost:5173
 npm run build
 ```
 
-### Start Built App
+### Start Production Server Locally
+
+First build:
+
+```bash
+npm run build
+```
+
+Then start:
 
 ```bash
 npm start
@@ -588,54 +657,497 @@ Open:
 http://localhost:3001
 ```
 
+---
+
+## 10. Deploy On Render
+
+Render can host this app as a Node web service.
+
+### Before Deploying
+
+Make sure:
+
+- Code is pushed to GitHub.
+- `.env` is not pushed.
+- Supabase is ready.
+- Redis is ready.
+- Qdrant is ready.
+- AI keys are ready.
+
+### Create Render Web Service
+
+1. Go to `https://render.com`.
+2. Sign in.
+3. Click **New +**.
+4. Click **Web Service**.
+5. Connect GitHub.
+6. Select `lnarayanan03/conquer_cat` or your fork.
+7. Configure the service.
+
+Use:
+
+```text
+Name: conquer-cat
+Runtime: Node
+Branch: main
+Root Directory: cat-tracker
+Build Command: npm install && npm run build
+Start Command: npm start
+```
+
+Why root directory is `cat-tracker`:
+
+In this repository, the actual app package is inside the `cat-tracker` folder.
+
+### About `render.yaml`
+
+This project includes `cat-tracker/render.yaml`.
+
+Render may auto-detect it if the service is configured from the correct folder. Still verify:
+
+- Build command is `npm install && npm run build`
+- Start command is `npm start`
+- Node version is 20
+
+### Add Environment Variables In Render
+
+Go to:
+
+```text
+Render Dashboard → Your Service → Environment
+```
+
+Add these values one by one:
+
+```text
+GROQ_API_KEY
+GROQ_API_KEY_2
+GROQ_API_KEY_3
+GEMINI_API_KEY_1
+GEMINI_API_KEY_2
+GEMINI_API_KEY_3
+GEMINI_API_KEY_4
+GEMINI_API_KEY_5
+GEMINI_API_KEY_6
+GEMINI_API_KEY_7
+GEMINI_API_KEY_8
+ANTHROPIC_API_KEY
+TAVILY_API_KEY
+SUPABASE_URL
+SUPABASE_SERVICE_KEY
+REDIS_URL
+QDRANT_URL
+QDRANT_API_KEY
+LANGCHAIN_TRACING_V2
+LANGCHAIN_API_KEY
+LANGCHAIN_PROJECT
+```
+
+Also add:
+
+```text
+NODE_VERSION=20
+```
+
+Render environment variables replace your local `.env` in production.
+
+Do not upload `.env` to GitHub.
+
+### Deploy
+
+1. Click **Create Web Service**.
+2. Wait for Render to install, build, and start.
+3. Open the generated Render URL.
+4. Complete onboarding.
+5. Save one day.
+6. Check Supabase to confirm rows are inserted.
+
+---
+
+## 11. Save Changes To GitHub
+
+Use this when you edit README, code, or settings and want to upload changes.
+
+Check changed files:
+
+```bash
+git status
+```
+
+Stage files:
+
+```bash
+git add .
+```
+
+Commit:
+
+```bash
+git commit -m "Update setup documentation"
+```
+
+Push to GitHub:
+
+```bash
+git push origin main
+```
+
+What these mean:
+
+- `git status` shows changed files.
+- `git add .` prepares changes.
+- `git commit` saves a snapshot.
+- `git push` uploads to GitHub.
+
+If push fails because GitHub has newer changes:
+
+```bash
+git pull origin main --rebase
+git push origin main
+```
+
+If Render is connected to GitHub, pushing to `main` usually triggers a new deploy.
+
+---
+
+## 12. Daily Usage
+
+### Today
+
+Log:
+
+- Wake time
+- Sleep time
+- Live class
+- Afternoon session
+- Application class
+- VARC passage
+- Personal practice
+- Quant count
+- VARC count
+- LRDI count
+- Notes
+
+Then tap **Save Day**.
+
+### Progress
+
+Use this to see:
+
+- Overall growth
+- Days left
+- Total sets solved
+- Backlog summary
+- Journey trend
+
+### Calendar
+
+Use this to check consistency across days.
+
+Missed days are visible. That is the point.
+
+### Mentor
+
+Talk to Vikram.
+
+Ask:
+
+```text
+Am I on track?
+Test me this week.
+Assess my profile.
+Start mock PI.
+Give me a WAT topic.
+```
+
+### Profile
+
+Add:
+
+- Category
+- Target percentile
+- UG degree
+- PG / Masters
+- Work experience
+- Company and role
+
+This helps the IIM calculator and Vikram's calibre assessment.
+
+### Backlog
+
+Track:
+
+- iQuanta backlog videos
+- Concepts you need to revise
+
+### Share Card
+
+Use the daily card to export your progress.
+
+It can show:
+
+- Day number
+- Date
+- Quant / VARC / LRDI work
+- Sessions
+- Days left
+- Vikram one-liner
+- iQuanta mark
+
+---
+
+## 13. Use It Like A Mobile App
+
+CONQUER CAT is a web app, but you can add it to your phone home screen.
+
+### iPhone / iOS
+
+Use Safari.
+
+1. Open the deployed app link in Safari.
+2. Tap the Share button.
+3. Scroll and tap **Add to Home Screen**.
+4. Tap **Add**.
+5. Open CONQUER CAT from your home screen.
+
+### Android
+
+Use Chrome.
+
+1. Open the deployed app link in Chrome.
+2. Tap the three-dot menu.
+3. Tap **Add to Home screen** or **Install app**.
+4. Tap **Add** or **Install**.
+5. Open it from your home screen.
+
+Use it daily from the home screen. Discipline improves when the tracker is one tap away.
+
+---
+
+## Mentor Calibre System
+
+Vikram does not judge only today's mood.
+
+He uses your profile and performance.
+
+Baseline calibre can consider:
+
+- UG degree
+- UG score/GPA
+- PG or Masters degree
+- College signal, such as TISS, IIT, NIT, IIM, and similar strong institutions
+- Work experience
+- Field and career story
+
+Live calibre can move based on:
+
+- Daily effort
+- Consistency
+- Backlog coverage
+- Weekly quiz performance
+- Whether practice is rising or falling
+
+A strong PG helps. A strong college helps. Work experience helps.
+
+But none of them replace execution.
+
+> Your profile opens the door. Your daily work decides whether you walk through it.
+
+---
+
+## Weekly CAT Assessment
+
+Vikram can test you with CAT-level questions.
+
+Sections:
+
+- Quant
+- VARC
+- LRDI
+
+The tool checks that:
+
+- Question is not garbage
+- Options are valid
+- Correct answer exists
+- Explanation exists
+
+Ask:
+
+```text
+Test me this week.
+```
+
+After the test, Vikram can tell whether your calibre is rising, stable, or falling.
+
+---
+
+## Troubleshooting
+
+### `npm install` Fails
+
+Try:
+
+```bash
+node -v
+npm -v
+```
+
+Use Node.js 20 or newer.
+
+Make sure you are inside:
+
+```text
+conquer_cat/cat-tracker
+```
+
+Then run again:
+
+```bash
+npm install
+```
+
+If it still fails, delete `node_modules` and reinstall. Delete `package-lock.json` only if you know why you are doing it.
+
+### App Is Blank
+
+Check:
+
+- Terminal errors
+- Browser console errors
+- `.env` exists
+- `npm run build` works
+
+Run:
+
+```bash
+npm run build
+```
+
+### App Does Not Start
+
+Check:
+
+- You are in `cat-tracker`
+- You ran `npm install`
+- Port `5173` or `3001` is not already occupied
+- `.env` exists
+
+### Mentor Does Not Reply
+
+Check:
+
+- `GROQ_API_KEY`
+- `GEMINI_API_KEY_1`
+- `ANTHROPIC_API_KEY`
+- Provider quotas
+- Internet connection
+- Render logs if deployed
+
+### Data Is Not Saving
+
+Check:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_KEY`
+- SQL tables exist
+- `users` table has a row
+- `daily_logs` table gets a row after Save Day
+- Browser Network tab for failed `/api/log/save`
+
+### Redis Memory Not Working
+
+Check:
+
+- `REDIS_URL`
+- Upstash URL starts with `rediss://`
+- Render environment variable has the same value
+- Server logs for Redis errors
+
+### Qdrant Memory Not Working
+
+Check:
+
+- `QDRANT_URL`
+- `QDRANT_API_KEY`
+- Qdrant cluster is running
+- Collection `conquer_mentor_memory` appears after server start
+
+### Render Deploy Fails
+
+Check:
+
+- Root Directory is `cat-tracker`
+- Build Command is `npm install && npm run build`
+- Start Command is `npm start`
+- `NODE_VERSION=20` is set
+- Environment variables are added
+- Build logs show the exact error
+
+### Supabase RLS Issue
+
+This app uses the Supabase service role key on the backend.
+
+- Service role bypasses RLS server-side.
+- Do not expose service role key in frontend.
+- If you switch to anon keys, you must create RLS policies yourself.
+
+### Mobile Home Screen Does Not Show
+
+Use:
+
+- Safari on iPhone
+- Chrome on Android
+- The deployed Render URL, not `localhost`
+
+---
+
+## Developer Notes
+
+### Tech Stack
+
+- React
+- Vite
+- Express
+- Supabase
+- Redis
+- Qdrant
+- LangChain
+- Groq
+- Gemini
+- Anthropic
+- Tavily
+- html2canvas
+
+### Real Scripts
+
+These are the actual scripts in `cat-tracker/package.json`:
+
+| Command | Purpose |
+|---|---|
+| `npm run dev` | Run frontend and backend together |
+| `npm run dev:client` | Run Vite frontend only |
+| `npm run dev:server` | Run Express backend only |
+| `npm run build` | Build frontend into `dist/` |
+| `npm start` | Start Express server |
+
 ### Folder Structure
 
 ```text
 conquer_cat/
 └── cat-tracker/
-    ├── src/
-    │   ├── App.jsx
-    │   ├── App.css
-    │   ├── main.jsx
-    │   ├── index.css
-    │   ├── mentor/
-    │   │   ├── chain.js
-    │   │   ├── memory.js
-    │   │   ├── pipeline.js
-    │   │   ├── prompt.js
-    │   │   └── tools.js
-    │   └── pages/
-    │       ├── InstaCard.jsx
-    │       └── InstaCard.css
     ├── public/
-    │   └── manifest.json
+    ├── src/
+    │   ├── mentor/
+    │   └── pages/
     ├── server.js
     ├── package.json
-    ├── package-lock.json
+    ├── render.yaml
     ├── vite.config.js
-    ├── index.html
     └── README.md
 ```
 
-## Deployment Note
-
-Advanced users can deploy this to Render or similar Node hosting platforms.
-
-Basic Render idea:
-
-```text
-Build Command: npm install && npm run build
-Start Command: npm start
-```
-
-Important:
-
-- Add environment variables in the hosting dashboard.
-- Do not upload `.env`.
-- Make sure the service runs from the `cat-tracker` app folder.
-- One Express service can serve both frontend and backend after build.
-
-Vercel is possible for frontend-only apps, but this project has an Express backend, so Render-style Node hosting is simpler.
+---
 
 ## Final Note
 
