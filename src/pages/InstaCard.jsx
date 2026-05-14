@@ -459,7 +459,14 @@ export default function InstaCard({
           }}
           aria-label="Download card"
         >
-          {downloading ? "…" : "⬇"}
+          {downloading ? "…" : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v13"/>
+              <path d="M7 11l5 5 5-5"/>
+              <path d="M5 20h14"/>
+            </svg>
+          )}
         </button>
       </div>
     </div>

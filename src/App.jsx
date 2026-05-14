@@ -1145,7 +1145,16 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
     });
   }, [data, dn, start, totalDays, backlogVideos, backlogConcepts]);
 
-  const totalH = Object.values(data).reduce((a,d) => a + (+d.ah||0) + (+d.eh||0), 0);
+  const totalH = Object.values(data).reduce((a, d) => {
+    const mins =
+      (d.lc ? 120 : 0) +
+      (d.as ? 40 : 0) +
+      (d.ap ? 120 : 0) +
+      (d.vp ? 20 : 0) +
+      ((+d.ph || 0) * 60) +
+      (+d.pm || 0);
+    return a + mins / 60;
+  }, 0);
 
   return (
     <div className="page">
