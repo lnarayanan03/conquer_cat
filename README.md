@@ -823,3 +823,129 @@ Make sure both servers are running (`npm run dev` starts both). If you only ran 
 **The mentor greeting fires twice**
 
 Clear the `mentor_greeted_today` key from localStorage (DevTools → Application → Local Storage).
+
+---
+
+## Mentor Calibre System
+
+Vikram's calibre system gives the student a quantitative read of their academic and performance profile — not as a prediction, but as a starting point that can rise or fall based on behaviour.
+
+### Baseline Calibre (from education and profile)
+
+Computed in `src/mentor/prompt.js` via `computeBaselineCalibre(profile)`.
+
+Starts at 45 and adjusts based on:
+- UG GPA/score: +10 (≥85%), +6 (≥75%), +3 (≥65%), −4 (<60%)
+- PG/Masters/professional qualification detected: +8
+- Strong institution detected (IIM, IIT, NIT, BITS, TISS, XLRI, FMS, DU, JNU, SRCC, LSR, etc.): +5
+- Field coherence for MBA/PI story (law, economics, finance, engineering, etc.): +4
+- Work experience: +10 (3+ yrs), +9 (2+), +6 (1+), +3 (6 mo+), 0 (fresher with risk noted)
+
+**Score → Band:**
+| Score | Band |
+|---|---|
+| 85–100 | Elite potential |
+| 70–84 | Strong |
+| 55–69 | Competitive |
+| 40–54 | Developing |
+| 0–39 | Raw |
+
+### UG and PG Extraction
+
+`formatDegree(degreeObj)` handles both legacy string and structured object formats for secondary degrees:
+
+```js
+// structured object example
+{
+  degree: "M.A.",
+  field: "Public Policy and Law",
+  college: "TISS",
+  gpa: "8.47",
+  gpaScale: "10",
+  year: "2027"
+}
+// → "M.A., Public Policy and Law, TISS, GPA: 8.47/10 CGPA, Year: 2027"
+```
+
+`isPostgraduateDegree()` detects: MBA, PGDM, M.Tech, M.E., MS, M.Sc, MA, M.A., M.Com, M.Phil, LLM, MCA, CA, CS, CFA.
+
+The system prompt always shows UG and PG sections separately. If PG is from a strong institution like TISS or IIT, Vikram references it naturally as a profile signal — not as flattery, but as evidence.
+
+### Dynamic Calibre (from live performance)
+
+Computed via `computeDynamicCalibre({ baselineCalibre, trackerData })`.
+
+Adjustments:
+- Consistency ≥0.8: +8 | ≥0.6: +4 | <0.35 after day 7: −8
+- Backlog coverage ≥70%: +4 | <30% with backlog >5: −4
+- Today's effort ≥80: +2 | <30: −2
+- Practice momentum on track vs target: +6 | significantly behind after day 14: −6
+
+Returns `{ score, band, trend: "rising"|"stable"|"falling", adjustment, reasons, warning }`.
+
+Vikram uses the live calibre score (not the baseline) when the student asks about their chances, profile strength, or whether they are improving.
+
+### Chat Entry Points Send Full Profile
+
+Both `ChatPage` and `FloatingMentor` send the complete profile object to `/api/chat`:
+
+```json
+{
+  "profile": {
+    "category": "General",
+    "gender": "male",
+    "primaryDegree": { "type": "B.Tech", "college": "NIT Trichy", "gpa": "8.5", "gpaScale": "10" },
+    "secondaryDegrees": [{ "degree": "M.A.", "field": "Public Policy and Law", "college": "TISS", "gpa": "8.47", "gpaScale": "10", "year": "2027" }],
+    "workExpYears": 2,
+    "workExpMonths": 6,
+    "workCompany": "Deloitte",
+    "workRole": "Analyst",
+    "profileScore": 72,
+    "hasMasters": true,
+    "adjustedCutoffs": { "ABC": 98.5, "KLIS": 96.0, "newIIM": 93.0 }
+  }
+}
+```
+
+### Weekly CAT Assessment Tool
+
+`catAssessmentTool` in `src/mentor/tools.js` supports three actions:
+
+| Action | Purpose |
+|---|---|
+| `generate_question` | Returns a question from the curated internal bank |
+| `validate_question` | Checks quality and structure of a question |
+| `check_answer` | Validates the question, then compares user answer to correct answer |
+
+**Question validation rules:**
+- Question text must be non-empty and contain no placeholder text ("undefined", "null", "lorem")
+- Must have exactly 4 options, all non-empty and unique
+- `correctAnswer` must exactly match one option
+- Explanation must be non-empty
+- Quant questions must contain numeric information
+- LRDI questions must contain a clear condition or data set
+
+**Assessment session flow (triggered by "test me", "assess me", "quiz me"):**
+1. Vikram generates 1 Quant + 1 VARC + 1 LRDI question using `catAssessmentTool`
+2. Presents one question at a time; waits for the student's answer
+3. Uses `check_answer` after each response
+4. After 3 answers, delivers calibre verdict:
+   - 3/3 correct → calibre rising
+   - 2/3 correct → calibre stable but not safe
+   - 1/3 correct → calibre falling
+   - 0/3 correct → serious gap
+
+### How to Test
+
+1. Add UG and PG degrees in the Academic & Work Profile tab.
+2. Open the Mentor tab and ask: `"Assess my calibre based on my education profile."`
+   - Vikram should mention UG and PG separately.
+   - Vikram should state a baseline calibre score and band.
+   - Vikram should say education is the starting point — performance changes the live estimate.
+3. Ask: `"Test me this week."`
+   - Vikram should ask 3 CAT-level questions (1 per section).
+   - Questions should have 4 valid, distinct options.
+   - Vikram should check each answer and explain the correct reasoning.
+   - After 3 answers, Vikram should give a calibre verdict.
+4. Confirm Vikram never ignores the PG degree when you ask about your academic profile.
+5. Confirm calibre trend changes after a few days of high vs low effort scores.

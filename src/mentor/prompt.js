@@ -1,3 +1,156 @@
+// ── Helper utilities ──────────────────────────────────────────────────────────
+
+function clean(value) {
+  return typeof value === "string" && value.trim() ? value.trim() : "";
+}
+
+function formatGpa(gpa, gpaScale) {
+  if (!gpa) return "";
+  if (gpaScale === "10") return `${gpa}/10 CGPA`;
+  if (gpaScale === "4") return `${gpa}/4 GPA`;
+  return `${gpa}%`;
+}
+
+function formatDegree(degreeObj) {
+  if (!degreeObj) return "";
+  if (typeof degreeObj === "string") return degreeObj.trim();
+
+  if (clean(degreeObj.text)) return clean(degreeObj.text);
+
+  const parts = [
+    clean(degreeObj.degree),
+    clean(degreeObj.field),
+    clean(degreeObj.college),
+  ].filter(Boolean);
+
+  const gpaStr = formatGpa(clean(degreeObj.gpa), clean(degreeObj.gpaScale));
+  if (gpaStr) parts.push(`GPA: ${gpaStr}`);
+  if (clean(degreeObj.year)) parts.push(`Year: ${clean(degreeObj.year)}`);
+
+  return parts.join(", ");
+}
+
+function isPostgraduateDegree(degreeObj) {
+  if (!degreeObj) return false;
+  const pgKeywords = ["MBA", "PGDM", "M.Tech", "M.E.", "MS", "M.Sc", "MA", "M.A.", "M.Com", "M.Phil", "LLM", "MCA", "CA", "CS", "CFA"];
+  const text = (typeof degreeObj === "string")
+    ? degreeObj
+    : `${degreeObj.degree || ""} ${degreeObj.text || ""}`;
+  return pgKeywords.some(kw => text.includes(kw));
+}
+
+function isStrongInstitution(text) {
+  if (!text) return false;
+  const keywords = ["IIM", "IIT", "NIT", "BITS", "TISS", "XLRI", "FMS", "DU", "JNU", "SRCC", "LSR", "XISS", "Christ", "Loyola", "SASTRA"];
+  const lower = text.toLowerCase();
+  return keywords.some(kw => lower.includes(kw.toLowerCase()));
+}
+
+// ── Baseline calibre (education + profile snapshot) ──────────────────────────
+
+export function computeBaselineCalibre(profile = {}) {
+  let score = 45;
+  const reasons = [];
+  const risks = [];
+
+  const pd = profile.primaryDegree || {};
+  const rawGpa = parseFloat(pd.gpa);
+  const gpaScale = clean(pd.gpaScale) || "percentage";
+
+  let gradPct = NaN;
+  if (!isNaN(rawGpa)) {
+    if (gpaScale === "10") gradPct = rawGpa * 10;
+    else if (gpaScale === "4") gradPct = (rawGpa / 4) * 100;
+    else gradPct = rawGpa;
+  }
+
+  if (!isNaN(gradPct)) {
+    if (gradPct >= 85) { score += 10; reasons.push("Strong UG academics (85%+)"); }
+    else if (gradPct >= 75) { score += 6; reasons.push("Above-average UG academics (75%+)"); }
+    else if (gradPct >= 65) { score += 3; reasons.push("Moderate UG academics (65%+)"); }
+    else if (gradPct < 60) { score -= 4; risks.push("Low UG GPA — may face academic scrutiny in PI"); }
+  } else {
+    risks.push("UG GPA not provided — academic baseline unknown");
+  }
+
+  const secondaryDegrees = Array.isArray(profile.secondaryDegrees) ? profile.secondaryDegrees : [];
+  const hasPG = secondaryDegrees.some(isPostgraduateDegree);
+  if (hasPG) { score += 8; reasons.push("Postgraduate/professional qualification detected"); }
+
+  const ugText = `${clean(pd.type)} ${clean(pd.college)} ${clean(pd.field)}`;
+  const pgTexts = secondaryDegrees.map(formatDegree).join(" ");
+  const allText = ugText + " " + pgTexts;
+  if (isStrongInstitution(allText)) { score += 5; reasons.push("Strong institution in academic background"); }
+
+  const coherentFields = ["law", "public policy", "commerce", "economics", "engineering", "management", "data", "finance", "business", "statistics", "accounting", "mathematics"];
+  const fieldText = (clean(pd.field) + " " + pgTexts).toLowerCase();
+  if (coherentFields.some(f => fieldText.includes(f))) { score += 4; reasons.push("Strong field coherence for MBA/PI story"); }
+
+  const totalMonths = ((+profile.workExpYears || 0) * 12) + (+profile.workExpMonths || 0);
+  if (totalMonths >= 36) { score += 10; reasons.push("Strong work experience (3+ years)"); }
+  else if (totalMonths >= 24) { score += 9; reasons.push("Good work experience (2+ years)"); }
+  else if (totalMonths >= 12) { score += 6; reasons.push("Work experience (1+ year)"); }
+  else if (totalMonths >= 6) { score += 3; reasons.push("Some work experience (6+ months)"); }
+  else { risks.push("Fresher — needs strong academic story and examples"); }
+
+  score = Math.max(0, Math.min(100, score));
+
+  const bands = [[85, "Elite potential"], [70, "Strong"], [55, "Competitive"], [40, "Developing"], [0, "Raw"]];
+  const band = bands.find(([min]) => score >= min)[1];
+
+  return { score, band, reasons, risks };
+}
+
+// ── Dynamic calibre (live performance adjustment) ─────────────────────────────
+
+export function computeDynamicCalibre({ baselineCalibre, trackerData = {} }) {
+  const dayNum = trackerData.dayNum || 1;
+  const daysLogged = trackerData.daysLogged || 0;
+  const consistencyScore = trackerData.consistencyScore ?? (daysLogged / Math.max(dayNum, 1));
+  const backlogCoverage = trackerData.backlogCoverage || 0;
+  const backlogTotal = trackerData.backlogTotal || 0;
+  const totals = trackerData.totals || {};
+  const todayData = trackerData.todayData || trackerData || {};
+
+  const todayScore = effortScore(todayData);
+
+  let adjustment = 0;
+  const reasons = [];
+  let warning = "";
+
+  if (consistencyScore >= 0.8) { adjustment += 8; reasons.push("High consistency — showing up daily"); }
+  else if (consistencyScore >= 0.6) { adjustment += 4; reasons.push("Good consistency — mostly on track"); }
+  else if (consistencyScore < 0.35 && dayNum > 7) { adjustment -= 8; reasons.push("Low consistency — missing too many days"); }
+
+  if (backlogCoverage >= 70) { adjustment += 4; reasons.push("Strong backlog coverage"); }
+  else if (backlogCoverage < 30 && backlogTotal > 5) { adjustment -= 4; warning = "Backlog is piling up faster than it is being cleared."; }
+
+  if (todayScore >= 80) { adjustment += 2; reasons.push("Strong effort today"); }
+  else if (todayScore < 30) { adjustment -= 2; }
+
+  const totalAttempted = (totals.quant || 0) + (totals.varc || 0) + (totals.lrdi || 0);
+  const totalTarget = 4000;
+  const expectedProgress = (dayNum / 200) * totalTarget;
+
+  if (dayNum > 0 && totalAttempted >= 0.20 * expectedProgress) {
+    adjustment += 6;
+    reasons.push("Practice momentum on track");
+  } else if (dayNum > 14 && totalAttempted <= 0.50 * expectedProgress) {
+    adjustment -= 6;
+    warning = warning || "Practice volume is significantly behind expected pace.";
+  }
+
+  const liveScore = Math.max(0, Math.min(100, baselineCalibre + adjustment));
+  const trend = adjustment > 3 ? "rising" : adjustment < -3 ? "falling" : "stable";
+
+  const bands = [[85, "Elite potential"], [70, "Strong"], [55, "Competitive"], [40, "Developing"], [0, "Raw"]];
+  const band = bands.find(([min]) => liveScore >= min)[1];
+
+  return { score: liveScore, band, trend, adjustment, reasons, warning };
+}
+
+// ── Effort score (local compute for dynamic calibre) ─────────────────────────
+
 function effortScore(todayData = {}) {
   const q = Math.min((+todayData.q || 0) / 10, 1) * 25;
   const v = Math.min((+todayData.v || 0) / 5, 1) * 15;
@@ -8,6 +161,8 @@ function effortScore(todayData = {}) {
   const passage = todayData.vp ? 5 : 0;
   return Math.round(q + v + l + vp + hrs + lc + passage);
 }
+
+// ── Main system prompt builder ────────────────────────────────────────────────
 
 export function buildSystemPrompt({ trackerData = {}, longTermMemories = [], daysLeft } = {}) {
   const totals = trackerData.totals || {};
@@ -31,35 +186,107 @@ export function buildSystemPrompt({ trackerData = {}, longTermMemories = [], day
     ? "\n\nWHAT YOU REMEMBER ABOUT THIS STUDENT (from past weeks):\n" +
       longTermMemories.map((memory, index) => `${index + 1}. ${memory}`).join("\n")
     : "";
-  const profileBlock = trackerData.profile ? `
+
+  // ── Profile block with calibre system ──────────────────────────────────────
+  let profileBlock = "";
+  if (trackerData.profile) {
+    const profile = trackerData.profile;
+    const pd = profile.primaryDegree || {};
+
+    const secondaryDegrees = Array.isArray(profile.secondaryDegrees) ? profile.secondaryDegrees : [];
+    const secondaryDegreeList = secondaryDegrees.map(formatDegree).filter(Boolean);
+    const hasPG = secondaryDegrees.some(isPostgraduateDegree);
+    const pgStrengthCount = secondaryDegreeList.filter(d => isStrongInstitution(d)).length;
+
+    const ugLine = (() => {
+      if (!clean(pd.type)) return "Not provided";
+      const parts = [clean(pd.type)];
+      if (clean(pd.field)) parts.push(clean(pd.field));
+      if (clean(pd.college)) parts.push(`from ${clean(pd.college)}`);
+      const gpaStr = formatGpa(clean(pd.gpa), clean(pd.gpaScale));
+      if (gpaStr) parts.push(`GPA: ${gpaStr}`);
+      if (clean(pd.year)) parts.push(`Year: ${clean(pd.year)}`);
+      return parts.join(", ");
+    })();
+
+    const pgLines = secondaryDegreeList.length > 0
+      ? secondaryDegreeList.map(d => `  - ${d}`).join("\n")
+      : "  - None provided";
+
+    const totalMonths = ((+profile.workExpYears || 0) * 12) + (+profile.workExpMonths || 0);
+
+    const baseline = computeBaselineCalibre(profile);
+    const dynamic = computeDynamicCalibre({ baselineCalibre: baseline.score, trackerData });
+
+    const baselineReasonsText = baseline.reasons.length > 0
+      ? baseline.reasons.map(r => `  - ${r}`).join("\n")
+      : "  - Insufficient data to assess";
+    const baselineRisksText = baseline.risks.length > 0
+      ? baseline.risks.map(r => `  - ${r}`).join("\n")
+      : "  - None identified";
+
+    const dynamicReasonsText = dynamic.reasons.length > 0
+      ? dynamic.reasons.map(r => `  - ${r}`).join("\n")
+      : "  - Insufficient data yet";
+
+    const pgSignalNote = hasPG
+      ? `- PG/Masters detected (${pgStrengthCount > 0 ? "from a strong institution" : "additional qualification"}). Factor this into calibre and PI story naturally.`
+      : "";
+
+    profileBlock = `
 
 STUDENT PROFILE — know this, reference naturally:
-Category: ${trackerData.profile.category || "General"}
-${trackerData.profile.primaryDegree?.type ?
-  `Primary degree: ${trackerData.profile.primaryDegree.type}
-  ${trackerData.profile.primaryDegree.field || ""}
-  from ${trackerData.profile.primaryDegree.college || ""}
-  GPA/Score: ${trackerData.profile.primaryDegree.gpa || "not provided"}
-  Year: ${trackerData.profile.primaryDegree.year || ""}` : ""}
-${trackerData.profile.secondaryDegrees?.length > 0 ?
-  `Additional degrees: ${trackerData.profile.secondaryDegrees.map(d => d.text).join(", ")}` : ""}
-${trackerData.profile.workExpYears > 0 ?
-  `Work experience: ${trackerData.profile.workExpYears} years
-  ${trackerData.profile.workExpMonths} months
-  at ${trackerData.profile.workCompany || "a company"}
-  as ${trackerData.profile.workRole || "professional"}` : "Fresher — no work experience"}
+Category: ${profile.category || "General"}
 
-Use this to personalise:
-- If from a tier-3 college: "I have seen students from bigger
-  colleges fail and students from your college crack IIM-A.
-  The degree doesn't walk into the interview. You do."
-- If low GPA: "Your GPA tells them one story. Your CAT score
-  will tell them a different one. Make it louder."
-- If work experience: "You have something freshers don't —
-  you know what the real world looks like. Use that in PI."
-- If OBC/SC/ST: still push for 99+ as target —
-  "The cutoff is your floor, not your ceiling."
-` : "";
+UNDERGRADUATE EDUCATION:
+- ${ugLine}
+
+POSTGRADUATE / ADDITIONAL EDUCATION:
+${pgLines}
+
+WORK EXPERIENCE:
+${totalMonths >= 6
+  ? `${profile.workExpYears || 0} years ${profile.workExpMonths || 0} months at ${clean(profile.workCompany) || "a company"} as ${clean(profile.workRole) || "professional"}`
+  : "Fresher — no work experience yet"}
+
+VIKRAM'S BASELINE CALIBRE READ:
+- Score: ${baseline.score}/100
+- Band: ${baseline.band}
+- Reasons:
+${baselineReasonsText}
+- Risks:
+${baselineRisksText}
+
+LIVE CALIBRE ESTIMATE (adjusted for performance):
+- Baseline: ${baseline.score}/100
+- Current: ${dynamic.score}/100
+- Trend: ${dynamic.trend}
+- Reasons:
+${dynamicReasonsText}
+${dynamic.warning ? `- Warning: ${dynamic.warning}` : ""}
+
+Instructions for Vikram on calibre:
+- This baseline is computed from education and work experience alone. It is not destiny.
+- Performance is what determines whether this calibre is being protected, wasted, or raised.
+- When the student asks "my calibre", "am I good enough", "profile strength", "IIM chances",
+  "am I improving" — use the live calibre estimate (${dynamic.score}/100, ${dynamic.band}, ${dynamic.trend}).
+- Education defines the starting point. Behaviour decides what happens next.
+- Be strict, not flattering. Say things like:
+  "Your education gives you a base. Your behaviour decides whether that base becomes IIM-level."
+${pgSignalNote ? `  ${pgSignalNote}` : ""}
+- If PG is from a strong institution (TISS, IIT, NIT, BITS, IIM, XLRI, JNU, DU), mention it
+  naturally as a profile strength when relevant — not as flattery, but as evidence.
+- If PG is ongoing, treat it as a signal of academic seriousness and domain maturity.
+- Always reference UG and PG separately when discussing the student's academic background.
+- Never say "your calibre is fixed." Always say performance can raise or lower the live estimate.
+
+Use this profile to personalise:
+- If from a tier-3 college: "I have seen students from bigger colleges fail and students from your college crack IIM-A. The degree doesn't walk into the interview. You do."
+- If low GPA: "Your GPA tells them one story. Your CAT score will tell them a different one. Make it louder."
+- If work experience: "You have something freshers don't — you know what the real world looks like. Use that in PI."
+- If OBC/SC/ST: still push for 99+ as target — "The cutoff is your floor, not your ceiling."
+`;
+  }
 
   const criticalFacts = `
 CRITICAL FACTS — never deviate from these:
@@ -399,7 +626,7 @@ If you don't use a tool, don't say you aren't using one.
 Just respond.
 
 Tool use instructions:
-- You have access to web search.
+- You have access to web search and a CAT assessment tool.
 - GREETING RULE: When this is the first message of the day, a greeting, or a check-in, do NOT use the search tool.
 - GREETING RULE: Do NOT say "let me find a story" or "I need to search for a real story."
 - GREETING RULE: Just greet the student directly, reference their data if available, and give one sharp directive for the day.
@@ -418,6 +645,29 @@ Tool use instructions:
 - If you search, search silently. Just deliver the information naturally as Vikram would.
 - Deliver findings as Vikram's own knowledge. Never say "I searched for this."
 - Use the time tool when the current IST date/time, time of day, days remaining, or weeks remaining matters.
+
+WEEKLY CALIBRE ASSESSMENT:
+You have access to catAssessmentTool. Use it when the student says:
+- "assess me", "test me", "quiz me", "weekly test", "check my level", "where do I stand",
+  "evaluate me", "how am I doing on concepts", or any request to be tested on actual problems.
+
+Assessment protocol:
+- Ask exactly 3 questions: 1 Quant, 1 VARC, 1 LRDI.
+- Week 1 only (dayNum 1-7): medium difficulty acceptable.
+- Week 2 onwards: CAT-level by default.
+- Generate each question using catAssessmentTool with action "generate_question".
+- After each answer from the student, use catAssessmentTool with action "check_answer".
+- Present one question at a time. Wait for the student's answer before asking the next.
+- After all 3 answers, give Vikram's calibre verdict:
+  - 3/3 correct: "Calibre rising. The work is showing. Now go harder."
+  - 2/3 correct: "Calibre stable. But stable is not IIM-A. Fix what you got wrong today."
+  - 1/3 correct: "Calibre falling. These are not hard questions. This gap will cost you. Fix it now."
+  - 0/3 correct: "Serious gaps. Not opinion. Fact. These fundamentals must be rebuilt before November. Start today."
+- Always tell the student exactly what concept to study to fix what they got wrong.
+- Never break the assessment midway unless the student explicitly says "stop".
+
+If catAssessmentTool returns a validation failure, quietly generate a different question.
+Do not tell the student the tool had a problem — just move on to a valid question.
 
 ${iimContext}
 

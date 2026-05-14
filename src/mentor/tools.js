@@ -202,4 +202,190 @@ export const mathCalculatorTool = tool(
   }
 );
 
-export const ALL_TOOLS = [searchTool, timeTool, iimPercentileTool, mathCalculatorTool];
+// ── CAT Assessment Tool ───────────────────────────────────────────────────────
+
+const CAT_QUESTION_BANK = {
+  quant: [
+    {
+      difficulty: "medium",
+      question: "A shopkeeper marks his goods 60% above cost price and allows a 25% discount on the marked price. What is his profit percentage?",
+      options: ["15%", "20%", "25%", "35%"],
+      correctAnswer: "20%",
+      explanation: "Let CP = 100. MP = 160. SP = 160 × 0.75 = 120. Profit = 20. Profit% = 20%.",
+    },
+    {
+      difficulty: "medium",
+      question: "The average of 5 consecutive odd numbers is 35. What is the largest of these numbers?",
+      options: ["37", "39", "41", "43"],
+      correctAnswer: "39",
+      explanation: "The middle (3rd) number equals the average = 35. The 5 numbers are 31, 33, 35, 37, 39. Largest = 39.",
+    },
+    {
+      difficulty: "cat_level",
+      question: "A boat travels 24 km upstream in 6 hours. The speed of the stream is one-third the speed of the boat in still water. How long does the boat take to travel 32 km downstream?",
+      options: ["2 hours", "3 hours", "4 hours", "5 hours"],
+      correctAnswer: "4 hours",
+      explanation: "Upstream speed = 24/6 = 4 km/h. Let boat speed = b, stream = b/3. Then b − b/3 = 2b/3 = 4, so b = 6 km/h and stream = 2 km/h. Downstream speed = 8 km/h. Time = 32/8 = 4 hours.",
+    },
+    {
+      difficulty: "cat_level",
+      question: "A alone can complete a work in 12 days and B alone in 18 days. They work together for 4 days, then A leaves. How many more days will B take to finish the remaining work?",
+      options: ["8 days", "9 days", "10 days", "12 days"],
+      correctAnswer: "8 days",
+      explanation: "Combined rate = 1/12 + 1/18 = 5/36 per day. Work in 4 days = 20/36 = 5/9. Remaining = 4/9. B completes it in (4/9) ÷ (1/18) = 8 days.",
+    },
+    {
+      difficulty: "hard",
+      question: "If 2^x = 3^y = 6^(−z), what is the value of 1/x + 1/y?",
+      options: ["−1/z", "1/z", "−z", "z"],
+      correctAnswer: "−1/z",
+      explanation: "Let k = 2^x = 3^y = 6^(−z). Then 2 = k^(1/x), 3 = k^(1/y), 6 = k^(−1/z). Since 6 = 2 × 3: k^(−1/z) = k^(1/x + 1/y). Therefore 1/x + 1/y = −1/z.",
+    },
+  ],
+  varc: [
+    {
+      difficulty: "medium",
+      question: "Choose the word that best fills the blank:\n\n\"The scientist's __________ approach to the experiment — meticulously documenting every variable and repeatedly testing each hypothesis — yielded results that were widely accepted by the research community.\"",
+      options: ["haphazard", "rigorous", "impulsive", "perfunctory"],
+      correctAnswer: "rigorous",
+      explanation: "The description 'meticulously documenting every variable and repeatedly testing' signals a careful, thorough approach. 'Rigorous' means extremely thorough and careful — the only option consistent with wide acceptance of results.",
+    },
+    {
+      difficulty: "cat_level",
+      question: "Read the argument and identify the logical flaw:\n\n\"A recent study found that people who drink coffee regularly live longer than non-coffee drinkers. Therefore, drinking coffee causes people to live longer.\"\n\nWhich of the following best describes the flaw?",
+      options: [
+        "It overgeneralises from a small sample to the entire population.",
+        "It confuses correlation with causation.",
+        "It ignores the role of genetics in determining lifespan.",
+        "It relies on anecdotal evidence rather than statistical data.",
+      ],
+      correctAnswer: "It confuses correlation with causation.",
+      explanation: "The argument jumps from a correlation (coffee drinkers live longer) to a causal claim (coffee causes longer life). Correlation does not imply causation — this is the classic logical fallacy the argument commits.",
+    },
+    {
+      difficulty: "cat_level",
+      question: "Read the following sentence and identify the grammatically correct version:\n\n\"Neither the manager nor the employees was present during the audit, which caused a significant delay.\"",
+      options: [
+        "Neither the manager nor the employees were present during the audit, which caused a significant delay.",
+        "Neither the manager nor the employees was present during the audit, which caused a significant delay.",
+        "Neither the manager nor the employees are present during the audit, which caused a significant delay.",
+        "Neither the manager nor the employees had been present during the audit, which caused a significant delay.",
+      ],
+      correctAnswer: "Neither the manager nor the employees were present during the audit, which caused a significant delay.",
+      explanation: "With 'neither...nor', the verb agrees with the subject closest to it. 'Employees' is plural, so the correct verb is 'were', not 'was'.",
+    },
+  ],
+  lrdi: [
+    {
+      difficulty: "medium",
+      question: "In a company, 60% of employees own a car, 50% own a bike, and 20% own both. What percentage of employees own neither a car nor a bike?",
+      options: ["5%", "10%", "15%", "20%"],
+      correctAnswer: "10%",
+      explanation: "Car only = 40%, bike only = 30%, both = 20%. Total with at least one = 90%. Neither = 100 − 90 = 10%.",
+    },
+    {
+      difficulty: "cat_level",
+      question: "Five boxes — P, Q, R, S, T — are arranged in a row. Q is immediately to the right of P. S is immediately to the left of T. R is at the left end and T is at the right end. Which box is in the middle (3rd position from the left)?",
+      options: ["P", "Q", "S", "Cannot be determined"],
+      correctAnswer: "Q",
+      explanation: "R=1, T=5. S is immediately left of T so S=4. Remaining positions 2 and 3 for P and Q. Q is immediately right of P, so P=2 and Q=3. Row: R, P, Q, S, T. Middle = Q.",
+    },
+    {
+      difficulty: "hard",
+      question: "Four friends A, B, C, D take a test. A scores more than B. C scores more than A. D scores less than B. Who scored the second highest?",
+      options: ["A", "B", "C", "D"],
+      correctAnswer: "A",
+      explanation: "Ranking from highest to lowest: C > A > B > D. Second highest is A.",
+    },
+  ],
+};
+
+function pickQuestion(section, difficulty) {
+  const bank = CAT_QUESTION_BANK[section] || [];
+  const filtered = difficulty ? bank.filter(q => q.difficulty === difficulty) : bank;
+  const pool = filtered.length > 0 ? filtered : bank;
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function validateQuestion(q) {
+  const issues = [];
+  if (!q || typeof q !== "object") return { valid: false, issues: ["No question object provided"], qualityScore: 0 };
+
+  if (!q.question || !q.question.trim()) issues.push("Question text is empty");
+  if (!["quant", "varc", "lrdi"].includes(q.section)) issues.push(`Invalid section: ${q.section}`);
+  if (!["easy", "medium", "cat_level", "hard"].includes(q.difficulty)) issues.push(`Invalid difficulty: ${q.difficulty}`);
+
+  if (q.options) {
+    if (!Array.isArray(q.options) || q.options.length !== 4) issues.push("Must have exactly 4 options");
+    else {
+      if (q.options.some(o => !o || !String(o).trim())) issues.push("All options must be non-empty");
+      const unique = new Set(q.options.map(o => String(o).trim().toLowerCase()));
+      if (unique.size !== q.options.length) issues.push("Options must be unique");
+      if (q.correctAnswer && !q.options.includes(q.correctAnswer)) issues.push("correctAnswer must match one of the options exactly");
+    }
+  }
+
+  if (!q.explanation || !q.explanation.trim()) issues.push("Explanation is missing");
+  if (!q.correctAnswer || !String(q.correctAnswer).trim()) issues.push("correctAnswer is missing");
+
+  const broken = ["undefined", "null", "lorem", "n/a", "test question"];
+  const qLower = (q.question || "").toLowerCase();
+  if (broken.some(b => qLower.includes(b))) issues.push("Question contains placeholder text");
+
+  if (q.section === "quant" && !/\d/.test(q.question)) issues.push("Quant question must contain numeric information");
+  if (q.section === "lrdi" && !/\d|table|set|if |when |who |how many|rank/i.test(q.question)) issues.push("LRDI question must contain a clear condition or data set");
+
+  const qualityScore = Math.max(0, 100 - issues.length * 20);
+  return { valid: issues.length === 0, issues, qualityScore };
+}
+
+export const catAssessmentTool = tool(
+  async ({ action, section, difficulty, question, options, correctAnswer, userAnswer, explanation }) => {
+    if (action === "generate_question") {
+      const sec = section || ["quant", "varc", "lrdi"][Math.floor(Math.random() * 3)];
+      const diff = difficulty || "cat_level";
+      const q = pickQuestion(sec, diff);
+      if (!q) return JSON.stringify({ error: `No question available for section=${sec} difficulty=${diff}` });
+      const withMeta = { section: sec, difficulty: diff, ...q };
+      const validation = validateQuestion(withMeta);
+      return JSON.stringify({ ...withMeta, validation });
+    }
+
+    if (action === "validate_question") {
+      const q = { section, difficulty, question, options, correctAnswer, explanation };
+      return JSON.stringify(validateQuestion(q));
+    }
+
+    if (action === "check_answer") {
+      const q = { section, difficulty, question, options, correctAnswer, explanation };
+      const validation = validateQuestion(q);
+      if (!validation.valid) {
+        return JSON.stringify({ validQuestion: false, issues: validation.issues, qualityScore: validation.qualityScore });
+      }
+      const isCorrect = String(userAnswer || "").trim() === String(correctAnswer || "").trim();
+      const feedback = isCorrect
+        ? "Correct. Understood the concept. Move to the next question."
+        : `Wrong. The correct answer is: ${correctAnswer}. ${explanation}`;
+      return JSON.stringify({ validQuestion: true, isCorrect, correctAnswer, explanation, feedback });
+    }
+
+    return JSON.stringify({ error: `Unknown action: ${action}` });
+  },
+  {
+    name: "catAssessmentTool",
+    description: "CAT-level assessment tool for weekly calibre checks. Use to generate CAT-style questions (quant/varc/lrdi), validate question quality, and check student answers. Generate exactly 3 questions per assessment session (1 per section). Use silently — do not mention the tool to the student.",
+    schema: z.object({
+      action: z.enum(["generate_question", "validate_question", "check_answer"]),
+      section: z.enum(["quant", "varc", "lrdi"]).optional().describe("CAT section for the question"),
+      difficulty: z.enum(["easy", "medium", "cat_level", "hard"]).optional().describe("Question difficulty"),
+      question: z.string().optional().describe("Question text (for validate/check)"),
+      options: z.array(z.string()).optional().describe("4 answer options (for validate/check)"),
+      correctAnswer: z.string().optional().describe("The correct answer string"),
+      userAnswer: z.string().optional().describe("Student's answer to check"),
+      explanation: z.string().optional().describe("Explanation of the correct answer"),
+    }),
+  }
+);
+
+export const ALL_TOOLS = [searchTool, timeTool, iimPercentileTool, mathCalculatorTool, catAssessmentTool];

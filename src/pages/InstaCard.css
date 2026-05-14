@@ -26,6 +26,22 @@
   flex-direction: column;
   box-sizing: border-box;
   overflow: hidden;
+  position: relative;
+}
+
+.ic-avatar-dp {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid #f97316;
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.18), 0 4px 16px rgba(249,115,22,0.32);
+  background: #0a0a14;
+  overflow: hidden;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 @keyframes pulse {

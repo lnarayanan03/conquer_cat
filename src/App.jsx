@@ -1234,7 +1234,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole }) {
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, calcResult }) {
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -1271,12 +1271,16 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             catResult: catResult || "", catPercentile: catPercentile || "",
             profile: {
               category,
+              gender: avatarGender,
               primaryDegree,
               secondaryDegrees,
               workExpYears,
               workExpMonths,
               workCompany,
-              workRole
+              workRole,
+              profileScore: calcResult?.profileScore,
+              hasMasters: calcResult?.hasMasters,
+              adjustedCutoffs: calcResult?.adjustedCutoffs,
             },
             messages: [...mentorMessages, {r:"user",t:q}]
               .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
@@ -1454,7 +1458,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, activeTab }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, activeTab, calcResult }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -1564,12 +1568,16 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
             catPercentile: catPercentile || "",
             profile: {
               category,
+              gender: avatarGender,
               primaryDegree,
               secondaryDegrees,
               workExpYears,
               workExpMonths,
               workCompany,
-              workRole
+              workRole,
+              profileScore: calcResult?.profileScore,
+              hasMasters: calcResult?.hasMasters,
+              adjustedCutoffs: calcResult?.adjustedCutoffs,
             }
           }),
           signal: controller.signal
@@ -4652,10 +4660,10 @@ export default function App() {
             onBack={() => setTab("academic-profile")}
           />
         )}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} />}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} calcResult={calcResult} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} calcResult={calcResult} />
 
     </div>
   );
