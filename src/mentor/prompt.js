@@ -215,6 +215,11 @@ export function buildSystemPrompt({ trackerData = {}, longTermMemories = [], day
 
     const totalMonths = ((+profile.workExpYears || 0) * 12) + (+profile.workExpMonths || 0);
 
+    const targetPct =
+      profile.targetPercentile ||
+      trackerData.targetPercentile ||
+      0;
+
     const baseline = computeBaselineCalibre(profile);
     const dynamic = computeDynamicCalibre({ baselineCalibre: baseline.score, trackerData });
 
@@ -285,6 +290,36 @@ Use this profile to personalise:
 - If low GPA: "Your GPA tells them one story. Your CAT score will tell them a different one. Make it louder."
 - If work experience: "You have something freshers don't — you know what the real world looks like. Use that in PI."
 - If OBC/SC/ST: still push for 99+ as target — "The cutoff is your floor, not your ceiling."
+
+STUDENT'S TARGET PERCENTILE: ${targetPct > 0 ? `${targetPct}%ile` : "Not set — student has not chosen a target yet."}
+${targetPct > 0 && profile.adjustedCutoffs ? `
+IIM CALL FEASIBILITY (based on student's target vs adjusted cutoffs):
+${(() => {
+  const cutoffs = profile.adjustedCutoffs;
+  const lines = [];
+  if (targetPct >= cutoffs.ABC)
+    lines.push(`- IIM A/B/C threshold ${cutoffs.ABC.toFixed(1)}%ile: TARGET MEETS IT. Competitive.`);
+  else
+    lines.push(`- IIM A/B/C needs ${cutoffs.ABC.toFixed(1)}%ile. Gap: ${(cutoffs.ABC - targetPct).toFixed(2)} percentile points short.`);
+  if (targetPct >= cutoffs.KLIS)
+    lines.push(`- IIM K/L/I/S threshold ${cutoffs.KLIS.toFixed(1)}%ile: TARGET MEETS IT. Competitive.`);
+  else
+    lines.push(`- IIM K/L/I/S needs ${cutoffs.KLIS.toFixed(1)}%ile. Gap: ${(cutoffs.KLIS - targetPct).toFixed(2)} percentile points short.`);
+  if (targetPct >= cutoffs.newIIM)
+    lines.push(`- New IIMs threshold ${cutoffs.newIIM.toFixed(1)}%ile: TARGET MEETS IT. Competitive.`);
+  else
+    lines.push(`- New IIMs need ${cutoffs.newIIM.toFixed(1)}%ile. Gap: ${(cutoffs.newIIM - targetPct).toFixed(2)} percentile points short.`);
+  return lines.join("\n");
+})()}` : ""}
+
+Vikram instructions on target percentile:
+${targetPct > 0 ? `- Student's target is ${targetPct}%ile. Know this number exactly. Use it naturally.
+- When student asks "will I make it", "what are my chances", "is my target realistic", "am I on track" — use this number immediately.
+- If target < required cutoff: be honest and direct. Name the exact gap. Do not soften it.
+- If target exactly equals a cutoff: "That is the minimum for a call, not the target. The real number is 1-2 percentile above that. Always."
+- If target exceeds required cutoff: acknowledge it is correct, then push execution. "The number is right. Now build it."
+- Reference it naturally in performance evaluations: "You are at Day ${dayNum} with ${totals?.lrdi || 0} LRDI. At this pace, ${targetPct}%ile is not a plan — it is a wish."` :
+`- Target percentile is not set. At the next natural moment in conversation, ask the student to set one. One ask, not repeated nagging. Say something like: "You are preparing without a number. That is a problem. What is your target percentile?"`}
 `;
   }
 

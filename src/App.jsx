@@ -4,6 +4,7 @@ import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
 
 function MentorAvatar({ size = 40 }) {
+  // Vikram Anand — middle-aged, distinguished: grey hair, wrinkles, slick glasses
   return (
     <div style={{
       width: size,
@@ -24,28 +25,70 @@ function MentorAvatar({ size = 40 }) {
         height="100%"
         viewBox="0 0 100 100"
         preserveAspectRatio="xMidYMid slice"
-        style={{display: "block", objectFit: "cover", objectPosition: "center", transform: "none"}}
+        style={{display: "block"}}
       >
         <circle cx="50" cy="50" r="50" fill="#000000"/>
+
+        {/* Shirt */}
         <path d="M20 100 Q20 80 50 78 Q80 80 80 100Z" fill="#f97316" opacity="0.8"/>
         <path d="M25 100 Q25 82 50 80 Q75 82 75 100Z" fill="#f97316" opacity="0.5"/>
+
+        {/* Neck + Face — warm medium skin */}
         <rect x="43" y="70" width="14" height="12" rx="4" fill="#c68642"/>
         <ellipse cx="50" cy="57" rx="20" ry="23" fill="#c68642"/>
-        <ellipse cx="50" cy="38" rx="21" ry="16" fill="#1a0a00"/>
-        <path d="M30 43 Q29 57 31 60 Q30 53 32 49Z" fill="#1a0a00"/>
-        <path d="M70 43 Q71 57 69 60 Q70 53 68 49Z" fill="#1a0a00"/>
+
+        {/* Grey-white hair — short, professional, slightly receded at temples */}
+        <ellipse cx="50" cy="37" rx="21" ry="15" fill="#9a9a9a"/>
+        <path d="M30 43 Q29 53 31 57 Q30 50 32 46Z" fill="#9a9a9a"/>
+        <path d="M70 43 Q71 53 69 57 Q70 50 68 46Z" fill="#9a9a9a"/>
+
+        {/* Ear cheeks */}
         <ellipse cx="30" cy="57" rx="4" ry="5" fill="#b87333"/>
         <ellipse cx="70" cy="57" rx="4" ry="5" fill="#b87333"/>
+
+        {/* Eye whites */}
         <ellipse cx="41" cy="55" rx="5" ry="4" fill="white"/>
         <ellipse cx="59" cy="55" rx="5" ry="4" fill="white"/>
+        {/* Pupils */}
         <circle cx="42" cy="55" r="3" fill="#1a1a1a"/>
         <circle cx="60" cy="55" r="3" fill="#1a1a1a"/>
+        {/* Eye highlights */}
         <circle cx="43" cy="54" r="1" fill="white" opacity="0.6"/>
         <circle cx="61" cy="54" r="1" fill="white" opacity="0.6"/>
-        <path d="M35 49 Q41 46 47 48" stroke="#1a0a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-        <path d="M53 48 Q59 46 65 49" stroke="#1a0a00" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+
+        {/* Eyebrows — grey, slightly arched, distinguished */}
+        <path d="M35 49 Q41 46 47 48" stroke="#888888" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+        <path d="M53 48 Q59 46 65 49" stroke="#888888" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+
+        {/* Wrinkles — subtle, distinguished */}
+        {/* Forehead lines */}
+        <path d="M36 41 Q50 39 64 41" stroke="rgba(0,0,0,0.13)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
+        <path d="M37 44 Q50 42 63 44" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+        {/* Nasolabial folds */}
+        <path d="M36 58 Q33 64 38 68" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+        <path d="M64 58 Q67 64 62 68" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+        {/* Crow's feet */}
+        <path d="M29 53 Q26 51 27 54" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
+        <path d="M71 53 Q74 51 73 54" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
+
+        {/* Nose shadow */}
         <path d="M50 59 Q47 65 44 66 Q50 68 56 66 Q53 65 50 59Z" fill="#b07030" opacity="0.6"/>
+
+        {/* Slick rectangular glasses — thin dark frames over eyes */}
+        <rect x="32" y="51" width="17" height="8" rx="1.5" ry="1.5"
+          fill="rgba(200,230,255,0.08)" stroke="#1a1a1a" strokeWidth="1.2"/>
+        <rect x="51" y="51" width="17" height="8" rx="1.5" ry="1.5"
+          fill="rgba(200,230,255,0.08)" stroke="#1a1a1a" strokeWidth="1.2"/>
+        {/* Bridge */}
+        <line x1="49" y1="55" x2="51" y2="55" stroke="#1a1a1a" strokeWidth="1.0"/>
+        {/* Temple arms */}
+        <line x1="32" y1="55" x2="27" y2="54" stroke="#1a1a1a" strokeWidth="1.0" strokeLinecap="round"/>
+        <line x1="68" y1="55" x2="73" y2="54" stroke="#1a1a1a" strokeWidth="1.0" strokeLinecap="round"/>
+
+        {/* Mouth */}
         <path d="M43 72 Q50 73 57 72" stroke="#8b5e3c" strokeWidth="1.8" fill="none" strokeLinecap="round"/>
+
+        {/* Orange ring hint */}
         <circle cx="50" cy="50" r="48" fill="none" stroke="#f97316" strokeWidth="1" opacity="0.3"/>
       </svg>
     </div>
@@ -182,22 +225,35 @@ const getSleepDuration = (sleepTime, wakeTime) => {
   return (wakeMins - sleepMins) / 60;
 };
 
+function to12HourParts(value) {
+  if (!value || !value.includes(":")) return { hour12: null, minute: null, meridiem: null };
+  const [h, m] = value.split(":").map(Number);
+  const meridiem = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return { hour12, minute: m, meridiem };
+}
+
+function to24HourValue(hour12, minute, meridiem) {
+  if (hour12 === null || minute === null || !meridiem) return "";
+  let h = Number(hour12);
+  if (meridiem === "AM") {
+    if (h === 12) h = 0;
+  } else {
+    if (h !== 12) h += 12;
+  }
+  return `${String(h).padStart(2, "0")}:${String(Number(minute)).padStart(2, "0")}`;
+}
+
 function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
-  const parts = value ? value.split(":").map(Number) : [null, null];
-  const selHour = parts[0] ?? null;
-  const selMin = parts[1] ?? null;
+  const { hour12: selHour, minute: selMin, meridiem: selMeridiem } = to12HourParts(value);
 
-  const wakeHours = [4,5,6,7,8,9,10,11,12];
-  const sleepHours = [18,19,20,21,22,23,0,1,2,3,4,5,6];
-  const minutes = [0,10,20,30,40,50];
+  const hours = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const minutes = [0, 10, 20, 30, 40, 50];
+  const defaultMeridiem = label === "Wake time" ? "AM" : "PM";
 
-  const hours = label === "Wake time" ? wakeHours : sleepHours;
-
-  const formatHour = (h) => h === 0 ? "12" : String(h);
-
-  const handleChange = (h, m) => {
-    if (h === null || m === null) return;
-    onChange(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+  const handleChange = (h, m, mer) => {
+    if (h === null || m === null || !mer) return;
+    onChange(to24HourValue(h, m, mer));
   };
 
   return (
@@ -210,37 +266,35 @@ function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
         <select
           className="time-select"
           value={selHour ?? ""}
-          onChange={e => handleChange(Number(e.target.value), selMin ?? 0)}
-          style={{minWidth:72}}
+          onChange={e => handleChange(Number(e.target.value), selMin ?? 0, selMeridiem ?? defaultMeridiem)}
+          style={{minWidth:56}}
         >
           <option value="">Hr</option>
           {hours.map(h => (
-            <option key={h} value={h}>{formatHour(h)}</option>
+            <option key={h} value={h}>{h}</option>
           ))}
         </select>
         <select
           className="time-select"
           value={selMin ?? ""}
-          onChange={e => handleChange(selHour ?? hours[0], Number(e.target.value))}
+          onChange={e => handleChange(selHour ?? 12, Number(e.target.value), selMeridiem ?? defaultMeridiem)}
           style={{minWidth:58}}
         >
           <option value="">Min</option>
           {minutes.map(m => (
-            <option key={m} value={m}>{String(m).padStart(2,"0")}</option>
+            <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
           ))}
         </select>
-        {selHour !== null && selMin !== null && (
-          <span style={{
-            fontSize:11, fontWeight:600,
-            color:"#6e6e73", minWidth:24
-          }}>
-            {selHour >= 12 && selHour !== 0 ? "PM" : "AM"}
-          </span>
-        )}
-        <div style={{
-          width:8, height:8, borderRadius:"50%",
-          background:dotColor, flexShrink:0
-        }}/>
+        <select
+          className="time-select"
+          value={selMeridiem ?? defaultMeridiem}
+          onChange={e => handleChange(selHour ?? 12, selMin ?? 0, e.target.value)}
+          style={{minWidth:60}}
+        >
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+        <div style={{width:8,height:8,borderRadius:"50%",background:dotColor,flexShrink:0}}/>
       </div>
     </div>
   );
@@ -743,18 +797,23 @@ function TodayPage({
 
           <button
             onClick={() => setShowInstaCard(true)}
-            style={{
-              flex:1, maxWidth:80,
-              background:"transparent",
-              border:"1px solid rgba(249,115,22,0.4)",
-              borderRadius:14, color:"#f97316",
-              fontSize:18, cursor:"pointer",
-              display:"flex", alignItems:"center",
-              justifyContent:"center"
-            }}
             title="Share today's card"
+            aria-label="Share today's card"
+            style={{
+              width:52, height:52, flex:"0 0 52px",
+              background:"rgba(249,115,22,0.08)",
+              border:"1px solid rgba(249,115,22,0.35)",
+              borderRadius:16, color:"#f97316",
+              cursor:"pointer", display:"flex",
+              alignItems:"center", justifyContent:"center",
+              boxShadow:"0 0 18px rgba(249,115,22,0.12)"
+            }}
           >
-            📸
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12"/>
+              <path d="M7 8l5-5 5 5"/>
+              <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>
+            </svg>
           </button>
         </div>
       </div>
@@ -1234,7 +1293,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, calcResult }) {
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, calcResult, targetPercentile }) {
   const [inp, setInp] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -1269,6 +1328,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             daysLeft: dl, totals, dayNum, todayData: d, mode,
             userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
             catResult: catResult || "", catPercentile: catPercentile || "",
+            targetPercentile: targetPercentile || 0,
             profile: {
               category,
               gender: avatarGender,
@@ -1281,6 +1341,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
               profileScore: calcResult?.profileScore,
               hasMasters: calcResult?.hasMasters,
               adjustedCutoffs: calcResult?.adjustedCutoffs,
+              targetPercentile: targetPercentile || 0,
             },
             messages: [...mentorMessages, {r:"user",t:q}]
               .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
@@ -1458,7 +1519,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
   )
 }
 
-function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, activeTab, calcResult }) {
+function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, setMentorMessages, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, activeTab, calcResult, targetPercentile }) {
   const [open, setOpen] = useState(false);
   const [inp, setInp] = useState("");
   const [placeholder, setPlaceholder] = useState("Ask your mentor...");
@@ -1566,6 +1627,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
             interviewDate: interviewDate || "",
             catResult: catResult || "",
             catPercentile: catPercentile || "",
+            targetPercentile: targetPercentile || 0,
             profile: {
               category,
               gender: avatarGender,
@@ -1578,6 +1640,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
               profileScore: calcResult?.profileScore,
               hasMasters: calcResult?.hasMasters,
               adjustedCutoffs: calcResult?.adjustedCutoffs,
+              targetPercentile: targetPercentile || 0,
             }
           }),
           signal: controller.signal
@@ -1746,7 +1809,8 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
 }
 
 function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
-  hairColor="black", shirtColor="orange", hasGlasses=false, hasBeard=false, hasMustache=false, size=80 }) {
+  hairColor="black", shirtColor="orange", hasGlasses=false, glassesStyle="rounded",
+  hasBeard=false, hasMustache=false, hasWrinkles=false, size=80 }) {
 
   const skinColors = {light:"#f1c27d", medium:"#c68642", dark:"#8d5524"}
   const hairColors = {black:"#1a0a00", brown:"#6b3a2a", blonde:"#c8a850", grey:"#888888"}
@@ -1848,7 +1912,17 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
         <circle cx="61" cy="51" r="1" fill="white" opacity="0.8"/>
         <path d="M35 46 Q41 43 47 45" stroke={hair} strokeWidth="2" fill="none" strokeLinecap="round"/>
         <path d="M53 45 Q59 43 65 46" stroke={hair} strokeWidth="2" fill="none" strokeLinecap="round"/>
-        {hasGlasses && <>
+        {hasGlasses && (glassesStyle === "slick" ? <>
+          {/* Slick thin rectangular frames */}
+          <rect x="33" y="49" width="16" height="7" rx="1.5" ry="1.5"
+            fill="rgba(200,230,255,0.10)" stroke="#1a1a1a" strokeWidth="1.2"/>
+          <rect x="51" y="49" width="16" height="7" rx="1.5" ry="1.5"
+            fill="rgba(200,230,255,0.10)" stroke="#1a1a1a" strokeWidth="1.2"/>
+          <line x1="49" y1="52" x2="51" y2="52" stroke="#1a1a1a" strokeWidth="1.0"/>
+          <line x1="33" y1="52" x2="27" y2="50" stroke="#1a1a1a" strokeWidth="1.0" strokeLinecap="round"/>
+          <line x1="67" y1="52" x2="73" y2="50" stroke="#1a1a1a" strokeWidth="1.0" strokeLinecap="round"/>
+        </> : <>
+          {/* Default rounded glasses */}
           <path d="M33 48 L33 55 Q33 58 36 58 L46 58 Q49 58 49 55 L49 48 Q49 45 46 45 L36 45 Q33 45 33 48Z"
             fill="rgba(100,150,255,0.12)" stroke="#222" strokeWidth="1.8"/>
           <path d="M51 48 L51 55 Q51 58 54 58 L64 58 Q67 58 67 55 L67 48 Q67 45 64 45 L54 45 Q51 45 51 48Z"
@@ -1856,8 +1930,19 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
           <path d="M49 51 L51 51" stroke="#222" strokeWidth="1.8" strokeLinecap="round"/>
           <path d="M33 50 L27 48" stroke="#222" strokeWidth="1.5" strokeLinecap="round"/>
           <path d="M67 50 L73 48" stroke="#222" strokeWidth="1.5" strokeLinecap="round"/>
-        </>}
+        </>)}
         <path d="M50 56 Q47 62 44 63 Q50 65 56 63 Q53 62 50 56Z" fill={shadow} opacity="0.5"/>
+        {hasWrinkles && <>
+          {/* Forehead lines — subtle horizontal */}
+          <path d="M36 39 Q50 37 64 39" stroke="rgba(0,0,0,0.12)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
+          <path d="M37 42 Q50 40 63 42" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+          {/* Nasolabial folds — cheek-to-mouth */}
+          <path d="M36 56 Q33 62 38 66" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+          <path d="M64 56 Q67 62 62 66" stroke="rgba(0,0,0,0.10)" strokeWidth="0.7" fill="none" strokeLinecap="round"/>
+          {/* Crow's feet — outer eyes */}
+          <path d="M29 50 Q26 48 27 51" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
+          <path d="M71 50 Q74 48 73 51" stroke="rgba(0,0,0,0.09)" strokeWidth="0.6" fill="none" strokeLinecap="round"/>
+        </>}
         {hasMustache && gender==="male" && (
           <path d="M38 64 Q44 61 50 63 Q56 61 62 64 Q57 67 50 65 Q43 67 38 64Z" fill={hair}/>
         )}
@@ -4660,10 +4745,10 @@ export default function App() {
             onBack={() => setTab("academic-profile")}
           />
         )}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} calcResult={calcResult} />}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} calcResult={calcResult} targetPercentile={targetPercentile} />}
       </main>
 
-      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} calcResult={calcResult} />
+      <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} calcResult={calcResult} targetPercentile={targetPercentile} />
 
     </div>
   );
