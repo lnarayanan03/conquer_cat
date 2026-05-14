@@ -1874,7 +1874,6 @@ function ProfilePage({
   setSharedCalcResult,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
-  onAvatarChange,
   category, setCategory,
   primaryDegree, setPrimaryDegree,
   secondaryDegrees, setSecondaryDegrees,
@@ -1886,19 +1885,7 @@ function ProfilePage({
   const [calcResult, setCalcResult] = useState(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  const degreeTypes = ["B.Tech", "B.E.", "B.Sc", "B.Com", "BBA", "BA", "B.Arch", "BCA", "B.Pharm", "MBBS", "LLB", "Other"];
   const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"];
-  const inputStyle = {
-    width:"100%", background:"#111",
-    border:"1px solid #2a2a2a", borderRadius:8,
-    padding:"10px 12px", color:"#f5f5f7",
-    fontSize:14, fontFamily:"inherit",
-    outline:"none", boxSizing:"border-box"
-  };
-  const selectStyle = {
-    ...inputStyle, cursor:"pointer",
-    appearance:"none", WebkitAppearance:"none"
-  };
   const chipStyle = (active) => ({
     padding:"6px 14px", borderRadius:20,
     border: active ? "1px solid #f97316" : "1px solid #2a2a2a",
@@ -1906,13 +1893,6 @@ function ProfilePage({
     color: active ? "#f97316" : "#6e6e73",
     fontSize:12, cursor:"pointer", fontFamily:"inherit"
   });
-  const swatchStyle = (active, color) => ({
-    width:26, height:26, borderRadius:"50%",
-    background:color, border:"none", cursor:"pointer",
-    outline: active ? "2px solid #f97316" : "2px solid transparent",
-    outlineOffset:2
-  });
-  const updateAvatar = (key, value) => onAvatarChange(key, value);
   useEffect(() => {
     setCalcLoading(true);
     const timer = setTimeout(() => {
@@ -1953,17 +1933,33 @@ function ProfilePage({
       <div className="sections">
         <div>
           <div className="sec-label">Your Profile</div>
-          <div className="card" style={{padding:"16px",display:"flex",alignItems:"center",gap:14}}>
+          <div
+            className="profile-summary-card"
+            role="button"
+            tabIndex={0}
+            onClick={() => setTab("profile-edit")}
+            onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setTab("profile-edit");
+              }
+            }}
+            aria-label="Edit profile"
+          >
             <AvatarPreview
-              gender={avatarGender} skinTone={avatarSkin}
-              hairStyle={avatarHair} hairColor={avatarHairColor}
-              shirtColor={avatarShirt} hasGlasses={avatarGlasses}
-              hasBeard={avatarBeard} hasMustache={avatarMustache}
+              gender={avatarGender}
+              skinTone={avatarSkin}
+              hairStyle={avatarHair}
+              hairColor={avatarHairColor}
+              shirtColor={avatarShirt}
+              hasGlasses={avatarGlasses}
+              hasBeard={avatarBeard}
+              hasMustache={avatarMustache}
               size={58}
             />
-            <div style={{flex:1}}>
-              <div style={{fontSize:18,fontWeight:700,color:"#f5f5f7"}}>{userName}</div>
-              <div className="row-sub" style={{marginTop:3}}>
+            <div className="profile-summary-main">
+              <div className="profile-summary-name">{userName}</div>
+              <div className="profile-summary-sub">
                 {startDate
                   ? new Date(startDate+"T00:00:00").toLocaleDateString("en-IN", {
                       day:"numeric", month:"long", year:"numeric"
@@ -1971,9 +1967,16 @@ function ProfilePage({
                   : "Start date not set"}
               </div>
             </div>
-            <div style={{fontSize:11,color:"#f97316",fontWeight:600,textAlign:"right"}}>
-              Day {dayNumber}<br/>
-              <span style={{color:"#6e6e73",fontWeight:500}}>of {totalDays}</span>
+            <div className="profile-summary-meta">
+              <div className="profile-summary-day">
+                Day {dayNumber}<br/>
+                <span>of {totalDays}</span>
+              </div>
+              <svg className="profile-summary-chevron" width="16" height="16"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
             </div>
           </div>
         </div>
@@ -2002,18 +2005,21 @@ function ProfilePage({
                 value={targetPercentile || ""}
                 onChange={e => setTargetPercentile(parseFloat(e.target.value) || 0)}
                 style={{
-                  flex:1, background:"#111",
+                  flex:1,
+                  background:"#111",
                   border:"1px solid #2a2a2a",
-                  borderRadius:8, padding:"10px 14px",
-                  color:"#f5f5f7", fontSize:20,
-                  fontWeight:700, outline:"none",
+                  borderRadius:8,
+                  padding:"10px 14px",
+                  color:"#f5f5f7",
+                  fontSize:20,
+                  fontWeight:700,
+                  outline:"none",
                   fontFamily:"inherit",
-                  colorScheme:"dark"
+                  colorScheme:"dark",
+                  minWidth:0
                 }}
               />
-              <span style={{fontSize:12,color:"#6e6e73"}}>
-                percentile
-              </span>
+              <span style={{fontSize:12,color:"#6e6e73"}}>percentile</span>
             </div>
             {targetPercentile > 0 && (
               <div style={{
@@ -2021,7 +2027,8 @@ function ProfilePage({
                 color: targetPercentile >= 99.5 ? "#30d158"
                   : targetPercentile >= 97 ? "#f97316"
                     : "#ff453a",
-                marginTop:8, fontWeight:600
+                marginTop:8,
+                fontWeight:600
               }}>
                 {targetPercentile >= 99.5
                   ? "✓ Competitive for all IIMs including IIM-A"
@@ -2046,7 +2053,8 @@ function ProfilePage({
                 padding:"10px 14px",
                 background:"rgba(255,69,58,0.08)",
                 border:"1px solid rgba(255,69,58,0.2)",
-                borderRadius:10, marginBottom:8
+                borderRadius:10,
+                marginBottom:8
               }}>
                 <div style={{fontSize:12,color:"#ff453a",fontWeight:600,marginBottom:2}}>
                   GEM Profile (General Engineer Male)
@@ -2067,39 +2075,40 @@ function ProfilePage({
                 const close = targetPercentile > 0 && !meets && targetPercentile >= needed - 1;
                 return (
                   <div key={g.key} style={{
-                    display:"flex",justifyContent:"space-between",
-                    alignItems:"center",padding:"14px 16px",
-                    borderBottom:"1px solid #1a1a1a",gap:12
+                    display:"flex",
+                    justifyContent:"space-between",
+                    alignItems:"center",
+                    padding:"14px 16px",
+                    borderBottom:"1px solid #1a1a1a",
+                    gap:12
                   }}>
-                    <div style={{flex:1}}>
+                    <div style={{flex:1,minWidth:0}}>
                       <div className="row-label">{g.label}</div>
                       <div className="row-sub">{g.sub}</div>
                       {targetPercentile > 0 && (
                         <div style={{
-                          fontSize:11,fontWeight:600,marginTop:4,
-                          color: meets ? "#30d158"
-                            : close ? "#f97316"
-                              : "#ff453a"
+                          fontSize:11,
+                          fontWeight:600,
+                          marginTop:4,
+                          color: meets ? "#30d158" : close ? "#f97316" : "#ff453a"
                         }}>
                           {meets
                             ? `✓ Your ${targetPercentile}% meets this`
                             : close
                               ? `${(needed-targetPercentile).toFixed(2)}% short`
-                              : `Need ${(needed-targetPercentile).toFixed(1)}% more`
-                          }
+                              : `Need ${(needed-targetPercentile).toFixed(1)}% more`}
                         </div>
                       )}
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{
-                        fontSize:20,fontWeight:800,
+                        fontSize:20,
+                        fontWeight:800,
                         color: meets ? "#30d158" : g.color
                       }}>
                         {needed.toFixed(1)}%
                       </div>
-                      <div style={{fontSize:9,color:"#6e6e73"}}>
-                        needed
-                      </div>
+                      <div style={{fontSize:9,color:"#6e6e73"}}>needed</div>
                     </div>
                   </div>
                 );
@@ -2108,16 +2117,28 @@ function ProfilePage({
           </div>
         )}
 
-        <div className="card">
+        <div
+          className="card"
+          onClick={() => setTab("academic-profile")}
+          style={{cursor:"pointer"}}
+        >
           <button
+            type="button"
             onClick={() => setTab("academic-profile")}
             style={{
-              display:"flex",alignItems:"center",
+              display:"flex",
+              alignItems:"center",
               justifyContent:"space-between",
-              width:"100%",padding:"14px 16px",
-              background:"transparent",border:"none",
-              cursor:"pointer",fontFamily:"inherit",
-              textAlign:"left",boxSizing:"border-box",
+              width:"100%",
+              padding:"14px 16px",
+              background:"transparent",
+              border:"none",
+              cursor:"pointer",
+              fontFamily:"inherit",
+              textAlign:"left",
+              boxSizing:"border-box",
+              position:"relative",
+              zIndex:1,
             }}
           >
             <div style={{flex:1,minWidth:0}}>
@@ -2158,32 +2179,199 @@ function ProfilePage({
       </div>
     </div>
   );
+}
+
+function ProfileEditPage({
+  userName,
+  userId,
+  onUserIdChange,
+  setTab,
+  startDate,
+  avatarGender,
+  avatarSkin,
+  avatarHair,
+  avatarHairColor,
+  avatarShirt,
+  avatarGlasses,
+  avatarBeard,
+  avatarMustache,
+  onAvatarChange,
+}) {
+  const [showPinForm, setShowPinForm] = useState(false);
+  const [pinForm, setPinForm] = useState({
+    oldPin:"", newPin:"", confirmPin:"", error:"", success:false
+  });
+  const [changingPin, setChangingPin] = useState(false);
+  const chipStyle = (active) => ({
+    padding:"6px 12px",
+    borderRadius:999,
+    border: active ? "1px solid #f97316" : "1px solid #2a2a2a",
+    background: active ? "rgba(249,115,22,0.15)" : "#111",
+    color: active ? "#f97316" : "#6e6e73",
+    fontSize:12,
+    cursor:"pointer",
+    fontFamily:"inherit"
+  });
+  const swatchStyle = (active, color) => ({
+    width:26,
+    height:26,
+    borderRadius:"50%",
+    background:color,
+    border:"none",
+    cursor:"pointer",
+    outline: active ? "2px solid #f97316" : "2px solid transparent",
+    outlineOffset:2
+  });
+  const pinInputStyle = {
+    width:"100%",
+    background:"#111",
+    border:"1px solid #2a2a2a",
+    borderRadius:8,
+    padding:"10px 12px",
+    color:"#f5f5f7",
+    fontSize:14,
+    letterSpacing:"0.08em",
+    textAlign:"center",
+    fontFamily:"inherit",
+    outline:"none",
+    colorScheme:"dark",
+    boxSizing:"border-box"
+  };
+  const updateAvatar = (key, value) => onAvatarChange(key, value);
+  const generateUserId = (name, pin) => {
+    const str = name.trim().toLowerCase() + pin;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    const hex = Math.abs(hash).toString(16).padStart(8,"0");
+    return `${hex.slice(0,8)}-${hex.slice(0,4)}-4${hex.slice(1,4)}-a${hex.slice(2,5)}-${hex.slice(0,12).padEnd(12,"0")}`;
+  };
+  const handlePinChange = async () => {
+    if (pinForm.oldPin.length !== 4) {
+      return setPinForm(p => ({...p, error:"Enter your current 4-digit PIN"}));
+    }
+    if (pinForm.newPin.length !== 4) {
+      return setPinForm(p => ({...p, error:"New PIN must be 4 digits"}));
+    }
+    if (pinForm.newPin !== pinForm.confirmPin) {
+      return setPinForm(p => ({...p, error:"New PINs do not match"}));
+    }
+    if (pinForm.oldPin === pinForm.newPin) {
+      return setPinForm(p => ({...p, error:"New PIN must be different"}));
+    }
+
+    const expectedUserId = generateUserId(userName || "", pinForm.oldPin);
+    if (expectedUserId !== userId) {
+      return setPinForm(p => ({...p, error:"Current PIN is incorrect"}));
+    }
+
+    setChangingPin(true);
+    const newUserId = generateUserId(userName || "", pinForm.newPin);
+
+    try {
+      const checkRes = await fetch("/api/user/check", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ userId: newUserId })
+      });
+      const checkData = await checkRes.json();
+      if (checkData.exists) {
+        setPinForm(p => ({...p, error:"This PIN is already in use"}));
+        setChangingPin(false);
+        return;
+      }
+
+      await fetch("/api/user/init", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          userId: newUserId,
+          name: userName,
+          startDate,
+          avatarGender,
+          avatarSkin,
+          avatarHair,
+          avatarHairColor,
+          avatarShirt,
+          avatarGlasses,
+          avatarBeard,
+          avatarMustache
+        })
+      });
+
+      localStorage.setItem("conquer_user_id", newUserId);
+      onUserIdChange(newUserId);
+      setPinForm({ oldPin:"", newPin:"", confirmPin:"", error:"", success:true });
+      setTimeout(() => {
+        setPinForm(p => ({...p, success:false}));
+        setShowPinForm(false);
+      }, 3000);
+    } catch {
+      setPinForm(p => ({...p, error:"Something went wrong. Try again."}));
+    } finally {
+      setChangingPin(false);
+    }
+  };
 
   return (
     <div className="page">
       <div className="page-header">
-        <div className="page-title">Profile</div>
-        <div className="page-sub">Your academic identity</div>
+        <button onClick={() => setTab("profile")} style={{
+          background:"transparent",
+          border:"none",
+          color:"#f97316",
+          fontSize:15,
+          cursor:"pointer",
+          fontFamily:"inherit",
+          display:"flex",
+          alignItems:"center",
+          gap:4,
+          padding:0,
+          marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Profile
+        </button>
+        <div className="page-title">Edit Profile</div>
+        <div className="page-sub">Avatar and account security</div>
       </div>
 
       <div className="sections">
         <div>
-          <div className="sec-label">Your Avatar</div>
-          <div className="card" style={{padding:"16px",display:"flex",flexDirection:"column",alignItems:"center",gap:14}}>
+          <div className="sec-label">Avatar</div>
+          <div className="card" style={{
+            padding:"16px",
+            display:"flex",
+            flexDirection:"column",
+            alignItems:"center",
+            gap:14
+          }}>
             <AvatarPreview
-              gender={avatarGender} skinTone={avatarSkin}
-              hairStyle={avatarHair} hairColor={avatarHairColor}
-              shirtColor={avatarShirt} hasGlasses={avatarGlasses}
-              hasBeard={avatarBeard} hasMustache={avatarMustache}
+              gender={avatarGender}
+              skinTone={avatarSkin}
+              hairStyle={avatarHair}
+              hairColor={avatarHairColor}
+              shirtColor={avatarShirt}
+              hasGlasses={avatarGlasses}
+              hasBeard={avatarBeard}
+              hasMustache={avatarMustache}
               size={86}
             />
-            <div style={{fontSize:18,fontWeight:700,color:"#f5f5f7"}}>{userName}</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#f5f5f7"}}>
+              {userName}
+            </div>
             <div style={{width:"100%",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Gender</span>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Gender</span>
                 <div style={{display:"flex",gap:6}}>
                   {["male","female"].map(g => (
-                    <button key={g} onClick={() => {
+                    <button key={g} type="button" onClick={() => {
                       updateAvatar("gender", g);
                       if (g === "female") {
                         updateAvatar("beard", false);
@@ -2193,50 +2381,60 @@ function ProfilePage({
                   ))}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Skin</span>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Skin</span>
                 <div style={{display:"flex",gap:8}}>
                   {[{id:"light",color:"#f1c27d"},{id:"medium",color:"#c68642"},{id:"dark",color:"#8d5524"}].map(s => (
-                    <button key={s.id} onClick={() => updateAvatar("skin", s.id)} style={swatchStyle(avatarSkin === s.id, s.color)} />
+                    <button key={s.id} type="button" onClick={() => updateAvatar("skin", s.id)}
+                      style={swatchStyle(avatarSkin === s.id, s.color)} aria-label={s.id} />
                   ))}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Hair</span>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Hair</span>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {(avatarGender === "female" ? ["short","wavy","long","curly","bun"] : ["short","wavy","curly"]).map(h => (
-                    <button key={h} onClick={() => updateAvatar("hair", h)} style={chipStyle(avatarHair === h)}>{h}</button>
+                    <button key={h} type="button" onClick={() => updateAvatar("hair", h)}
+                      style={chipStyle(avatarHair === h)}>{h}</button>
                   ))}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Hair color</span>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Hair color</span>
                 <div style={{display:"flex",gap:8}}>
                   {[{id:"black",color:"#0a0a0a"},{id:"brown",color:"#6b3a2a"},{id:"blonde",color:"#c8a850"},{id:"grey",color:"#888888"}].map(h => (
-                    <button key={h.id} onClick={() => updateAvatar("hairColor", h.id)} style={swatchStyle(avatarHairColor === h.id, h.color)} />
+                    <button key={h.id} type="button" onClick={() => updateAvatar("hairColor", h.id)}
+                      style={swatchStyle(avatarHairColor === h.id, h.color)} aria-label={h.id} />
                   ))}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:78}}>Outfit</span>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Outfit</span>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {[{id:"orange",color:"#f97316"},{id:"blue",color:"#3b82f6"},{id:"green",color:"#22c55e"},{id:"purple",color:"#a855f7"},{id:"red",color:"#ef4444"},{id:"white",color:"#e5e5e5"}].map(s => (
-                    <button key={s.id} onClick={() => updateAvatar("shirt", s.id)} style={swatchStyle(avatarShirt === s.id, s.color)} />
+                    <button key={s.id} type="button" onClick={() => updateAvatar("shirt", s.id)}
+                      style={swatchStyle(avatarShirt === s.id, s.color)} aria-label={s.id} />
                   ))}
                 </div>
               </div>
               <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                 <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                  <input type="checkbox" checked={avatarGlasses} onChange={e => updateAvatar("glasses", e.target.checked)} style={{accentColor:"#f97316"}} />
+                  <input type="checkbox" checked={avatarGlasses}
+                    onChange={e => updateAvatar("glasses", e.target.checked)}
+                    style={{accentColor:"#f97316"}} />
                   <span style={{fontSize:12,color:"#6e6e73"}}>Glasses</span>
                 </label>
                 {avatarGender === "male" && <>
                   <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                    <input type="checkbox" checked={avatarBeard} onChange={e => updateAvatar("beard", e.target.checked)} style={{accentColor:"#f97316"}} />
+                    <input type="checkbox" checked={avatarBeard}
+                      onChange={e => updateAvatar("beard", e.target.checked)}
+                      style={{accentColor:"#f97316"}} />
                     <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
                   </label>
                   <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
-                    <input type="checkbox" checked={avatarMustache} onChange={e => updateAvatar("mustache", e.target.checked)} style={{accentColor:"#f97316"}} />
+                    <input type="checkbox" checked={avatarMustache}
+                      onChange={e => updateAvatar("mustache", e.target.checked)}
+                      style={{accentColor:"#f97316"}} />
                     <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
                   </label>
                 </>}
@@ -2245,253 +2443,97 @@ function ProfilePage({
           </div>
         </div>
 
-        <div className="card" style={{padding:"14px 16px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
-            <div>
-              <div className="row-label">Prep Start Date</div>
-              <div className="row-sub">
-                {startDate
-                  ? new Date(startDate+"T00:00:00").toLocaleDateString("en-IN", {
-                      day:"numeric", month:"long", year:"numeric"
-                    })
-                  : "Not set"}
-              </div>
-            </div>
-            <div style={{fontSize:11,color:"#f97316",fontWeight:600}}>
-              Day {dayNumber} of {totalDays}
-            </div>
-          </div>
-        </div>
-
         <div>
-          <div className="sec-label">Category</div>
+          <div className="sec-label">Security</div>
           <div className="card" style={{padding:"14px 16px"}}>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {categories.map(c => (
-                <button key={c} onClick={() => setCategory(c)} style={chipStyle(category === c)}>{c}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-            <div className="sec-label" style={{marginBottom:0}}>Your IIM Targets</div>
-            {calcLoading && (
-              <div style={{
-                width:14, height:14, borderRadius:"50%",
-                border:"2px solid #f97316",
-                borderTopColor:"transparent",
-                animation:"spin 0.8s linear infinite"
-              }}/>
-            )}
-          </div>
-
-          {calcResult && !calcLoading && (
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {calcResult.isGEM && (
-                <div style={{
-                  padding:"10px 14px",
-                  background:"rgba(255,69,58,0.08)",
-                  border:"1px solid rgba(255,69,58,0.2)",
-                  borderRadius:10, marginBottom:8
-                }}>
-                  <div style={{fontSize:12,color:"#ff453a",
-                    fontWeight:600,marginBottom:2}}>
-                    GEM Profile (General Engineer Male)
-                  </div>
-                  <div style={{fontSize:11,color:"#6e6e73",lineHeight:1.5}}>
-                    Toughest competition pool. IIM-A realistically needs 99.7+. Work experience and strong academics are your best levers. Non-engineer/female candidates get structural advantages.
-                  </div>
-                </div>
-              )}
-              {[
-                { label:"IIM A / B / C", sub:"Ahmedabad · Bangalore · Calcutta", key:"ABC", color:"#30d158" },
-                { label:"IIM K / L / I / S", sub:"Kozhikode · Lucknow · Indore · Shillong", key:"KLIS", color:"#f97316" },
-                { label:"New IIMs", sub:"Jammu · Sirmaur · Ranchi · Nagpur & others", key:"newIIM", color:"#3b82f6" },
-              ].map(g => (
-                <div key={g.key} className="card" style={{padding:"12px 16px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,gap:12}}>
-                    <div>
-                      <div className="row-label">{g.label}</div>
-                      <div className="row-sub">{g.sub}</div>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:20,fontWeight:800,color:g.color}}>
-                        {calcResult.adjustedCutoffs[g.key].toFixed(1)}%
-                      </div>
-                      <div style={{fontSize:10,color:"#6e6e73"}}>target percentile</div>
-                    </div>
-                  </div>
-                  <div style={{
-                    display:"flex",
-                    justifyContent:"space-between",
-                    alignItems:"center",
-                    padding:"8px 0 0",
-                    borderTop:"1px solid #1a1a1a"
-                  }}>
-                    <span style={{fontSize:11,color:"#6e6e73"}}>
-                      Interview → Admit probability
-                    </span>
-                    <span style={{
-                      fontSize:13,
-                      fontWeight:700,
-                      color: calcResult.interviewProb[g.key] >= 0.5 ? "#30d158" : "#f97316"
-                    }}>
-                      {Math.round(calcResult.interviewProb[g.key] * 100)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              <div className="card" style={{padding:"14px 16px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                  <div>
-                    <div className="row-label">Profile Score</div>
-                    <div className="row-sub">Academic + work ex + diversity</div>
-                  </div>
-                  <div style={{
-                    fontSize:24,
-                    fontWeight:800,
-                    color: calcResult.profileScore >= 70 ? "#30d158" : calcResult.profileScore >= 50 ? "#f97316" : "#ff453a"
-                  }}>
-                    {calcResult.profileScore}/100
-                  </div>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{
-                    width:`${calcResult.profileScore}%`,
-                    background: calcResult.profileScore >= 70 ? "#30d158" : calcResult.profileScore >= 50 ? "#f97316" : "#ff453a"
-                  }}/>
-                </div>
-                <div style={{fontSize:11,color:"#444",marginTop:8,fontStyle:"italic"}}>
-                  Higher profile score improves interview conversion. Work experience and strong academics boost this.
-                </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+              <div>
+                <div className="row-label">PIN</div>
+                <div className="row-sub">Used to open this profile on other devices</div>
               </div>
-
-              <div className="card" style={{padding:"12px 16px"}}>
-                <div className="row-label" style={{marginBottom:8}}>Profile Breakdown</div>
-                {[
-                  { label:"GEM competition penalty", val: calcResult.adjustmentSummary.gemPenalty, show: calcResult.adjustmentSummary.gemPenalty > 0, bad:true },
-                  { label:"Gender diversity", val: calcResult.adjustmentSummary.femaleDiversity, show: calcResult.adjustmentSummary.femaleDiversity < 0 },
-                  { label:"Non-engineering background", val: calcResult.adjustmentSummary.nonEngineerDiversity, show: calcResult.adjustmentSummary.nonEngineerDiversity < 0 },
-                  { label:"Work experience", val: calcResult.adjustmentSummary.workEx, show: calcResult.adjustmentSummary.workEx < 0 },
-                  { label:"Masters / PG degree", val: calcResult.adjustmentSummary.mastersDegree, show: calcResult.adjustmentSummary.mastersDegree < 0 },
-                  { label:"Academics", val: calcResult.adjustmentSummary.academics, show: calcResult.adjustmentSummary.academics !== 0, bad:calcResult.adjustmentSummary.academics > 0 },
-                ].filter(i => i.show).map(item => (
-                  <div key={item.label} style={{
-                    display:"flex",
-                    justifyContent:"space-between",
-                    padding:"4px 0",
-                    fontSize:12,
-                    gap:12
-                  }}>
-                    <span style={{color:"#6e6e73"}}>{item.label}</span>
-                    <span style={{color:item.bad ? "#ff453a" : "#30d158",fontWeight:600}}>
-                      {item.val > 0 ? "+" : ""}{item.val.toFixed(1)} percentile {item.val > 0 ? "penalty" : "relief"}
-                    </span>
-                  </div>
-                ))}
-                {[
-                  { show: calcResult.adjustmentSummary.gemPenalty > 0 },
-                  { show: calcResult.adjustmentSummary.femaleDiversity < 0 },
-                  { show: calcResult.adjustmentSummary.nonEngineerDiversity < 0 },
-                  { show: calcResult.adjustmentSummary.workEx < 0 },
-                  { show: calcResult.adjustmentSummary.mastersDegree < 0 },
-                  { show: calcResult.adjustmentSummary.academics !== 0 },
-                ].every(i => !i.show) && (
-                  <div style={{fontSize:12,color:"#6e6e73",padding:"4px 0"}}>
-                    No profile relief yet. Add academics, work experience, or PG details to see what helps.
+              <button type="button" onClick={() => setShowPinForm(p => !p)}
+                className="profile-pin-pill">
+                {showPinForm ? "Hide" : "Change PIN"}
+              </button>
+            </div>
+            {showPinForm && (
+              <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:8}}>
+                <div className="pin-grid">
+                  <input type="password" inputMode="numeric" maxLength={4}
+                    placeholder="Current"
+                    value={pinForm.oldPin}
+                    onChange={e => setPinForm(p => ({
+                      ...p,
+                      oldPin: e.target.value.replace(/\D/g,""),
+                      error:""
+                    }))}
+                    style={pinInputStyle}
+                  />
+                  <input type="password" inputMode="numeric" maxLength={4}
+                    placeholder="New"
+                    value={pinForm.newPin}
+                    onChange={e => setPinForm(p => ({
+                      ...p,
+                      newPin: e.target.value.replace(/\D/g,""),
+                      error:""
+                    }))}
+                    style={pinInputStyle}
+                  />
+                  <input type="password" inputMode="numeric" maxLength={4}
+                    placeholder="Confirm"
+                    value={pinForm.confirmPin}
+                    onChange={e => setPinForm(p => ({
+                      ...p,
+                      confirmPin: e.target.value.replace(/\D/g,""),
+                      error:""
+                    }))}
+                    style={pinInputStyle}
+                  />
+                </div>
+                {pinForm.error && (
+                  <div style={{fontSize:12,color:"#ff453a",textAlign:"center"}}>
+                    {pinForm.error}
                   </div>
                 )}
-                <div style={{fontSize:11,color:"#444",marginTop:6,fontStyle:"italic"}}>
-                  Cutoffs are indicative based on 2024-2026 trends. Actual calls depend on competition each year.
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="sec-label">Primary Degree</div>
-          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
-            <select style={selectStyle} value={primaryDegree.type || ""} onChange={e => setPrimaryDegree(p => ({...p, type:e.target.value}))}>
-              <option value="">Degree type</option>
-              {degreeTypes.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-            <input type="text" placeholder="Field / Specialization (e.g. Computer Science)" value={primaryDegree.field || ""} onChange={e => setPrimaryDegree(p => ({...p, field:e.target.value}))} style={inputStyle} />
-            <input type="text" placeholder="College / University name" value={primaryDegree.college || ""} onChange={e => setPrimaryDegree(p => ({...p, college:e.target.value}))} style={inputStyle} />
-            <div style={{display:"flex",gap:8}}>
-              <input type="text" placeholder="GPA or %" value={primaryDegree.gpa || ""} onChange={e => setPrimaryDegree(p => ({...p, gpa:e.target.value}))} style={{...inputStyle,flex:1}} />
-              <input type="number" placeholder="Year" value={primaryDegree.year || ""} onChange={e => setPrimaryDegree(p => ({...p, year:e.target.value}))} style={{...inputStyle,flex:1}} />
-            </div>
-            <div style={{display:"flex",gap:8,marginTop:-2}}>
-              {["percentage","10","4"].map(scale => (
-                <button key={scale}
-                  onClick={() => setPrimaryDegree(p => ({...p, gpaScale: scale}))}
+                {pinForm.success && (
+                  <div style={{fontSize:12,color:"#30d158",textAlign:"center",fontWeight:600}}>
+                    ✓ PIN changed successfully
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePinChange}
+                  disabled={changingPin ||
+                    pinForm.oldPin.length < 4 ||
+                    pinForm.newPin.length < 4 ||
+                    pinForm.confirmPin.length < 4}
                   style={{
-                    padding:"3px 10px", borderRadius:20,
-                    border: (primaryDegree?.gpaScale||"percentage")===scale
-                      ? "1px solid #f97316"
-                      : "1px solid #2a2a2a",
-                    background: (primaryDegree?.gpaScale||"percentage")===scale
-                      ? "rgba(249,115,22,0.15)"
-                      : "#111",
-                    color: (primaryDegree?.gpaScale||"percentage")===scale
-                      ? "#f97316" : "#6e6e73",
-                    fontSize:11, cursor:"pointer",
+                    width:"100%",
+                    padding:"10px 12px",
+                    background: pinForm.oldPin.length === 4 &&
+                      pinForm.newPin.length === 4 &&
+                      pinForm.confirmPin.length === 4
+                      ? "#f97316" : "#2a2a2a",
+                    border:"none",
+                    borderRadius:9,
+                    color:"white",
+                    fontSize:13,
+                    fontWeight:700,
+                    cursor: changingPin ||
+                      pinForm.oldPin.length < 4 ||
+                      pinForm.newPin.length < 4 ||
+                      pinForm.confirmPin.length < 4
+                      ? "not-allowed" : "pointer",
                     fontFamily:"inherit"
-                  }}>
-                  {scale === "percentage" ? "%" : `/${scale} CGPA`}
+                  }}
+                >
+                  {changingPin ? "Updating..." : "Save PIN"}
                 </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div className="sec-label">Secondary Degrees</div>
-          <div className="card">
-            <button
-              onClick={() => setTab("secondary-degrees")}
-              style={{
-                display:"flex", alignItems:"center",
-                justifyContent:"space-between",
-                width:"100%", padding:"14px 16px",
-                background:"transparent", border:"none",
-                cursor:"pointer", fontFamily:"inherit",
-              }}
-            >
-              <div>
-                <div className="row-label">PG / Masters / Additional Degrees</div>
-                <div className="row-sub">
-                  {secondaryDegrees.length > 0
-                    ? `${secondaryDegrees.length} degree${secondaryDegrees.length>1?"s":""} added`
-                    : "Add PG, MS, MBA or any other degree"}
+                <div style={{fontSize:10,color:"#444",textAlign:"center"}}>
+                  You will need this new PIN on other devices.
                 </div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="#6e6e73" strokeWidth="2"
-                strokeLinecap="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <div className="sec-label">Work Experience</div>
-          <div className="card" style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:10}}>
-            <div style={{display:"flex",gap:8}}>
-              <select style={{...selectStyle,flex:1}} value={workExpYears} onChange={e => setWorkExpYears(Number(e.target.value))}>
-                {Array.from({length:16},(_,i)=>i).map(y => <option key={y} value={y}>{y} yr{y!==1?"s":""}</option>)}
-              </select>
-              <select style={{...selectStyle,flex:1}} value={workExpMonths} onChange={e => setWorkExpMonths(Number(e.target.value))}>
-                {Array.from({length:12},(_,i)=>i).map(m => <option key={m} value={m}>{m} mo{m!==1?"s":""}</option>)}
-              </select>
-            </div>
-            <input type="text" placeholder="Company name" value={workCompany} onChange={e => setWorkCompany(e.target.value)} style={inputStyle} />
-            <input type="text" placeholder="Role / Designation" value={workRole} onChange={e => setWorkRole(e.target.value)} style={inputStyle} />
+            )}
           </div>
         </div>
       </div>
@@ -4532,6 +4574,7 @@ export default function App() {
           <ProfilePage
             userName={userName}
             userId={userId}
+            onUserIdChange={setUserId}
             startDate={startDate}
             dayNumber={dn}
             totalDays={totalDays}
@@ -4562,6 +4605,24 @@ export default function App() {
             setWorkCompany={setWorkCompany}
             workRole={workRole}
             setWorkRole={setWorkRole}
+          />
+        )}
+        {tab==="profile-edit" && (
+          <ProfileEditPage
+            userName={userName}
+            userId={userId}
+            onUserIdChange={setUserId}
+            setTab={setTab}
+            startDate={startDate}
+            avatarGender={avatarGender}
+            avatarSkin={avatarSkin}
+            avatarHair={avatarHair}
+            avatarHairColor={avatarHairColor}
+            avatarShirt={avatarShirt}
+            avatarGlasses={avatarGlasses}
+            avatarBeard={avatarBeard}
+            avatarMustache={avatarMustache}
+            onAvatarChange={handleAvatarChange}
           />
         )}
         {tab==="academic-profile" && (
