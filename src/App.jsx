@@ -205,10 +205,10 @@ const getDaysToInterview = (dateStr) => {
 }
 const defaultDay = () => ({
   wt:"", st:"",
-  lc:false,
-  as:false,
-  ap:false,
-  vp:false, vp_count:0,
+  lc:false, lc_na:false,
+  as:false, as_na:false,
+  ap:false, ap_na:false,
+  vp:false, vp_na:false, vp_count:0,
   ph:0, pm:0,
   ah:0, eh:0,
   q:0, v:0, l:0,
@@ -305,15 +305,16 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
   const v = Math.min((+day.v||0)/5, 1) * 12;
   const l = Math.min((+day.l||0)/5, 1) * 12;
   const vp = Math.min((+day.vp_count||0)/1, 1) * 8;
+  // N/A sessions count as done for score (not penalised, not rewarded)
   const sessionMins =
-    (day.lc ? 120 : 0) +
-    (day.as ? 40 : 0) +
-    (day.ap ? 120 : 0) +
-    (day.vp ? 20 : 0) +
+    ((day.lc || day.lc_na) ? 120 : 0) +
+    ((day.as || day.as_na) ? 40 : 0) +
+    ((day.ap || day.ap_na) ? 120 : 0) +
+    ((day.vp || day.vp_na) ? 20 : 0) +
     ((+day.ph||0)*60) + (+day.pm||0);
   const hrs = Math.min(sessionMins / 300, 1) * 16;
-  const lc = (day.lc ? 1 : 0) * 8;
-  const passage = (day.vp ? 1 : 0) * 4;
+  const lc = ((day.lc || day.lc_na) ? 1 : 0) * 8;
+  const passage = ((day.vp || day.vp_na) ? 1 : 0) * 4;
   const sleepScore = (() => {
     if (!day.wt || !day.st) return 0;
     const [wh, wm] = day.wt.split(":").map(Number);
@@ -476,7 +477,7 @@ function calcIIMProfile({
 
 function Tog({ v, onChange }) {
   return (
-    <label className="tog">
+    <label className="tog" style={{ display:"inline-block" }}>
       <input type="checkbox" checked={!!v} onChange={e => onChange(e.target.checked)} />
       <span className="tog-track" />
       <span className="tog-thumb" />
@@ -550,10 +551,10 @@ function TodayPage({
       ? "Too much sleep. Maximum 6 hours for CAT prep."
       : "";
   const totalMins =
-    (d.lc ? 120 : 0) +
-    (d.as ? 40 : 0) +
-    (d.ap ? 120 : 0) +
-    (d.vp ? 20 : 0) +
+    (d.lc && !d.lc_na ? 120 : 0) +
+    (d.as && !d.as_na ? 40 : 0) +
+    (d.ap && !d.ap_na ? 120 : 0) +
+    (d.vp && !d.vp_na ? 20 : 0) +
     ((+d.ph||0) * 60) +
     (+d.pm||0);
   const totalHrs = Math.floor(totalMins / 60);
@@ -587,14 +588,14 @@ function TodayPage({
           <div className="card">
             <TimePickerWidget
               label="Wake time"
-              sub="Recommended: 6:00-8:00 AM"
+              sub="Recommended: 6:00 AM – 8:00 AM"
               value={d.wt}
               onChange={v => upd("wt", v)}
               dotColor={wakeBeforeTen && sleepDurationValid ? "#30d158" : "#ff453a"}
             />
             <TimePickerWidget
               label="Sleep time"
-              sub="Recommended: 10 PM-2 AM"
+              sub="Recommended: 10:00 PM – 2:00 AM"
               value={d.st}
               onChange={v => upd("st", v)}
               dotColor={sleepDurationValid ? "#30d158" : "#ff453a"}
@@ -613,21 +614,225 @@ function TodayPage({
         <div>
           <div className="sec-label">Sessions</div>
           <div className="card">
-            <div className="card-row">
-              <div><div className="row-label">Live class</div><div className="row-sub">2 hrs · iQuanta live</div></div>
-              <Tog v={d.lc} onChange={v=>upd("lc",v)} />
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "12px 16px",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+            }}>
+              <button
+                onClick={() => { const n=!d.lc_na; upd("lc_na",n); if(n) upd("lc",false); }}
+                style={{
+                  flexShrink: 0,
+                  flexGrow: 0,
+                  width: 36,
+                  boxSizing: "border-box",
+                  padding: "4px 8px",
+                  borderRadius: 20,
+                  border: d.lc_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  background: d.lc_na ? "rgba(110,110,115,0.15)" : "transparent",
+                  color: d.lc_na ? "#6e6e73" : "#3a3a3a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >N/A</button>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}>
+                <div className="row-label" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>Live class</div>
+                <div className="row-sub" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>2 hrs · iQuanta live</div>
+              </div>
+              <div style={{
+                flexShrink: 0,
+                flexGrow: 0,
+                marginLeft: "auto",
+                opacity: d.lc_na ? 0.35 : 1,
+                pointerEvents: d.lc_na ? "none" : "auto",
+              }}>
+                <Tog v={d.lc} onChange={v=>{upd("lc",v);if(v)upd("lc_na",false);}} />
+              </div>
             </div>
-            <div className="card-row">
-              <div><div className="row-label">Afternoon session</div><div className="row-sub">40 min session</div></div>
-              <Tog v={d.as} onChange={v=>upd("as",v)} />
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "12px 16px",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+            }}>
+              <button
+                onClick={() => { const n=!d.as_na; upd("as_na",n); if(n) upd("as",false); }}
+                style={{
+                  flexShrink: 0,
+                  flexGrow: 0,
+                  width: 36,
+                  boxSizing: "border-box",
+                  padding: "4px 8px",
+                  borderRadius: 20,
+                  border: d.as_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  background: d.as_na ? "rgba(110,110,115,0.15)" : "transparent",
+                  color: d.as_na ? "#6e6e73" : "#3a3a3a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >N/A</button>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}>
+                <div className="row-label" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>Afternoon session</div>
+                <div className="row-sub" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>40 min session</div>
+              </div>
+              <div style={{
+                flexShrink: 0,
+                flexGrow: 0,
+                marginLeft: "auto",
+                opacity: d.as_na ? 0.35 : 1,
+                pointerEvents: d.as_na ? "none" : "auto",
+              }}>
+                <Tog v={d.as} onChange={v=>{upd("as",v);if(v)upd("as_na",false);}} />
+              </div>
             </div>
-            <div className="card-row">
-              <div><div className="row-label">Application class</div><div className="row-sub">2 hr application class</div></div>
-              <Tog v={d.ap} onChange={v=>upd("ap",v)} />
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "12px 16px",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+            }}>
+              <button
+                onClick={() => { const n=!d.ap_na; upd("ap_na",n); if(n) upd("ap",false); }}
+                style={{
+                  flexShrink: 0,
+                  flexGrow: 0,
+                  width: 36,
+                  boxSizing: "border-box",
+                  padding: "4px 8px",
+                  borderRadius: 20,
+                  border: d.ap_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  background: d.ap_na ? "rgba(110,110,115,0.15)" : "transparent",
+                  color: d.ap_na ? "#6e6e73" : "#3a3a3a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >N/A</button>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}>
+                <div className="row-label" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>Application class</div>
+                <div className="row-sub" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>2 hr application class</div>
+              </div>
+              <div style={{
+                flexShrink: 0,
+                flexGrow: 0,
+                marginLeft: "auto",
+                opacity: d.ap_na ? 0.35 : 1,
+                pointerEvents: d.ap_na ? "none" : "auto",
+              }}>
+                <Tog v={d.ap} onChange={v=>{upd("ap",v);if(v)upd("ap_na",false);}} />
+              </div>
             </div>
-            <div className="card-row">
-              <div><div className="row-label">VARC passage</div><div className="row-sub">20 min passage</div></div>
-              <Tog v={d.vp} onChange={v=>upd("vp",v)} />
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "12px 16px",
+              gap: 10,
+              width: "100%",
+              boxSizing: "border-box",
+            }}>
+              <button
+                onClick={() => { const n=!d.vp_na; upd("vp_na",n); if(n) upd("vp",false); }}
+                style={{
+                  flexShrink: 0,
+                  flexGrow: 0,
+                  width: 36,
+                  boxSizing: "border-box",
+                  padding: "4px 8px",
+                  borderRadius: 20,
+                  border: d.vp_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  background: d.vp_na ? "rgba(110,110,115,0.15)" : "transparent",
+                  color: d.vp_na ? "#6e6e73" : "#3a3a3a",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >N/A</button>
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}>
+                <div className="row-label" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>VARC passage</div>
+                <div className="row-sub" style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>20 min passage</div>
+              </div>
+              <div style={{
+                flexShrink: 0,
+                flexGrow: 0,
+                marginLeft: "auto",
+                opacity: d.vp_na ? 0.35 : 1,
+                pointerEvents: d.vp_na ? "none" : "auto",
+              }}>
+                <Tog v={d.vp} onChange={v=>{upd("vp",v);if(v)upd("vp_na",false);}} />
+              </div>
             </div>
             <div className="card-row">
               <div>
@@ -1133,24 +1338,29 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
 
   const chartData = useMemo(() => {
     let totalEffort = 0;
-    return Array.from({length: totalDays}, (_, i) => {
+    const points = Array.from({length: totalDays}, (_, i) => {
       const d = new Date(start); d.setDate(d.getDate() + i);
       const k = toLocalDateKey(d); const e = data[k];
       if (i+1 <= dn) totalEffort += effortScore(e || defaultDay(), backlogVideos, backlogConcepts);
       return {
-        day:i+1,
-        targetLine: ((i+1)/totalDays) * 100,
-        actualLine: i+1 <= dn ? Math.round(totalEffort / (i+1)) : null,
+        day: i+1,
+        targetLine: totalDays > 0 ? (Math.round(((i+1)/totalDays) * 100) || 0) : 0,
+        actualLine: i+1 <= dn ? (Math.round(totalEffort / (i+1)) || 0) : null,
       };
     });
+    const pastPoints = points.filter(p => p.actualLine !== null);
+    if (pastPoints.length > 0 && pastPoints.every(p => p.actualLine === 0)) {
+      console.warn("[Progress] All effort scores are 0 — check session field mapping");
+    }
+    return points;
   }, [data, dn, start, totalDays, backlogVideos, backlogConcepts]);
 
   const totalH = Object.values(data).reduce((a, d) => {
     const mins =
-      (d.lc ? 120 : 0) +
-      (d.as ? 40 : 0) +
-      (d.ap ? 120 : 0) +
-      (d.vp ? 20 : 0) +
+      (d.lc && !d.lc_na ? 120 : 0) +
+      (d.as && !d.as_na ? 40 : 0) +
+      (d.ap && !d.ap_na ? 120 : 0) +
+      (d.vp && !d.vp_na ? 20 : 0) +
       ((+d.ph || 0) * 60) +
       (+d.pm || 0);
     return a + mins / 60;
