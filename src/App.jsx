@@ -159,7 +159,17 @@ const getDaysToInterview = (dateStr) => {
   interview.setHours(0, 0, 0, 0)
   return Math.max(0, Math.floor((interview - now) / 86400000))
 }
-const defaultDay = () => ({ wt:"",st:"",lc:false,ah:"",eh:"",vp:false,vp_count:0,q:0,v:0,l:0,iq:"",n:"",backlog:[] });
+const defaultDay = () => ({
+  wt:"", st:"",
+  lc:false,
+  as:false,
+  ap:false,
+  vp:false, vp_count:0,
+  ph:0, pm:0,
+  ah:0, eh:0,
+  q:0, v:0, l:0,
+  iq:"", n:"", backlog:[]
+});
 
 const getSleepDuration = (sleepTime, wakeTime) => {
   if (!sleepTime || !wakeTime) return null;
@@ -171,38 +181,79 @@ const getSleepDuration = (sleepTime, wakeTime) => {
   return (wakeMins - sleepMins) / 60;
 };
 
-const wakeTimeOptions = [
-  ["04:00", "4:00"],
-  ["04:30", "4:30"],
-  ["05:00", "5:00"],
-  ["05:30", "5:30"],
-  ["06:00", "6:00"],
-  ["06:30", "6:30"],
-  ["07:00", "7:00"],
-  ["07:30", "7:30"],
-  ["08:00", "8:00"],
-];
+function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
+  const parts = value ? value.split(":").map(Number) : [null, null];
+  const selHour = parts[0] ?? null;
+  const selMin = parts[1] ?? null;
 
-const sleepTimeOptions = [
-  ["21:00", "21:00"],
-  ["21:30", "21:30"],
-  ["22:00", "22:00"],
-  ["22:30", "22:30"],
-  ["23:00", "23:00"],
-  ["23:30", "23:30"],
-  ["00:00", "00:00"],
-  ["00:30", "00:30"],
-  ["01:00", "1:00"],
-  ["01:30", "1:30"],
-  ["02:00", "2:00"],
-];
+  const wakeHours = [4,5,6,7,8,9,10,11,12];
+  const sleepHours = [18,19,20,21,22,23,0,1,2,3];
+  const minutes = [0,10,20,30,40,50];
+
+  const hours = label === "Wake time" ? wakeHours : sleepHours;
+
+  const formatHour = (h) => {
+    if (h === 0) return "12 AM";
+    if (h < 12) return `${h} AM`;
+    if (h === 12) return "12 PM";
+    return `${h - 12} PM`;
+  };
+
+  const handleChange = (h, m) => {
+    if (h === null || m === null) return;
+    onChange(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+  };
+
+  return (
+    <div className="card-row">
+      <div>
+        <div className="row-label">{label}</div>
+        <div className="row-sub">{sub}</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        <select
+          className="time-select"
+          value={selHour ?? ""}
+          onChange={e => handleChange(Number(e.target.value), selMin ?? 0)}
+          style={{minWidth:72}}
+        >
+          <option value="">Hr</option>
+          {hours.map(h => (
+            <option key={h} value={h}>{formatHour(h)}</option>
+          ))}
+        </select>
+        <select
+          className="time-select"
+          value={selMin ?? ""}
+          onChange={e => handleChange(selHour ?? hours[0], Number(e.target.value))}
+          style={{minWidth:58}}
+        >
+          <option value="">Min</option>
+          {minutes.map(m => (
+            <option key={m} value={m}>{String(m).padStart(2,"0")}</option>
+          ))}
+        </select>
+        <div style={{
+          width:8, height:8, borderRadius:"50%",
+          background:dotColor, flexShrink:0
+        }}/>
+      </div>
+    </div>
+  );
+}
 
 const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = []) => {
   const q = Math.min((+day.q||0)/10, 1) * 20;
   const v = Math.min((+day.v||0)/5, 1) * 12;
   const l = Math.min((+day.l||0)/5, 1) * 12;
   const vp = Math.min((+day.vp_count||0)/1, 1) * 8;
-  const hrs = Math.min(((+day.ah||0)+(+day.eh||0))/5, 1) * 16;
+  const sessionMins =
+    (day.lc ? 120 : 0) +
+    (day.as ? 40 : 0) +
+    (day.ap ? 120 : 0) +
+    (day.vp ? 20 : 0) +
+    ((+day.ph||0)*60) + (+day.pm||0);
+  const hrs = Math.min(sessionMins / 300, 1) * 16;
   const lc = (day.lc ? 1 : 0) * 8;
   const passage = (day.vp ? 1 : 0) * 4;
   const sleepScore = (() => {
@@ -249,7 +300,7 @@ function NavIcon({ id }) {
 }
 
 
-function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVideos, backlogConcepts, onSave }) {
+function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVideos, backlogConcepts, onSave, data }) {
   const [saved, setSaved] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
@@ -277,15 +328,37 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVi
   ];
   const quotes = mode === "interview" ? interviewQuotes : prepQuotes;
   const todayQuote = quotes[new Date().getDate() % quotes.length];
-  const sleepDuration = getSleepDuration(d.st, d.wt);
+  const prevDateKey = (() => {
+    const prev = new Date(date + "T00:00:00");
+    prev.setDate(prev.getDate() - 1);
+    const y = prev.getFullYear();
+    const m = String(prev.getMonth()+1).padStart(2,"0");
+    const dd = String(prev.getDate()).padStart(2,"0");
+    return `${y}-${m}-${dd}`;
+  })();
+  const prevDayData = data?.[prevDateKey];
+  const sleepTimeForCalc = prevDayData?.st || d.st;
+  const sleepDuration = getSleepDuration(sleepTimeForCalc, d.wt);
   const hasSleepDuration = sleepDuration !== null;
   const sleepDurationValid = hasSleepDuration && sleepDuration >= 4 && sleepDuration <= 6;
-  const wakeBeforeSeven = !!d.wt && d.wt < "07:00";
+  const wakeBeforeTen = !!d.wt && d.wt < "10:00";
   const sleepWarning = hasSleepDuration && sleepDuration < 4
     ? "Too little sleep. Minimum 4 hours."
     : hasSleepDuration && sleepDuration > 6
       ? "Too much sleep. Maximum 6 hours for CAT prep."
       : "";
+  const totalMins =
+    (d.lc ? 120 : 0) +
+    (d.as ? 40 : 0) +
+    (d.ap ? 120 : 0) +
+    (d.vp ? 20 : 0) +
+    ((+d.ph||0) * 60) +
+    (+d.pm||0);
+  const totalHrs = Math.floor(totalMins / 60);
+  const totalMinRem = totalMins % 60;
+  const totalDisplay = totalHrs > 0 && totalMinRem > 0
+    ? `${totalHrs}h ${totalMinRem}m`
+    : totalHrs > 0 ? `${totalHrs}h` : `${totalMinRem}m`;
   const totalBacklog = backlogVideos.length + backlogConcepts.length;
   const totalDone = backlogVideos.filter(i=>i.checked).length +
                     backlogConcepts.filter(i=>i.checked).length;
@@ -310,40 +383,20 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVi
         <div>
           <div className="sec-label">Vitals</div>
           <div className="card">
-            {[
-              {lbl:"Wake time", sub:"Window: 4:00-8:00 AM", f:"wt", options:wakeTimeOptions},
-              {lbl:"Sleep time", sub:"Window: 9:00 PM-2:00 AM", f:"st", options:sleepTimeOptions}
-            ].map(r => (
-              <div className="card-row" key={r.f}>
-                <div>
-                  <div className="row-label">{r.lbl}</div>
-                  <div className="row-sub">{r.sub}</div>
-                </div>
-                <div style={{display:"flex", alignItems:"center", gap:10}}>
-                  <select
-                    className="time-select"
-                    value={d[r.f] || ""}
-                    onChange={e => upd(r.f, e.target.value)}
-                    autoComplete="off"
-                    autoCorrect="off"
-                  >
-                    <option value="">Select</option>
-                    {r.options.map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                  <div style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    background: r.f === "wt"
-                      ? (wakeBeforeSeven && sleepDurationValid ? "#30d158" : "#ff453a")
-                      : (sleepDurationValid ? "#30d158" : "#ff453a")
-                  }}/>
-                </div>
-              </div>
-            ))}
+            <TimePickerWidget
+              label="Wake time"
+              sub="Recommended: 6:00-8:00 AM"
+              value={d.wt}
+              onChange={v => upd("wt", v)}
+              dotColor={wakeBeforeTen && sleepDurationValid ? "#30d158" : "#ff453a"}
+            />
+            <TimePickerWidget
+              label="Sleep time"
+              sub="Recommended: 10 PM-2 AM"
+              value={d.st}
+              onChange={v => upd("st", v)}
+              dotColor={sleepDurationValid ? "#30d158" : "#ff453a"}
+            />
             {hasSleepDuration && (
               <div className="sleep-summary">
                 <div className={`sleep-duration-badge${sleepDurationValid ? " valid" : " invalid"}`}>
@@ -359,21 +412,63 @@ function TodayPage({ date, d, upd, dl, start, totalDays, mode, setTab, backlogVi
           <div className="sec-label">Sessions</div>
           <div className="card">
             <div className="card-row">
-              <div><div className="row-label">Live class</div><div className="row-sub">iQuanta evening</div></div>
+              <div><div className="row-label">Live class</div><div className="row-sub">2 hrs · iQuanta live</div></div>
               <Tog v={d.lc} onChange={v=>upd("lc",v)} />
             </div>
-            {[{lbl:"Afternoon practice",sub:"Target: 2–3 hrs",f:"ah"},{lbl:"Evening session (10–12pm)",sub:"Daily grind block",f:"eh"}].map(r => (
-              <div className="card-row" key={r.f}>
-                <div><div className="row-label">{r.lbl}</div><div className="row-sub">{r.sub}</div></div>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <input className="num-input" type="number" step="0.5" min="0" max="12" value={d[r.f]||""} onChange={e=>upd(r.f,e.target.value)} />
-                  <span style={{fontSize:11,color:"var(--tt)"}}>hrs</span>
-                </div>
-              </div>
-            ))}
             <div className="card-row">
-              <div><div className="row-label">VARC passage</div><div className="row-sub">1 passage minimum</div></div>
+              <div><div className="row-label">Afternoon session</div><div className="row-sub">40 min session</div></div>
+              <Tog v={d.as} onChange={v=>upd("as",v)} />
+            </div>
+            <div className="card-row">
+              <div><div className="row-label">Application class</div><div className="row-sub">2 hr application class</div></div>
+              <Tog v={d.ap} onChange={v=>upd("ap",v)} />
+            </div>
+            <div className="card-row">
+              <div><div className="row-label">VARC passage</div><div className="row-sub">20 min passage</div></div>
               <Tog v={d.vp} onChange={v=>upd("vp",v)} />
+            </div>
+            <div className="card-row">
+              <div>
+                <div className="row-label">Personal practice</div>
+                <div className="row-sub">Additional self-study</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <select
+                  className="time-select"
+                  value={d.ph || 0}
+                  onChange={e => upd("ph", Number(e.target.value))}
+                  style={{minWidth:52}}
+                >
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(h => (
+                    <option key={h} value={h}>{h}h</option>
+                  ))}
+                </select>
+                <select
+                  className="time-select"
+                  value={d.pm || 0}
+                  onChange={e => upd("pm", Number(e.target.value))}
+                  style={{minWidth:58}}
+                >
+                  {[0,10,20,30,40,50].map(m => (
+                    <option key={m} value={m}>{String(m).padStart(2,"0")}m</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{
+              display:"flex", justifyContent:"space-between",
+              alignItems:"center", padding:"12px 16px",
+              borderTop:"1px solid #1f1f1f", marginTop:4
+            }}>
+              <span style={{fontSize:11,color:"#6e6e73",
+                letterSpacing:"0.06em",textTransform:"uppercase"}}>
+                Total Studied
+              </span>
+              <span style={{fontSize:16,fontWeight:700,
+                color: totalMins >= 240 ? "#30d158"
+                  : totalMins >= 120 ? "#f97316"
+                    : "#f5f5f7"
+              }}>{totalDisplay}</span>
             </div>
           </div>
         </div>
@@ -2799,7 +2894,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} onSave={() => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
