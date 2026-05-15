@@ -65,7 +65,7 @@ import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import { mentorChat } from "./src/mentor/chain.js";
 import { getRecentChat, initQdrant, warmup } from "./src/mentor/memory.js";
-import { startPipeline } from "./src/mentor/pipeline.js";
+import { startPipeline, runNightlyDistillation } from "./src/mentor/pipeline.js";
 
 dotenv.config();
 const app = express();
@@ -651,6 +651,20 @@ app.post("/api/user/update", async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.post("/api/internal/distill", async (req, res) => {
+  if (!process.env.CRON_SECRET || req.get("x-cron-secret") !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+
+  try {
+    await runNightlyDistillation(supabase);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("Internal distillation failed:", err?.message || err);
+    return res.status(500).json({ error: err?.message || "Distillation failed" });
   }
 });
 
