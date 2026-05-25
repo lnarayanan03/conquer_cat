@@ -651,10 +651,10 @@ function TodayPage({
               }}>
                 <div className="row-label" style={{
                   whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>{todayLiveLabel || "Live Class"}</div>
+                }}>Live Class</div>
                 <div className="row-sub" style={{
                   whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>2 hrs · iQuanta live</div>
+                }}>{todayLiveLabel || "2 hrs · iQuanta live"}</div>
               </div>
               <div style={{
                 flexShrink: 0,
@@ -5158,17 +5158,17 @@ export default function App() {
       .catch(err => console.warn("Mentor history load failed:", err))
       .finally(() => setMentorHistoryChecked(true));
   }, [userId, startDate]);
-  const getTodayClass = () => {
-    const dayName = new Date().toLocaleDateString("en-US", {
-      timeZone: "Asia/Kolkata", weekday: "long"
+  const getClassForDate = (dateKey) => {
+    const dayName = new Date(`${dateKey}T00:00:00`).toLocaleDateString("en-US", {
+      weekday: "long"
     });
     return weeklyTimetable[dayName] || { topic: "None", subtopic: "", appSameAsLive: true, appTopic: "None", appSubtopic: "" };
   };
 
-  const todayClass = getTodayClass();
+  const todayClass = getClassForDate(sel);
   const todayLiveLabel = todayClass.topic !== "None"
-    ? `Live Class — ${todayClass.topic}${todayClass.subtopic ? ` (${todayClass.subtopic})` : ""} · 7PM`
-    : "Live Class";
+    ? `${todayClass.topic}${todayClass.subtopic ? ` — ${todayClass.subtopic}` : ""} · 7PM`
+    : "No live class scheduled";
   const todayAppTopic = todayClass.appSameAsLive ? todayClass.topic : todayClass.appTopic;
   const todayAppSubtopic = todayClass.appSameAsLive ? todayClass.subtopic : todayClass.appSubtopic;
   const todayAppLabel = todayAppTopic !== "None"
@@ -5310,6 +5310,30 @@ export default function App() {
   )
 
   const upd = (date, f, v) => setData(p => ({...p, [date]: {...(p[date]||defaultDay()), [f]:v}}));
+
+  const addMissedLiveClassToBacklog = (classEntry, dateKey = todayKey()) => {
+    if (!classEntry || classEntry.topic === "None") return "";
+    const subtopic = classEntry.subtopic?.trim();
+    const text = subtopic ? `${classEntry.topic}: ${subtopic}` : classEntry.topic;
+    const exists = backlogVideos.some(item =>
+      String(item.text || item).trim().toLowerCase() === text.toLowerCase()
+    );
+    if (exists) return "";
+    setBacklogVideos(prev => {
+      const alreadyAdded = prev.some(item =>
+        String(item.text || item).trim().toLowerCase() === text.toLowerCase()
+      );
+      if (alreadyAdded) return prev;
+      return [...prev, {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        text,
+        checked: false,
+        addedDate: dateKey,
+        checkedDate: null
+      }];
+    });
+    return text;
+  };
 
   const sendToVikram = async (autoMessage) => {
     if (!userId || !autoMessage?.trim()) return;
@@ -5550,13 +5574,16 @@ export default function App() {
           const hrs = Math.floor(totalMins / 60);
           const mins = totalMins % 60;
           const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-          const noLiveClass = !dayData.lc && !dayData.lc_na;
+          const scheduledLiveClass = todayClass.topic !== "None";
+          const missedLiveClass = scheduledLiveClass && !dayData.lc && !dayData.lc_na;
+          const backlogAdded = missedLiveClass ? addMissedLiveClassToBacklog(todayClass, sel) : "";
 
           const autoMsg = [
             `Day ${dn} saved. Effort score: ${score}/100.`,
             `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
             `Total study time: ${timeStr}.`,
-            noLiveClass ? "No live class today and not marked N/A." : "",
+            missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
+            backlogAdded ? `Moved to video backlog: ${backlogAdded}.` : "",
             dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",
             dayData.n?.trim() ? `Journal: ${dayData.n.trim()}` : "",
           ].filter(Boolean).join(" ");
