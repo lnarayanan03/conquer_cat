@@ -10,14 +10,14 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   : null;
 
 const TOPICS = ["quant", "varc", "lrdi"];
-const SEED_COUNT = 50;
+const SEED_COUNT = 10;
 
 function getGroq() {
   return new ChatGroq({
     apiKey: process.env.GROQ_API_KEY,
     model: "llama-3.3-70b-versatile",
     temperature: 0.7,
-    maxTokens: 4000,
+    maxTokens: 2000,
   });
 }
 
@@ -144,17 +144,29 @@ export async function seedInitialBank() {
   for (const topic of TOPICS) {
     try {
       console.log(`[ingest] Seeding ${topic}...`);
-      const response = await model.invoke([
-        new SystemMessage("You are a CAT exam question generator. Return only valid JSON arrays."),
-        new HumanMessage(buildSeedPrompt(topic, SEED_COUNT)),
-      ]);
-      const text = typeof response.content === "string"
-        ? response.content
-        : response.content.map(b => b.text || "").join("");
-      const parsed = parseJsonArray(text);
-      const inserted = await insertQuestions(parsed);
-      results[topic] = inserted;
-      console.log(`[ingest] ${topic}: ${inserted} questions inserted`);
+      let totalInserted = 0;
+      const BATCHES = 5;
+      for (let batch = 0; batch < BATCHES; batch++) {
+        try {
+          const response = await model.invoke([
+            new SystemMessage("You are a CAT exam question generator. Return only valid JSON arrays. Never truncate. Always close the JSON array with ] at the end."),
+            new HumanMessage(buildSeedPrompt(topic, SEED_COUNT)),
+          ]);
+          const text = typeof response.content === "string"
+            ? response.content
+            : response.content.map(b => b.text || "").join("");
+          const parsed = parseJsonArray(text);
+          const inserted = await insertQuestions(parsed);
+          totalInserted += inserted;
+          console.log(`[ingest] ${topic} batch ${batch + 1}/${BATCHES}: ${inserted} inserted`);
+        } catch (batchErr) {
+          console.warn(`[ingest] ${topic} batch ${batch + 1} failed:`, batchErr?.message?.slice(0, 120));
+        }
+        // Small delay between batches to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      results[topic] = totalInserted;
+      console.log(`[ingest] ${topic} total: ${totalInserted} questions inserted`);
     } catch (err) {
       console.error(`[ingest] Seed failed for ${topic}:`, err?.message);
       results[topic] = 0;
