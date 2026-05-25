@@ -757,10 +757,10 @@ function TodayPage({
               }}>
                 <div className="row-label" style={{
                   whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>{todayAppLabel || "Application Class"}</div>
+                }}>Application Class</div>
                 <div className="row-sub" style={{
                   whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>10-12AM · Application class</div>
+                }}>{todayAppLabel || "10-12AM · Application class"}</div>
               </div>
               <div style={{
                 flexShrink: 0,
@@ -5172,8 +5172,8 @@ export default function App() {
   const todayAppTopic = todayClass.appSameAsLive ? todayClass.topic : todayClass.appTopic;
   const todayAppSubtopic = todayClass.appSameAsLive ? todayClass.subtopic : todayClass.appSubtopic;
   const todayAppLabel = todayAppTopic !== "None"
-    ? `Application Class — ${todayAppTopic}${todayAppSubtopic ? ` (${todayAppSubtopic})` : ""} · 10-12AM`
-    : "Application Class";
+    ? `${todayAppTopic}${todayAppSubtopic ? ` — ${todayAppSubtopic}` : ""} · 10-12AM`
+    : "No application class scheduled";
 
   const isSundayIST = new Date().toLocaleDateString("en-US", {
     timeZone: "Asia/Kolkata", weekday: "short"
