@@ -75,12 +75,18 @@ function normalizeContent(content) {
   if (typeof content === "string") return content.trim();
   if (Array.isArray(content)) {
     return content
+      .filter(block => {
+        if (typeof block === "string") return true;
+        const type = block?.type;
+        // Discard tool_use, tool_result, and any non-text block types
+        return type === "text" || type === undefined;
+      })
       .map(block => {
         if (typeof block === "string") return block;
         if (typeof block?.text === "string") return block.text;
-        if (typeof block?.content === "string") return block.content;
         return "";
       })
+      .filter(Boolean)
       .join("\n")
       .trim();
   }
@@ -115,6 +121,7 @@ function toolOutputToString(output) {
 async function runWithTools(model, baseMessages) {
   const messages = [...baseMessages];
   let usedSearch = false;
+  let assessmentEvents = [];
   let response;
 
   for (let hop = 0; hop <= MAX_TOOL_HOPS; hop += 1) {
@@ -125,6 +132,7 @@ async function runWithTools(model, baseMessages) {
       return {
         reply: normalizeContent(response.content),
         usedSearch,
+        assessmentEvents,
       };
     }
 
@@ -132,6 +140,7 @@ async function runWithTools(model, baseMessages) {
       return {
         reply: normalizeContent(response.content),
         usedSearch,
+        assessmentEvents,
       };
     }
 
@@ -154,6 +163,21 @@ async function runWithTools(model, baseMessages) {
         content = err?.message || `Tool failed: ${call.name}`;
       }
 
+      if (call.name === "catAssessmentTool" && call.args?.action === "check_answer") {
+        try {
+          const parsed = JSON.parse(content);
+          assessmentEvents.push({
+            section: call.args.section || "",
+            question: call.args.question || "",
+            options: call.args.options || [],
+            correctAnswer: call.args.correctAnswer || "",
+            userAnswer: call.args.userAnswer || "",
+            explanation: call.args.explanation || "",
+            isCorrect: parsed.isCorrect === true,
+          });
+        } catch { /* ignore parse errors */ }
+      }
+
       messages.push(new ToolMessage({
         content,
         name: call.name,
@@ -166,6 +190,7 @@ async function runWithTools(model, baseMessages) {
   return {
     reply: normalizeContent(response?.content),
     usedSearch,
+    assessmentEvents,
   };
 }
 
@@ -232,7 +257,19 @@ async function runWithPool(messages, withTools = true) {
   throw new Error("All 28 provider slots failed");
 }
 
-export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false }) {
+function isSundayEveningIST() {
+  const parts = new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    hour: "numeric",
+    hour12: false,
+  }).formatToParts(new Date());
+  const weekday = parts.find(p => p.type === "weekday")?.value;
+  const hour = Number(parts.find(p => p.type === "hour")?.value);
+  return weekday === "Sun" && hour >= 18 && hour < 22;
+}
+
+export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false, assessmentAttendance = null }) {
   try {
     if (!userId) throw new Error("userId is required");
     if (!userMessage?.trim()) throw new Error("userMessage is required");
@@ -253,11 +290,14 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       recentChat = [];
     }
 
+    const sundayNote = isSundayEveningIST()
+      ? "\n\nTODAY IS SUNDAY EVENING IST. You MUST initiate the weekly calibre assessment right now — do not wait for the student to ask. Open with exactly: \"Sunday. Weekly calibre check.\" Then immediately use catAssessmentTool to generate and ask the quant question first."
+      : "";
     const systemPrompt = buildSystemPrompt({
-      trackerData,
+      trackerData: { ...trackerData, assessmentAttendance },
       longTermMemories,
       daysLeft,
-    });
+    }) + sundayNote;
 
     const MAX_RECENT = 6;
     const SUMMARIZE_THRESHOLD = 10;
@@ -300,10 +340,30 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
       console.warn('appendChat failed:', err?.message || err);
     }
 
+    const dayNum = daysLeft ? Math.max(1, 200 - daysLeft) : 1;
+    const completedAssessment = (result.assessmentEvents?.length >= 3)
+      ? {
+          week_number: Math.ceil(dayNum / 7),
+          questions: result.assessmentEvents.map(e => ({
+            section: e.section,
+            question: e.question,
+            options: e.options,
+            correctAnswer: e.correctAnswer,
+          })),
+          answers: result.assessmentEvents.map(e => ({
+            section: e.section,
+            userAnswer: e.userAnswer,
+            isCorrect: e.isCorrect,
+          })),
+          score: result.assessmentEvents.filter(e => e.isCorrect).length,
+        }
+      : null;
+
     return {
       reply,
       provider: result.provider,
       used_search: result.usedSearch,
+      assessment_data: completedAssessment,
     };
   } catch (err) {
     console.error("mentorChat fallback response:", err?.message || err);

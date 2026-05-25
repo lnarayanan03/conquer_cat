@@ -3,6 +3,8 @@ import Redis from "ioredis";
 import { ChatGroq } from "@langchain/groq";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { clearChat, getAllChatToday, storeDailyMemory } from "./memory.js";
+import { getDepletedTopics } from "./questionBank.js";
+import { ingestFromTavily } from "./ingest.js";
 
 const CRON_SCHEDULE = "0 0 * * *";
 const TIMEZONE = "Asia/Kolkata";
@@ -162,6 +164,34 @@ raw_summary must be a concise string suitable for vector embedding.`),
 export async function runNightlyDistillation(supabase) {
   const date = todayIst();
   const userIds = await getActiveUserIds();
+
+  // ── Bank health check + auto-replenish ──────────────────────────────────
+  try {
+    const depleted = await getDepletedTopics();
+    for (const topic of depleted) {
+      console.log(`[pipeline] Bank depleted for ${topic}, replenishing...`);
+      await ingestFromTavily(topic, 20).catch(err =>
+        console.warn(`[pipeline] Replenish failed for ${topic}:`, err?.message)
+      );
+    }
+  } catch (err) {
+    console.warn("[pipeline] Bank health check failed:", err?.message);
+  }
+
+  // ── Mark skipped assessments for users who didn't take it ───────────────
+  try {
+    if (supabase) {
+      const today = todayIst();
+      await supabase
+        .from("daily_question_log")
+        .update({ skipped: true })
+        .eq("log_date", today)
+        .eq("topic", "all")
+        .eq("assessment_taken", false);
+    }
+  } catch (err) {
+    console.warn("[pipeline] Skip marking failed:", err?.message);
+  }
 
   for (const userId of userIds) {
     try {

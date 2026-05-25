@@ -66,6 +66,12 @@ import ws from "ws";
 import { mentorChat } from "./src/mentor/chain.js";
 import { getRecentChat, initQdrant, warmup } from "./src/mentor/memory.js";
 import { startPipeline, runNightlyDistillation } from "./src/mentor/pipeline.js";
+import {
+  getQuestionsForSession, saveAttempt, updateDailyLog,
+  markAssessmentComplete, getOrCreateSession,
+  saveSessionProgress, completeSession, getAssessmentAttendance
+} from "./src/mentor/questionBank.js";
+import { seedInitialBank, ingestFromTavily } from "./src/mentor/ingest.js";
 
 dotenv.config();
 const app = express();
@@ -448,7 +454,25 @@ app.post("/api/chat", async (req, res) => {
       trackerData: trackerData || req.body,
       daysLeft,
     });
-    res.json(result);
+    if (result.assessment_data && supabase) {
+      const { userId } = req.body;
+      supabase
+        .from("assessments")
+        .insert({
+          user_id: userId,
+          week_number: result.assessment_data.week_number,
+          questions: result.assessment_data.questions,
+          answers: result.assessment_data.answers,
+          score: result.assessment_data.score,
+        })
+        .then(() => console.log(`[assessment] saved for ${userId}, score=${result.assessment_data.score}/3`))
+        .catch(err => console.warn("[assessment] save failed:", err?.message));
+    }
+    res.json({
+      reply: result.reply,
+      provider: result.provider,
+      used_search: result.used_search,
+    });
   } catch (err) {
     res.status(500).json({ error: err?.message || "Mentor chat failed" });
   }
@@ -654,6 +678,152 @@ app.post("/api/user/update", async (req, res) => {
   }
 });
 
+// ── Assessment: get or resume session ────────────────────────────────────────
+app.get("/api/assessment/session/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const dayOfWeek = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" });
+  const type = dayOfWeek === "Sun" ? "weekly" : "daily";
+
+  try {
+    if (!supabase) return res.json({ session: null, type });
+
+    const { data: existing } = await supabase
+      .from("assessment_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("session_date", today)
+      .eq("session_type", type)
+      .maybeSingle();
+
+    if (existing && existing.completed) {
+      return res.json({ session: null, type, completed: true });
+    }
+
+    if (existing && !existing.completed) {
+      // Resume: fetch full question objects for remaining questions
+      const remainingIds = existing.questions.slice(existing.current_index);
+      const { data: questions } = await supabase
+        .from("questions")
+        .select("id, topic, difficulty, question_text, options")
+        .in("id", remainingIds);
+
+      // Reorder to match stored order
+      const ordered = remainingIds
+        .map(id => (questions || []).find(q => q.id === id))
+        .filter(Boolean);
+
+      return res.json({
+        session: { ...existing, questionObjects: ordered },
+        type,
+        resuming: true,
+      });
+    }
+
+    // New session
+    const allQuestions = await getQuestionsForSession(userId, type);
+    if (allQuestions.length === 0) {
+      return res.json({ session: null, type, error: "Bank empty — seed required" });
+    }
+
+    const session = await getOrCreateSession(userId, today, type, allQuestions);
+    return res.json({
+      session: { ...session, questionObjects: allQuestions },
+      type,
+      resuming: false,
+    });
+  } catch (err) {
+    console.error("[assessment/session] error:", err?.message);
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+// ── Assessment: save one answer ───────────────────────────────────────────────
+app.post("/api/assessment/answer", async (req, res) => {
+  const { userId, sessionId, questionId, userAnswer, correctAnswer, topic } = req.body;
+  if (!userId || !questionId || !userAnswer || !correctAnswer) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const isCorrect = await saveAttempt(userId, questionId, userAnswer, correctAnswer);
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    await updateDailyLog(userId, today, topic, isCorrect);
+
+    // Get explanation from DB — never trust client for correct answer
+    const { data: q } = await supabase
+      .from("questions")
+      .select("explanation, correct_answer")
+      .eq("id", questionId)
+      .single();
+
+    res.json({
+      isCorrect,
+      correctAnswer: q?.correct_answer,
+      explanation: q?.explanation,
+    });
+  } catch (err) {
+    console.error("[assessment/answer] error:", err?.message);
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+// ── Assessment: save progress (for resume) ───────────────────────────────────
+app.post("/api/assessment/progress", async (req, res) => {
+  const { sessionId, currentIndex, answers } = req.body;
+  if (!sessionId) return res.status(400).json({ error: "sessionId required" });
+  try {
+    await saveSessionProgress(sessionId, currentIndex, answers);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+// ── Assessment: complete session ──────────────────────────────────────────────
+app.post("/api/assessment/complete", async (req, res) => {
+  const { userId, sessionId, type, score, total, answers } = req.body;
+  if (!userId || !sessionId) return res.status(400).json({ error: "Missing fields" });
+  try {
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+    await completeSession(sessionId);
+    await markAssessmentComplete(userId, today, type, score, total);
+
+    if (supabase && type === "weekly") {
+      await supabase.from("assessments").insert({
+        user_id: userId,
+        week_number: Math.ceil((new Date() - new Date(process.env.START_DATE || "2026-06-01")) / (7 * 86400000)),
+        questions: answers?.map(a => ({ questionId: a.questionId, topic: a.topic })) || [],
+        answers: answers?.map(a => ({ userAnswer: a.userAnswer, isCorrect: a.isCorrect })) || [],
+        score,
+      }).catch(err => console.warn("[assessment/complete] weekly save:", err?.message));
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err?.message });
+  }
+});
+
+// ── Internal: seed or replenish bank ─────────────────────────────────────────
+app.post("/api/internal/seed", async (req, res) => {
+  if (!process.env.CRON_SECRET || req.get("x-cron-secret") !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  const { topic } = req.body;
+  try {
+    if (topic) {
+      const count = await ingestFromTavily(topic, 20);
+      return res.json({ ok: true, inserted: count, topic });
+    }
+    const results = await seedInitialBank();
+    res.json({ ok: true, results });
+  } catch (err) {
+    console.error("[internal/seed] error:", err?.message);
+    res.status(500).json({ error: err?.message });
+  }
+});
+
 app.post("/api/internal/distill", async (req, res) => {
   if (!process.env.CRON_SECRET || req.get("x-cron-secret") !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: "unauthorized" });
@@ -665,6 +835,26 @@ app.post("/api/internal/distill", async (req, res) => {
   } catch (err) {
     console.error("Internal distillation failed:", err?.message || err);
     return res.status(500).json({ error: err?.message || "Distillation failed" });
+  }
+});
+
+app.post("/api/assessment/save", async (req, res) => {
+  if (!supabase) return res.json({ ok: true });
+  const { userId, weekNumber, questions, answers, score, vikramVerdict } = req.body;
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+  try {
+    await supabase.from("assessments").insert({
+      user_id: userId,
+      week_number: weekNumber ?? null,
+      questions: questions ?? [],
+      answers: answers ?? [],
+      score: score ?? null,
+      vikram_verdict: vikramVerdict ?? null,
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[assessment/save] DB error:", err?.message);
+    res.status(500).json({ error: "DB error" });
   }
 });
 

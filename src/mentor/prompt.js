@@ -182,10 +182,23 @@ export function buildSystemPrompt({ trackerData = {}, longTermMemories = [], day
   const studentName = userName || "R Lakshmi Narayanan";
   const score = effortScore(todayData);
   const hours = ((+todayData.ah || 0) + (+todayData.eh || 0)).toFixed(1);
-  const memories = longTermMemories.length > 0
+  const attendanceBlock = trackerData.assessmentAttendance
+    ? (() => {
+        const a = trackerData.assessmentAttendance;
+        const streak = a.streak > 0 ? `${a.streak}-day streak` : "streak broken";
+        return `\n\nASSESSMENT ATTENDANCE (last ${a.total} days):\n` +
+          `- Taken: ${a.taken}/${a.total} days\n` +
+          `- Skipped: ${a.skipped} days\n` +
+          `- Last taken: ${a.daysSinceLast === 0 ? "today" : a.daysSinceLast === 1 ? "yesterday" : `${a.daysSinceLast} days ago`}\n` +
+          `- Current streak: ${streak}\n` +
+          `Instructions: Reference attendance naturally — not every message. ` +
+          `If skipped > 3 in last 7 days, Vikram notices it. If streak > 5, cold acknowledgment only.`;
+      })()
+    : "";
+  const memories = (longTermMemories.length > 0
     ? "\n\nWHAT YOU REMEMBER ABOUT THIS STUDENT (from past weeks):\n" +
       longTermMemories.map((memory, index) => `${index + 1}. ${memory}`).join("\n")
-    : "";
+    : "") + attendanceBlock;
 
   // ── Profile block with calibre system ──────────────────────────────────────
   let profileBlock = "";
