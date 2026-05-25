@@ -11,6 +11,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 
 const TOPICS = ["quant", "varc", "lrdi"];
 const SEED_COUNT = 5;
+const BANK_TARGET_PER_TOPIC = 50;
 
 let groqIngestIndex = 0;
 
@@ -156,11 +157,29 @@ async function deduplicateQuestions(questions) {
   return questions.filter(q => !existingTexts.has(q.question_text.toLowerCase().slice(0, 80)));
 }
 
+async function countQuestions(topic) {
+  if (!supabase) return 0;
+  const { count, error } = await supabase
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("topic", topic)
+    .eq("is_archived", false);
+  if (error) throw new Error(`Count failed: ${error.message}`);
+  return count || 0;
+}
+
 async function insertQuestions(questions) {
-  if (!supabase || questions.length === 0) return 0;
+  const parsed = questions.length;
   const valid = questions.filter(validateQuestion);
+  if (!supabase || questions.length === 0) {
+    console.log(`[ingest] Insert funnel: parsed=${parsed}, valid=${valid.length}, deduped=0, inserted=0`);
+    return 0;
+  }
   const deduped = await deduplicateQuestions(valid);
-  if (deduped.length === 0) return 0;
+  if (deduped.length === 0) {
+    console.log(`[ingest] Insert funnel: parsed=${parsed}, valid=${valid.length}, deduped=0, inserted=0`);
+    return 0;
+  }
 
   const rows = deduped.map(q => ({
     topic: q.topic,
@@ -175,6 +194,7 @@ async function insertQuestions(questions) {
 
   const { error } = await supabase.from("questions").insert(rows);
   if (error) throw new Error(`Insert failed: ${error.message}`);
+  console.log(`[ingest] Insert funnel: parsed=${parsed}, valid=${valid.length}, deduped=${deduped.length}, inserted=${rows.length}`);
   return rows.length;
 }
 
@@ -183,8 +203,16 @@ export async function seedInitialBank() {
 
   for (const topic of TOPICS) {
     try {
-      console.log(`[ingest] Seeding ${topic} via Tavily...`);
-      const count = await ingestFromTavily(topic, 15);
+      const existing = await countQuestions(topic);
+      if (existing >= BANK_TARGET_PER_TOPIC) {
+        console.log(`[ingest] ${topic} already has ${existing}/${BANK_TARGET_PER_TOPIC}; skipping`);
+        results[topic] = 0;
+        continue;
+      }
+
+      const needed = BANK_TARGET_PER_TOPIC - existing;
+      console.log(`[ingest] Seeding ${topic} via Tavily... existing=${existing}, needed=${needed}`);
+      const count = await ingestFromTavily(topic, needed);
       results[topic] = count;
       console.log(`[ingest] ${topic} total: ${count} questions inserted`);
     } catch (err) {

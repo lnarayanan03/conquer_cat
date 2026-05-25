@@ -3,11 +3,13 @@ import Redis from "ioredis";
 import { ChatGroq } from "@langchain/groq";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { clearChat, getAllChatToday, storeDailyMemory } from "./memory.js";
-import { getDepletedTopics } from "./questionBank.js";
 import { ingestFromTavily } from "./ingest.js";
 
 const CRON_SCHEDULE = "0 0 * * *";
 const TIMEZONE = "Asia/Kolkata";
+const TOPICS = ["quant", "varc", "lrdi"];
+const DAILY_REPLENISH_PER_TOPIC = 2;
+const WEEKLY_REPLENISH_PER_TOPIC = 10;
 let scheduledTask;
 
 function requireEnv(name) {
@@ -38,6 +40,13 @@ function todayIst() {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+  }).format(new Date());
+}
+
+function weekdayIst() {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    weekday: "short",
   }).format(new Date());
 }
 
@@ -163,19 +172,21 @@ raw_summary must be a concise string suitable for vector embedding.`),
 
 export async function runNightlyDistillation(supabase) {
   const date = todayIst();
-  const userIds = await getActiveUserIds();
 
-  // ── Bank health check + auto-replenish ──────────────────────────────────
+  // ── Fixed midnight replenish ─────────────────────────────────────────────
   try {
-    const depleted = await getDepletedTopics();
-    for (const topic of depleted) {
-      console.log(`[pipeline] Bank depleted for ${topic}, replenishing...`);
-      await ingestFromTavily(topic, 20).catch(err =>
-        console.warn(`[pipeline] Replenish failed for ${topic}:`, err?.message)
-      );
+    const perTopicCount = weekdayIst() === "Sun"
+      ? WEEKLY_REPLENISH_PER_TOPIC
+      : DAILY_REPLENISH_PER_TOPIC;
+
+    console.log(`[pipeline] Midnight replenish: ${perTopicCount} per topic`);
+    for (const topic of TOPICS) {
+      await ingestFromTavily(topic, perTopicCount).catch(err => {
+        console.warn(`[pipeline] Replenish failed for ${topic}:`, err?.message);
+      });
     }
   } catch (err) {
-    console.warn("[pipeline] Bank health check failed:", err?.message);
+    console.warn("[pipeline] Bank replenish failed:", err?.message);
   }
 
   // ── Mark skipped assessments for users who didn't take it ───────────────
@@ -192,6 +203,8 @@ export async function runNightlyDistillation(supabase) {
   } catch (err) {
     console.warn("[pipeline] Skip marking failed:", err?.message);
   }
+
+  const userIds = await getActiveUserIds();
 
   for (const userId of userIds) {
     try {
