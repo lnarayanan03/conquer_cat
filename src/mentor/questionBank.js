@@ -9,7 +9,6 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 
 const TOPICS = ["quant", "varc", "lrdi"];
 const WRONG_RETRY_DAYS = 3;
-const MIN_BANK_SIZE = 50;
 
 // ── Select questions for a session ──────────────────────────────────────────
 
@@ -188,27 +187,6 @@ export async function markAssessmentComplete(userId, date, type, score, total) {
       assessment_score: score,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,log_date,topic" });
-}
-
-// ── Bank health check ────────────────────────────────────────────────────────
-
-export async function getBankHealth() {
-  if (!supabase) return {};
-  const result = {};
-  for (const topic of TOPICS) {
-    const { count } = await supabase
-      .from("questions")
-      .select("id", { count: "exact", head: true })
-      .eq("topic", topic)
-      .eq("is_archived", false);
-    result[topic] = count || 0;
-  }
-  return result;
-}
-
-export async function getDepletedTopics() {
-  const health = await getBankHealth();
-  return TOPICS.filter(t => health[t] < MIN_BANK_SIZE);
 }
 
 // ── Assessment attendance for Vikram injection ───────────────────────────────

@@ -501,6 +501,7 @@ Optional extra keys:
 ```env
 GROQ_API_KEY_2=
 GROQ_API_KEY_3=
+GROQ_API_KEY_4=
 ```
 
 ### Gemini
@@ -964,6 +965,52 @@ Sections:
 - Quant
 - VARC
 - LRDI
+
+Daily assessment uses 2 questions per section, for 6 total.
+
+Weekly assessment uses 10 questions per section, for 30 total.
+
+### Question Bank Flow
+
+Questions are stored in Supabase in the `questions` table.
+
+The bank is filled in two ways:
+
+- Manual seed: `/api/internal/seed` tops each topic up to 50 active questions.
+- Nightly pipeline: every midnight IST it adds fresh questions from Tavily.
+
+Nightly replenish rules:
+
+- Monday to Saturday midnight: 2 Quant, 2 VARC, and 2 LRDI questions.
+- Sunday 00:00 IST: 10 Quant, 10 VARC, and 10 LRDI questions for weekly assessment readiness.
+
+The ingest pipeline validates every question before insert:
+
+- Valid topic
+- Valid difficulty
+- Question text present
+- Exactly 4 options
+- Correct answer exactly matches one option
+- Explanation present
+- Duplicate question text filtered before insert
+
+Ingest logs show the funnel:
+
+```text
+parsed -> valid -> deduped -> inserted
+```
+
+Already ingested questions should normally stay in the bank. The app avoids questions already seen by the user when possible, and new nightly questions keep expanding the pool.
+
+### Solved and Unsolved Tracking
+
+When the student submits an answer, the app saves it to `user_question_attempts`.
+
+- Correct answers are saved as solved.
+- Wrong answers are saved as incorrect/unsolved.
+- Recent wrong answers can reappear for retry practice.
+- Daily topic performance is updated in `daily_question_log`.
+- Completed sessions are marked in `assessment_sessions`.
 
 The tool checks that:
 

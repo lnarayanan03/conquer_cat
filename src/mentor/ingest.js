@@ -10,7 +10,6 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   : null;
 
 const TOPICS = ["quant", "varc", "lrdi"];
-const SEED_COUNT = 5;
 const BANK_TARGET_PER_TOPIC = 50;
 
 let groqIngestIndex = 0;
@@ -34,41 +33,6 @@ function getGroq() {
     temperature: 0.7,
     maxTokens: 4000,
   });
-}
-
-function getTopicPrompt(topic) {
-  const specs = {
-    quant: "arithmetic, algebra, number theory, geometry, percentages, profit/loss, time-speed-distance, work, mixtures — CAT exam style",
-    varc: "reading comprehension inference, vocabulary in context, para-jumbles, para-summary, critical reasoning, sentence correction — CAT exam style",
-    lrdi: "arrangements (linear/circular), blood relations, directions, set theory, games/tournaments, logical sequences — CAT exam style",
-  };
-  return specs[topic];
-}
-
-function buildSeedPrompt(topic, count) {
-  return `Generate exactly ${count} unique CAT-level multiple choice questions for the topic: ${topic} (${getTopicPrompt(topic)}).
-
-STRICT RULES:
-- Each question must be a different sub-type — do NOT repeat the same concept
-- All questions must be CAT 2020-2024 difficulty level
-- Each question must have exactly 4 options
-- correctAnswer must be the EXACT TEXT of one of the 4 options — not A/B/C/D
-- Explanation must show full working/reasoning
-- Mix of medium (20%), cat_level (60%), and hard (20%) difficulty
-
-Return ONLY a valid JSON array. No markdown. No preamble. No explanation outside JSON.
-Format:
-[
-  {
-    "topic": "${topic}",
-    "difficulty": "cat_level",
-    "question_text": "...",
-    "options": ["option1", "option2", "option3", "option4"],
-    "correct_answer": "option1",
-    "explanation": "...",
-    "source": "generated"
-  }
-]`;
 }
 
 function buildTavilyIngestPrompt(topic, rawText, count) {
