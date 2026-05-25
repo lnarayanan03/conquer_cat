@@ -35,10 +35,11 @@ CONQUER CAT helps track:
 - Wake time and sleep discipline
 - Live classes, sessions, and personal practice
 - iQuanta backlog videos and concepts
+- Weekly timetable for live and application classes
+- Daily and weekly CAT-style assessments
 - Calendar consistency
 - Profile, category, PG, work experience, and IIM targets
 - Mentor chat with Vikram
-- Weekly CAT-style assessment
 - Daily Instagram-style share card
 
 ---
@@ -65,13 +66,7 @@ At least one working LLM provider is required. Groq is the easiest first choice.
 
 ## Project Path In This Repository
 
-In this workspace, the runnable app is inside:
-
-```text
-conquer_cat/cat-tracker
-```
-
-That folder contains the real app files:
+In this workspace, the runnable app is at the repository root:
 
 - `package.json`
 - `server.js`
@@ -81,7 +76,7 @@ That folder contains the real app files:
 - `render.yaml`
 - `README.md`
 
-Run npm commands from `cat-tracker`, not from the parent folder.
+Run npm commands from the folder that contains `package.json`.
 
 ---
 
@@ -94,7 +89,6 @@ Run:
 ```bash
 git clone https://github.com/lnarayanan03/conquer_cat.git
 cd conquer_cat
-cd cat-tracker
 npm install
 ```
 
@@ -109,11 +103,7 @@ After `npm install`, the app's required packages are installed.
 
 ## 2. Create The `.env` File
 
-Create a file named `.env` inside:
-
-```text
-conquer_cat/cat-tracker
-```
+Create a file named `.env` inside the app folder, beside `package.json`.
 
 On macOS/Linux:
 
@@ -121,7 +111,7 @@ On macOS/Linux:
 touch .env
 ```
 
-On Windows, create a new file named `.env` in the `cat-tracker` folder.
+On Windows, create a new file named `.env` in the same folder as `package.json`.
 
 Paste this template:
 
@@ -129,6 +119,7 @@ Paste this template:
 GROQ_API_KEY=
 GROQ_API_KEY_2=
 GROQ_API_KEY_3=
+GROQ_API_KEY_4=
 
 GEMINI_API_KEY_1=
 GEMINI_API_KEY_2=
@@ -154,6 +145,8 @@ LANGCHAIN_TRACING_V2=false
 LANGCHAIN_API_KEY=
 LANGCHAIN_PROJECT=conquer-cat
 
+CRON_SECRET=
+
 PORT=3001
 ```
 
@@ -164,6 +157,7 @@ PORT=3001
 | `GROQ_API_KEY` | Recommended | Groq Console | Fast mentor replies |
 | `GROQ_API_KEY_2` | Optional | Groq Console | Extra Groq fallback key |
 | `GROQ_API_KEY_3` | Optional | Groq Console | Extra Groq fallback key |
+| `GROQ_API_KEY_4` | Optional | Groq Console | Extra Groq fallback key for mentor and ingest rotation |
 | `GEMINI_API_KEY_1` | Optional but useful | Google AI Studio | Gemini fallback replies |
 | `GEMINI_API_KEY_2` to `GEMINI_API_KEY_8` | Optional | Google AI Studio | Extra Gemini fallback keys |
 | `ANTHROPIC_API_KEY` | Recommended | Anthropic Console | Claude fallback, greeting, share-card line |
@@ -176,6 +170,7 @@ PORT=3001
 | `LANGCHAIN_TRACING_V2` | Optional | LangSmith | Debug LLM calls |
 | `LANGCHAIN_API_KEY` | Optional | LangSmith | Debug LLM calls |
 | `LANGCHAIN_PROJECT` | Optional | LangSmith | Trace project name |
+| `CRON_SECRET` | Recommended | Create a long random string | Protects internal seed/replenish endpoint |
 | `PORT` | Optional | Local/Render | Express server port |
 
 Safety rules:
@@ -196,6 +191,8 @@ Supabase stores:
 - Category and IIM profile data
 - Daily logs
 - Backlog videos and concepts
+- Weekly timetable
+- Question bank and assessment attempts
 - Cross-device sync
 
 ### Create A Supabase Project
@@ -237,10 +234,16 @@ Important:
 
 ### Create Supabase Tables
 
-The backend uses two Supabase tables:
+The backend uses these Supabase objects:
 
 - `users`
 - `daily_logs`
+- `assessments`
+- `questions`
+- `user_question_attempts`
+- `daily_question_log`
+- `assessment_sessions`
+- `increment_question_stats(q_id uuid, correct boolean)`
 
 Copy this SQL exactly.
 
@@ -269,6 +272,7 @@ create table if not exists public.users (
 
   backlog_videos jsonb default '[]'::jsonb,
   backlog_concepts jsonb default '[]'::jsonb,
+  weekly_timetable jsonb default null,
 
   category text default 'General',
   primary_degree jsonb default '{}'::jsonb,
@@ -323,6 +327,106 @@ create index if not exists daily_logs_user_date_idx
 
 create index if not exists users_category_idx
   on public.users(category);
+
+create table if not exists public.assessments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  assessed_at timestamptz default now(),
+  week_number int,
+  questions jsonb default '[]'::jsonb,
+  answers jsonb default '[]'::jsonb,
+  score int,
+  vikram_verdict text,
+  created_at timestamptz default now()
+);
+
+create index if not exists assessments_user_id_idx
+  on public.assessments(user_id);
+
+create index if not exists assessments_week_idx
+  on public.assessments(user_id, week_number);
+
+create table if not exists public.questions (
+  id uuid primary key default gen_random_uuid(),
+  topic text not null check (topic in ('quant','varc','lrdi')),
+  difficulty text not null check (difficulty in ('easy','medium','cat_level','hard')),
+  question_text text not null,
+  options jsonb not null,
+  correct_answer text not null,
+  explanation text not null,
+  source text default 'generated',
+  cat_year int default null,
+  times_seen int default 0,
+  times_correct int default 0,
+  is_archived boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.user_question_attempts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  question_id uuid references public.questions(id) on delete cascade,
+  attempted_at timestamptz default now(),
+  user_answer text not null,
+  is_correct boolean not null,
+  attempt_count int default 1
+);
+
+create table if not exists public.daily_question_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  log_date date not null,
+  topic text not null check (topic in ('quant','varc','lrdi','all')),
+  attempted int default 0,
+  correct int default 0,
+  wrong int default 0,
+  assessment_taken boolean default false,
+  assessment_type text default null check (assessment_type in ('daily','weekly') or assessment_type is null),
+  assessment_score int default null,
+  skipped boolean default false,
+  updated_at timestamptz default now(),
+  unique(user_id, log_date, topic)
+);
+
+create table if not exists public.assessment_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.users(id) on delete cascade,
+  session_date date not null,
+  session_type text not null check (session_type in ('daily','weekly')),
+  questions jsonb not null,
+  current_index int default 0,
+  answers jsonb default '[]'::jsonb,
+  completed boolean default false,
+  completed_at timestamptz default null,
+  created_at timestamptz default now(),
+  unique(user_id, session_date, session_type)
+);
+
+create index if not exists idx_questions_topic
+  on public.questions(topic, difficulty, is_archived);
+
+create index if not exists idx_attempts_user
+  on public.user_question_attempts(user_id, question_id);
+
+create index if not exists idx_attempts_wrong
+  on public.user_question_attempts(user_id, is_correct, attempted_at);
+
+create index if not exists idx_dql_user_date
+  on public.daily_question_log(user_id, log_date);
+
+create index if not exists idx_sessions_user_date
+  on public.assessment_sessions(user_id, session_date);
+
+create or replace function increment_question_stats(q_id uuid, correct boolean)
+returns void as $$
+begin
+  update public.questions
+  set
+    times_seen = times_seen + 1,
+    times_correct = times_correct + (case when correct then 1 else 0 end)
+  where id = q_id;
+end;
+$$ language plpgsql;
 ```
 
 ### How To Run SQL In Supabase
@@ -333,7 +437,7 @@ create index if not exists users_category_idx
 4. Paste the SQL above.
 5. Click **Run**.
 6. Go to **Table Editor**.
-7. Confirm `users` and `daily_logs` exist.
+7. Confirm the tables above exist.
 
 ### RLS Note
 
@@ -596,7 +700,7 @@ LANGCHAIN_PROJECT=conquer-cat
 Make sure you are inside:
 
 ```text
-conquer_cat/cat-tracker
+conquer_cat
 ```
 
 Run:
@@ -691,20 +795,20 @@ Use:
 Name: conquer-cat
 Runtime: Node
 Branch: main
-Root Directory: cat-tracker
+Root Directory: leave blank for this root-layout repo
 Build Command: npm install && npm run build
 Start Command: npm start
 ```
 
-Why root directory is `cat-tracker`:
+If your fork still has the app inside a nested `cat-tracker` folder, set Root Directory to `cat-tracker`.
 
-In this repository, the actual app package is inside the `cat-tracker` folder.
+If your fork has `package.json`, `server.js`, and `src/` at the repository root, leave Root Directory blank.
 
 ### About `render.yaml`
 
-This project includes `cat-tracker/render.yaml`.
+This project includes `render.yaml`.
 
-Render may auto-detect it if the service is configured from the correct folder. Still verify:
+Render may auto-detect it. Still verify:
 
 - Build command is `npm install && npm run build`
 - Start command is `npm start`
@@ -724,6 +828,7 @@ Add these values one by one:
 GROQ_API_KEY
 GROQ_API_KEY_2
 GROQ_API_KEY_3
+GROQ_API_KEY_4
 GEMINI_API_KEY_1
 GEMINI_API_KEY_2
 GEMINI_API_KEY_3
@@ -742,6 +847,7 @@ QDRANT_API_KEY
 LANGCHAIN_TRACING_V2
 LANGCHAIN_API_KEY
 LANGCHAIN_PROJECT
+CRON_SECRET
 ```
 
 Also add:
@@ -881,6 +987,30 @@ Track:
 - iQuanta backlog videos
 - Concepts you need to revise
 
+If a live class is missed and it is not marked N/A, the app can add that missed class into video backlog using the day's timetable subject/subtopic.
+
+### Timetable
+
+Set the weekly iQuanta schedule:
+
+- One row for each day of the week
+- Live class topic and subtopic
+- Application class topic and subtopic
+- "Same as live" option for application class
+
+Live class time is treated as 7PM. Application class time is treated as 10-12AM.
+
+The Today page uses the timetable to label today's live class and application class. Vikram also receives the timetable context, so if there is no live class he can push the student to use that time for another weak area.
+
+### Assessment
+
+Use the Assessment page:
+
+- Monday to Saturday: daily assessment, 6 questions total
+- Sunday: weekly assessment, 30 questions total
+
+Assessments are served from Supabase. Answers are saved, topic performance is tracked, and Vikram receives the result after completion.
+
 ### Share Card
 
 Use the daily card to export your progress.
@@ -974,15 +1104,35 @@ Weekly assessment uses 10 questions per section, for 30 total.
 
 Questions are stored in Supabase in the `questions` table.
 
-The bank is filled in two ways:
+The bank is filled in two ways, but normal use should rely on the midnight pipeline:
 
-- Manual seed: `/api/internal/seed` tops each topic up to 50 active questions.
 - Nightly pipeline: every midnight IST it adds fresh questions from Tavily.
+- Manual seed: `/api/internal/seed` exists only as an internal recovery/top-up route. Do not run it daily.
 
 Nightly replenish rules:
 
-- Monday to Saturday midnight: 2 Quant, 2 VARC, and 2 LRDI questions.
+- Monday to Saturday 00:00 IST: 2 Quant, 2 VARC, and 2 LRDI questions.
 - Sunday 00:00 IST: 10 Quant, 10 VARC, and 10 LRDI questions for weekly assessment readiness.
+
+This keeps Tavily and Groq usage low. The daily app flow serves questions from Supabase; it should not call Tavily during the assessment itself.
+
+Internal recovery top-up command, only if the bank is empty or badly depleted:
+
+```bash
+curl -X POST https://YOUR_RENDER_URL/api/internal/seed \
+  -H "x-cron-secret: YOUR_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+For local testing with the server running on port `3001`:
+
+```bash
+curl -X POST http://localhost:3001/api/internal/seed \
+  -H "x-cron-secret: YOUR_CRON_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
 
 The ingest pipeline validates every question before insert:
 
@@ -1000,7 +1150,7 @@ Ingest logs show the funnel:
 parsed -> valid -> deduped -> inserted
 ```
 
-Already ingested questions should normally stay in the bank. The app avoids questions already seen by the user when possible, and new nightly questions keep expanding the pool.
+Already ingested questions should normally stay in the bank. The app avoids questions already seen by the user when possible, and wrong questions can return after the retry gap so the student can fix repeated mistakes.
 
 ### Solved and Unsolved Tracking
 
@@ -1011,6 +1161,9 @@ When the student submits an answer, the app saves it to `user_question_attempts`
 - Recent wrong answers can reappear for retry practice.
 - Daily topic performance is updated in `daily_question_log`.
 - Completed sessions are marked in `assessment_sessions`.
+- Weekly completed sessions are also stored in `assessments`.
+
+Assessment sessions support resume. If the app closes mid-test, the current index and saved answers stay in `assessment_sessions`.
 
 The tool checks that:
 
@@ -1045,7 +1198,7 @@ Use Node.js 20 or newer.
 Make sure you are inside:
 
 ```text
-conquer_cat/cat-tracker
+conquer_cat
 ```
 
 Then run again:
@@ -1075,7 +1228,7 @@ npm run build
 
 Check:
 
-- You are in `cat-tracker`
+- You are in the folder that contains `package.json`
 - You ran `npm install`
 - Port `5173` or `3001` is not already occupied
 - `.env` exists
@@ -1124,7 +1277,7 @@ Check:
 
 Check:
 
-- Root Directory is `cat-tracker`
+- Root Directory is blank for the current root-layout repo, or `cat-tracker` only for older nested forks
 - Build Command is `npm install && npm run build`
 - Start Command is `npm start`
 - `NODE_VERSION=20` is set
@@ -1168,7 +1321,7 @@ Use:
 
 ### Real Scripts
 
-These are the actual scripts in `cat-tracker/package.json`:
+These are the actual scripts in `package.json`:
 
 | Command | Purpose |
 |---|---|
@@ -1182,16 +1335,15 @@ These are the actual scripts in `cat-tracker/package.json`:
 
 ```text
 conquer_cat/
-└── cat-tracker/
-    ├── public/
-    ├── src/
-    │   ├── mentor/
-    │   └── pages/
-    ├── server.js
-    ├── package.json
-    ├── render.yaml
-    ├── vite.config.js
-    └── README.md
+├── public/
+├── src/
+│   ├── mentor/
+│   └── pages/
+├── server.js
+├── package.json
+├── render.yaml
+├── vite.config.js
+└── README.md
 ```
 
 ---
