@@ -501,7 +501,8 @@ function TodayPage({
   date, d, upd, dl, start, totalDays, mode, setTab,
   backlogVideos, backlogConcepts, onSave, data, totals, userName,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
-  avatarShirt, avatarGlasses, avatarBeard, avatarMustache
+  avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
+  todayLiveLabel, todayAppLabel, isSundayIST
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -649,14 +650,10 @@ function TodayPage({
                 overflow: "hidden",
               }}>
                 <div className="row-label" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>Live class</div>
+                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
+                }}>{todayLiveLabel || "Live Class"}</div>
                 <div className="row-sub" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
                 }}>2 hrs · iQuanta live</div>
               </div>
               <div style={{
@@ -759,15 +756,11 @@ function TodayPage({
                 overflow: "hidden",
               }}>
                 <div className="row-label" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>Application class</div>
+                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
+                }}>{todayAppLabel || "Application Class"}</div>
                 <div className="row-sub" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>2 hr application class</div>
+                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
+                }}>10-12AM · Application class</div>
               </div>
               <div style={{
                 flexShrink: 0,
@@ -911,6 +904,54 @@ function TodayPage({
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
             </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Timetable & Assessment</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div className="card">
+              <button
+                className="card-row"
+                onClick={() => setTab("timetable")}
+                style={{display:"flex",alignItems:"center",
+                  justifyContent:"space-between",width:"100%",
+                  background:"transparent",border:"none",
+                  cursor:"pointer",fontFamily:"inherit"}}
+              >
+                <div>
+                  <div className="row-label">Weekly Timetable</div>
+                  <div className="row-sub">iQuanta live + application class schedule</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24"
+                  fill="none" stroke="#6e6e73" strokeWidth="2"
+                  strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div className="card">
+              <button
+                className="card-row"
+                onClick={() => setTab("assessment")}
+                style={{display:"flex",alignItems:"center",
+                  justifyContent:"space-between",width:"100%",
+                  background:"transparent",border:"none",
+                  cursor:"pointer",fontFamily:"inherit"}}
+              >
+                <div>
+                  <div className="row-label">
+                    {isSundayIST ? "Weekly Assessment" : "Daily Assessment"}
+                  </div>
+                  <div className="row-sub">
+                    {isSundayIST
+                      ? "10 questions per topic · Sunday calibre check"
+                      : "2 questions per topic · Daily calibre check"}
+                  </div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24"
+                  fill="none" stroke="#6e6e73" strokeWidth="2"
+                  strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1324,6 +1365,492 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
           deleteItem: deleteConcept,
           placeholder: "Concept or topic name..."
         })}
+      </div>
+    </div>
+  );
+}
+
+function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, TOPICS, onSaveToChat }) {
+  const [saved, setSaved] = useState(false);
+  const [localTT, setLocalTT] = useState(() => JSON.parse(JSON.stringify(timetable)));
+
+  const updateDay = (day, field, value) => {
+    setLocalTT(prev => {
+      const next = { ...prev, [day]: { ...prev[day], [field]: value } };
+      if (field === "topic" && next[day].appSameAsLive) {
+        next[day].appTopic = value;
+      }
+      if (field === "subtopic" && next[day].appSameAsLive) {
+        next[day].appSubtopic = value;
+      }
+      if (field === "appSameAsLive" && value) {
+        next[day].appTopic = next[day].topic;
+        next[day].appSubtopic = next[day].subtopic;
+      }
+      return next;
+    });
+  };
+
+  const handleSave = () => {
+    setTimetable(localTT);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    if (userId) {
+      fetch("/api/user/update", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ userId, weekly_timetable: localTT })
+      }).catch(console.error);
+    }
+    if (onSaveToChat) onSaveToChat(localTT);
+  };
+
+  const dropStyle = {
+    background:"#111", border:"1px solid #2a2a2a",
+    borderRadius:8, padding:"8px 10px",
+    color:"#f5f5f7", fontSize:13, fontFamily:"inherit",
+    outline:"none", cursor:"pointer",
+    appearance:"none", WebkitAppearance:"none",
+    minWidth:90
+  };
+  const inputStyle = {
+    flex:1, background:"#111", border:"1px solid #2a2a2a",
+    borderRadius:8, padding:"8px 10px",
+    color:"#f5f5f7", fontSize:13, fontFamily:"inherit",
+    outline:"none", minWidth:0
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent", border:"none",
+          color:"#f97316", fontSize:15, cursor:"pointer",
+          fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Weekly Timetable</div>
+        <div className="page-sub">Set your iQuanta schedule for the week</div>
+      </div>
+
+      <div className="sections">
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {DAYS_OF_WEEK.map(day => {
+            const entry = localTT[day] || { topic:"None", subtopic:"", appSameAsLive:true, appTopic:"None", appSubtopic:"" };
+            return (
+              <div key={day} className="card" style={{padding:"14px 16px"}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#f97316",marginBottom:12}}>
+                  {day}{day === "Sunday" ? " · No live class (usually)" : ""}
+                </div>
+
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:"#6e6e73",marginBottom:6,
+                    letterSpacing:"0.06em",textTransform:"uppercase"}}>
+                    Live Class · 7PM
+                  </div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <select
+                      style={dropStyle}
+                      value={entry.topic}
+                      onChange={e => updateDay(day, "topic", e.target.value)}
+                    >
+                      {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Sub-topic e.g. Percentages"
+                      value={entry.subtopic}
+                      onChange={e => updateDay(day, "subtopic", e.target.value)}
+                      style={inputStyle}
+                      disabled={entry.topic === "None"}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{display:"flex",alignItems:"center",
+                    justifyContent:"space-between",marginBottom:6}}>
+                    <div style={{fontSize:11,color:"#6e6e73",
+                      letterSpacing:"0.06em",textTransform:"uppercase"}}>
+                      Application Class · 10-12AM
+                    </div>
+                    <label style={{display:"flex",alignItems:"center",
+                      gap:6,cursor:"pointer",fontSize:11,color:"#6e6e73"}}>
+                      <input type="checkbox"
+                        checked={entry.appSameAsLive}
+                        onChange={e => updateDay(day, "appSameAsLive", e.target.checked)}
+                        style={{accentColor:"#f97316"}}
+                      />
+                      Same as live
+                    </label>
+                  </div>
+                  {!entry.appSameAsLive && (
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <select
+                        style={dropStyle}
+                        value={entry.appTopic}
+                        onChange={e => updateDay(day, "appTopic", e.target.value)}
+                      >
+                        {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Sub-topic"
+                        value={entry.appSubtopic}
+                        onChange={e => updateDay(day, "appSubtopic", e.target.value)}
+                        style={inputStyle}
+                        disabled={entry.appTopic === "None"}
+                      />
+                    </div>
+                  )}
+                  {entry.appSameAsLive && entry.topic !== "None" && (
+                    <div style={{fontSize:12,color:"#6e6e73",fontStyle:"italic"}}>
+                      {entry.topic}{entry.subtopic ? ` — ${entry.subtopic}` : ""}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          className={`save-btn${saved ? " saved" : ""}`}
+          onClick={handleSave}
+        >
+          {saved ? "Saved ✓" : "Save Timetable"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AssessmentPage({ userId, onBack, setMentorMessages, isSunday }) {
+  const [session, setSession] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [result, setResult] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [score, setScore] = useState(0);
+  const [error, setError] = useState(null);
+  const sessionType = isSunday ? "weekly" : "daily";
+  const totalQ = isSunday ? 30 : 6;
+
+  useEffect(() => {
+    if (!userId) { setError("No user ID"); setLoading(false); return; }
+    fetch(`/api/assessment/session/${userId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.completed) {
+          setCompleted(true);
+          setLoading(false);
+          return;
+        }
+        if (!data.session || !data.session.questionObjects?.length) {
+          setError(data.error || "No questions available. Bank may still be seeding.");
+          setLoading(false);
+          return;
+        }
+        setSession(data.session);
+        setQuestions(data.session.questionObjects);
+        setCurrentIdx(data.session.current_index || 0);
+        setAnswers(data.session.answers || []);
+        setLoading(false);
+      })
+      .catch(err => { setError(err.message); setLoading(false); });
+  }, [userId]);
+
+  const handleSelect = (option) => {
+    if (result) return;
+    setSelected(option);
+  };
+
+  const handleSubmit = async () => {
+    if (!selected || submitting) return;
+    const q = questions[currentIdx];
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/assessment/answer", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          userId,
+          sessionId: session.id,
+          questionId: q.id,
+          userAnswer: selected,
+          correctAnswer: q.correct_answer || selected,
+          topic: q.topic,
+        })
+      });
+      const data = await res.json();
+      setResult(data);
+
+      const newAnswer = {
+        questionId: q.id,
+        topic: q.topic,
+        userAnswer: selected,
+        isCorrect: data.isCorrect,
+      };
+      const updatedAnswers = [...answers, newAnswer];
+      setAnswers(updatedAnswers);
+
+      await fetch("/api/assessment/progress", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          sessionId: session.id,
+          currentIndex: currentIdx + 1,
+          answers: updatedAnswers,
+        })
+      });
+
+      if (data.isCorrect) setScore(s => s + 1);
+    } catch (err) {
+      setResult({ isCorrect: false, explanation: "Could not check answer." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (currentIdx + 1 >= questions.length) {
+      const finalScore = answers.filter(a => a.isCorrect).length + (result?.isCorrect ? 1 : 0);
+      await fetch("/api/assessment/complete", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          userId,
+          sessionId: session.id,
+          type: sessionType,
+          score: finalScore,
+          total: questions.length,
+          answers,
+        })
+      }).catch(console.error);
+
+      const topicScores = ["quant","varc","lrdi"].map(t => {
+        const tAnswers = answers.filter(a => a.topic === t);
+        const correct = tAnswers.filter(a => a.isCorrect).length;
+        return `${t.toUpperCase()}: ${correct}/${tAnswers.length}`;
+      }).join(", ");
+
+      const autoMsg = `[${sessionType.toUpperCase()} ASSESSMENT DONE] Score: ${finalScore}/${questions.length}\n${topicScores}`;
+      setMentorMessages(p => [...p, { r:"user", t: autoMsg }]);
+
+      setCompleted(true);
+      return;
+    }
+    setCurrentIdx(i => i + 1);
+    setSelected(null);
+    setResult(null);
+  };
+
+  const topicColors = { quant:"#f97316", varc:"#3b82f6", lrdi:"#22c55e" };
+
+  if (loading) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Loading assessment...</div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Assessment</div>
+      </div>
+      <div className="card" style={{padding:"20px 16px",textAlign:"center"}}>
+        <div style={{color:"#ff453a",marginBottom:8}}>{error}</div>
+        <div style={{fontSize:12,color:"#6e6e73"}}>
+          The question bank may still be seeding. Try again in a few minutes.
+        </div>
+      </div>
+    </div>
+  );
+
+  if (completed) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Assessment Done</div>
+      </div>
+      <div className="card" style={{padding:"24px 20px",textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:12}}>✓</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#30d158",marginBottom:8}}>
+          {sessionType === "weekly" ? "Weekly" : "Daily"} assessment complete
+        </div>
+        <div style={{fontSize:14,color:"#6e6e73"}}>
+          Vikram has your results. Check the chat.
+        </div>
+        <button
+          onClick={onBack}
+          style={{marginTop:20,padding:"12px 32px",
+            background:"#f97316",border:"none",borderRadius:10,
+            color:"white",fontSize:14,fontWeight:700,
+            cursor:"pointer",fontFamily:"inherit"}}>
+          Back to Today
+        </button>
+      </div>
+    </div>
+  );
+
+  const q = questions[currentIdx];
+  if (!q) return null;
+  const topicColor = topicColors[q.topic] || "#f97316";
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div className="page-title">
+            {sessionType === "weekly" ? "Weekly" : "Daily"} Assessment
+          </div>
+          <div style={{fontSize:12,color:"#6e6e73"}}>
+            {currentIdx + 1}/{questions.length}
+          </div>
+        </div>
+        <div style={{marginTop:8,height:4,background:"#1f1f1f",borderRadius:2}}>
+          <div style={{
+            height:"100%",borderRadius:2,
+            background:topicColor,
+            width:`${((currentIdx+1)/questions.length)*100}%`,
+            transition:"width 0.3s"
+          }}/>
+        </div>
+      </div>
+
+      <div className="sections">
+        <div className="card" style={{padding:"20px 16px"}}>
+          <div style={{
+            display:"inline-block",padding:"3px 10px",
+            borderRadius:20,background:`${topicColor}22`,
+            border:`1px solid ${topicColor}44`,
+            fontSize:11,fontWeight:700,color:topicColor,
+            letterSpacing:"0.06em",textTransform:"uppercase",
+            marginBottom:14
+          }}>
+            {q.topic} · {q.difficulty?.replace("_"," ")}
+          </div>
+          <div style={{fontSize:15,color:"#f5f5f7",
+            lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+            {q.question_text}
+          </div>
+        </div>
+
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {(q.options || []).map((option, i) => {
+            const isSelected = selected === option;
+            const isCorrect = result && option === result.correctAnswer;
+            const isWrong = result && isSelected && !result.isCorrect;
+            let bg = "#111";
+            let border = "1px solid #2a2a2a";
+            let color = "#f5f5f7";
+            if (isCorrect) { bg = "rgba(48,209,88,0.15)"; border = "1px solid #30d158"; color = "#30d158"; }
+            else if (isWrong) { bg = "rgba(255,69,58,0.15)"; border = "1px solid #ff453a"; color = "#ff453a"; }
+            else if (isSelected && !result) { bg = `${topicColor}22`; border = `1px solid ${topicColor}`; color = topicColor; }
+            return (
+              <button key={i} onClick={() => handleSelect(option)} style={{
+                width:"100%",padding:"14px 16px",
+                background:bg, border, borderRadius:10,
+                color, fontSize:14, fontFamily:"inherit",
+                cursor: result ? "default" : "pointer",
+                textAlign:"left", lineHeight:1.5,
+                transition:"all 0.15s"
+              }}>
+                <span style={{fontWeight:700,marginRight:10,opacity:0.6}}>
+                  {String.fromCharCode(65+i)}.
+                </span>
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        {result && (
+          <div className="card" style={{
+            padding:"16px",
+            borderLeft:`3px solid ${result.isCorrect ? "#30d158" : "#ff453a"}`
+          }}>
+            <div style={{
+              fontSize:14,fontWeight:700,marginBottom:8,
+              color: result.isCorrect ? "#30d158" : "#ff453a"
+            }}>
+              {result.isCorrect ? "✓ Correct" : "✗ Wrong"}
+            </div>
+            <div style={{fontSize:13,color:"#a1a1a6",lineHeight:1.6}}>
+              {result.explanation}
+            </div>
+          </div>
+        )}
+
+        {!result ? (
+          <button
+            onClick={handleSubmit}
+            disabled={!selected || submitting}
+            style={{
+              width:"100%",padding:"14px",
+              background: selected ? topicColor : "#2a2a2a",
+              border:"none",borderRadius:10,
+              color:"white",fontSize:15,fontWeight:700,
+              cursor: selected ? "pointer" : "not-allowed",
+              fontFamily:"inherit"
+            }}>
+            {submitting ? "Checking..." : "Submit Answer"}
+          </button>
+        ) : (
+          <button
+            onClick={handleNext}
+            style={{
+              width:"100%",padding:"14px",
+              background:topicColor,
+              border:"none",borderRadius:10,
+              color:"white",fontSize:15,fontWeight:700,
+              cursor:"pointer",fontFamily:"inherit"
+            }}>
+            {currentIdx + 1 >= questions.length ? "Finish Assessment" : "Next Question →"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -4318,6 +4845,22 @@ export default function App() {
     () => parseFloat(localStorage.getItem("cat_target_pct") || "0") || 0
   )
   const [calcResult, setCalcResult] = useState(null)
+  const DAYS_OF_WEEK = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const TOPICS = ["None","Quant","VARC","LRDI"];
+
+  const defaultTimetable = () => Object.fromEntries(
+    DAYS_OF_WEEK.map(d => [d, {
+      topic: "None", subtopic: "",
+      appSameAsLive: true, appTopic: "None", appSubtopic: ""
+    }])
+  );
+
+  const [weeklyTimetable, setWeeklyTimetable] = useState(() => {
+    try {
+      const saved = localStorage.getItem("conquer_timetable");
+      return saved ? { ...defaultTimetable(), ...JSON.parse(saved) } : defaultTimetable();
+    } catch { return defaultTimetable(); }
+  });
   const userInitials = userName
     ? userName.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
     : "ME"
@@ -4461,6 +5004,9 @@ export default function App() {
       })
     }).catch(err => console.error("Backlog sync failed:", err.message));
   }, [backlogVideos, backlogConcepts, userId]);
+  useEffect(() => {
+    localStorage.setItem("conquer_timetable", JSON.stringify(weeklyTimetable));
+  }, [weeklyTimetable]);
   useEffect(() => { localStorage.setItem("cat_sel_date", sel) }, [sel]);
   useEffect(() => {
     if (!userId && startDate) {
@@ -4538,6 +5084,10 @@ export default function App() {
             setTargetPercentile(checkData.user.target_percentile);
             localStorage.setItem("cat_target_pct", String(checkData.user.target_percentile));
           }
+          if (checkData.user.weekly_timetable) {
+            setWeeklyTimetable({ ...defaultTimetable(), ...checkData.user.weekly_timetable });
+            localStorage.setItem("conquer_timetable", JSON.stringify(checkData.user.weekly_timetable));
+          }
           profileLoadedRef.current = true;
         }
       } catch {}
@@ -4599,6 +5149,50 @@ export default function App() {
       .catch(err => console.warn("Mentor history load failed:", err))
       .finally(() => setMentorHistoryChecked(true));
   }, [userId, startDate]);
+  const getTodayClass = () => {
+    const dayName = new Date().toLocaleDateString("en-US", {
+      timeZone: "Asia/Kolkata", weekday: "long"
+    });
+    return weeklyTimetable[dayName] || { topic: "None", subtopic: "", appSameAsLive: true, appTopic: "None", appSubtopic: "" };
+  };
+
+  const todayClass = getTodayClass();
+  const todayLiveLabel = todayClass.topic !== "None"
+    ? `Live Class — ${todayClass.topic}${todayClass.subtopic ? ` (${todayClass.subtopic})` : ""} · 7PM`
+    : "Live Class";
+  const todayAppTopic = todayClass.appSameAsLive ? todayClass.topic : todayClass.appTopic;
+  const todayAppSubtopic = todayClass.appSameAsLive ? todayClass.subtopic : todayClass.appSubtopic;
+  const todayAppLabel = todayAppTopic !== "None"
+    ? `Application Class — ${todayAppTopic}${todayAppSubtopic ? ` (${todayAppSubtopic})` : ""} · 10-12AM`
+    : "Application Class";
+
+  const isSundayIST = new Date().toLocaleDateString("en-US", {
+    timeZone: "Asia/Kolkata", weekday: "short"
+  }) === "Sun";
+  const isMondayIST = new Date().toLocaleDateString("en-US", {
+    timeZone: "Asia/Kolkata", weekday: "short"
+  }) === "Mon";
+  const currentHourIST = parseInt(new Date().toLocaleTimeString("en-US", {
+    timeZone: "Asia/Kolkata", hour: "numeric", hour12: false
+  }));
+  const isAssessmentWindow = currentHourIST >= 20 && currentHourIST < 24;
+  useEffect(() => {
+    if (!startDate || !userId) return;
+    const reminderKey = `conquer_reminder_${new Date().toISOString().split("T")[0]}`;
+    if (localStorage.getItem(reminderKey)) return;
+    let reminder = null;
+    if (isMondayIST) {
+      reminder = "[REMINDER] It is Monday. Please update your weekly timetable for this week — go to Timetable in the Today page.";
+    } else if (isAssessmentWindow && !isSundayIST) {
+      reminder = "[REMINDER] It is assessment window (8PM-12AM). Have you done your daily assessment today?";
+    } else if (isAssessmentWindow && isSundayIST) {
+      reminder = "[REMINDER] Sunday assessment window. Have you completed your weekly assessment?";
+    }
+    if (reminder) {
+      localStorage.setItem(reminderKey, "1");
+      setMentorMessages(p => [...p, { r:"user", t: reminder }]);
+    }
+  }, [startDate, userId, isMondayIST, isAssessmentWindow, isSundayIST]);
   useEffect(() => {
     if (!startDate || !mentorHistoryChecked || mentorGreeted) return;
     if (greetingFiredRef.current) return;
@@ -4870,7 +5464,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} onSave={() => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={() => {
           fetch("/api/log/save", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -4884,6 +5478,41 @@ export default function App() {
             concepts={backlogConcepts}
             setConcepts={setBacklogConcepts}
             onBack={() => setTab("today")}
+          />
+        )}
+        {tab === "timetable" && (
+          <TimetablePage
+            timetable={weeklyTimetable}
+            setTimetable={setWeeklyTimetable}
+            onBack={() => setTab("today")}
+            userId={userId}
+            DAYS_OF_WEEK={DAYS_OF_WEEK}
+            TOPICS={TOPICS}
+            onSaveToChat={(tt) => {
+              const lines = DAYS_OF_WEEK.map(day => {
+                const e = tt[day];
+                const live = e.topic !== "None"
+                  ? `${e.topic}${e.subtopic ? ` (${e.subtopic})` : ""} · 7PM`
+                  : "No class";
+                const appTop = e.appSameAsLive ? e.topic : e.appTopic;
+                const appSub = e.appSameAsLive ? e.subtopic : e.appSubtopic;
+                const app = appTop !== "None"
+                  ? `${appTop}${appSub ? ` (${appSub})` : ""} · 10-12AM`
+                  : "No class";
+                return `${day}: Live — ${live} | App — ${app}`;
+              }).join("\n");
+              const autoMsg = `[TIMETABLE SAVED]\n${lines}`;
+              setMentorMessages(p => [...p, { r:"user", t: autoMsg }]);
+            }}
+          />
+        )}
+
+        {tab === "assessment" && (
+          <AssessmentPage
+            userId={userId}
+            onBack={() => setTab("today")}
+            setMentorMessages={setMentorMessages}
+            isSunday={isSundayIST}
           />
         )}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}

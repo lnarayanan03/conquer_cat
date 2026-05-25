@@ -10,7 +10,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   : null;
 
 const TOPICS = ["quant", "varc", "lrdi"];
-const SEED_COUNT = 10;
+const SEED_COUNT = 5;
 
 function getGroq() {
   return new ChatGroq({
@@ -97,13 +97,40 @@ function validateQuestion(q) {
   return true;
 }
 
+function sanitizeJsonString(raw) {
+  return raw
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\\(?!["\\/bfnrtu])/g, "\\\\")
+    .replace(/([^\\])'/g, "$1\\'");
+}
+
 function parseJsonArray(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   const raw = fenced || text;
   const start = raw.indexOf("[");
   const end = raw.lastIndexOf("]");
   if (start === -1 || end === -1) throw new Error("No JSON array found");
-  return JSON.parse(raw.slice(start, end + 1));
+  const slice = raw.slice(start, end + 1);
+
+  // Attempt 1: direct parse
+  try { return JSON.parse(slice); } catch {}
+
+  // Attempt 2: sanitize control characters and retry
+  try { return JSON.parse(sanitizeJsonString(slice)); } catch {}
+
+  // Attempt 3: extract individual valid objects manually
+  const objects = [];
+  const objRegex = /\{[\s\S]*?\}(?=\s*[,\]])/g;
+  let match;
+  while ((match = objRegex.exec(slice)) !== null) {
+    try {
+      const obj = JSON.parse(match[0]);
+      if (obj.question_text && obj.correct_answer) objects.push(obj);
+    } catch {}
+  }
+  if (objects.length > 0) return objects;
+
+  throw new Error("Could not parse JSON even after sanitization");
 }
 
 async function deduplicateQuestions(questions) {
@@ -149,7 +176,14 @@ export async function seedInitialBank() {
       for (let batch = 0; batch < BATCHES; batch++) {
         try {
           const response = await model.invoke([
-            new SystemMessage("You are a CAT exam question generator. Return only valid JSON arrays. Never truncate. Always close the JSON array with ] at the end."),
+            new SystemMessage(`You are a CAT exam question generator.
+CRITICAL JSON RULES — violations will cause crashes:
+- Return ONLY a raw JSON array. No markdown. No backticks. No explanation.
+- Never use apostrophes inside string values. Use full words instead.
+- Never use backslashes except in valid JSON escapes.
+- Never use double quotes inside string values. Rephrase instead.
+- Always close the array with ] as the final character.
+- Every string must be properly terminated with ".`),
             new HumanMessage(buildSeedPrompt(topic, SEED_COUNT)),
           ]);
           const text = typeof response.content === "string"
