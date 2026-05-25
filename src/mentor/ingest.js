@@ -12,12 +12,26 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 const TOPICS = ["quant", "varc", "lrdi"];
 const SEED_COUNT = 5;
 
+let groqIngestIndex = 0;
+
 function getGroq() {
+  const keys = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY_4,
+  ].filter(k => k?.trim());
+
+  if (keys.length === 0) throw new Error("No Groq API keys configured");
+
+  const key = keys[groqIngestIndex % keys.length];
+  groqIngestIndex++;
+  console.log(`[ingest] Using Groq key ${(groqIngestIndex % keys.length) + 1}/${keys.length}`);
   return new ChatGroq({
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: key,
     model: "llama-3.3-70b-versatile",
     temperature: 0.7,
-    maxTokens: 2000,
+    maxTokens: 4000,
   });
 }
 
@@ -218,8 +232,7 @@ export async function ingestFromTavily(topic, count = 20) {
 
   if (!rawText.trim()) throw new Error("Tavily returned no content");
 
-  const model = getGroq();
-  const llmResponse = await model.invoke([
+  const llmResponse = await getGroq().invoke([
     new SystemMessage("You extract and format CAT questions from raw text into JSON. Return only valid JSON arrays."),
     new HumanMessage(buildTavilyIngestPrompt(topic, rawText, count)),
   ]);
