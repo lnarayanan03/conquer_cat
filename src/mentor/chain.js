@@ -2,7 +2,7 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
-import { buildSystemPrompt } from "./prompt.js";
+import { buildSystemPrompt, buildSystemPromptForIntent } from "./prompt.js";
 import { appendChat, getRecentChat, retrieveMemories } from "./memory.js";
 import { ALL_TOOLS, searchTool } from "./tools.js";
 
@@ -12,6 +12,7 @@ const groqKeys = [
   process.env.GROQ_API_KEY,
   process.env.GROQ_API_KEY_2,
   process.env.GROQ_API_KEY_3,
+  process.env.GROQ_API_KEY_4,
 ].filter(key => key?.trim());
 
 const geminiKeys = [
@@ -269,6 +270,59 @@ function isSundayEveningIST() {
   return weekday === "Sun" && hour >= 18 && hour < 22;
 }
 
+async function classifyIntent(message) {
+  const lower = message.toLowerCase().trim();
+
+  // Fast keyword pre-check — avoids LLM call for obvious cases
+  if (/^(hi|hello|hey|good morning|good evening|good afternoon|what.s up|sup|hii+|hlo)[\s!?.]*$/i.test(lower))
+    return "general";
+  if (/\b(assess|test me|quiz|weekly test|check my level|evaluate me|where do i stand|how am i doing on concepts)\b/.test(lower))
+    return "assessment";
+  if (/\b(interview|mock pi|mock interview|wat topic|personal interview|pi prep|iim interview)\b/.test(lower))
+    return "interview";
+
+  // LLM classifier for everything else
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+  if (!groqKey) return "general";
+
+  try {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 10,
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content: `Classify the student message into exactly one word:
+motivation — asking why CAT, IIM worth it, inspire me, doubt about CAT being worth it
+emotional — depressed, tired, low, giving up, feel like quitting, can't do this
+assessment — assess me, test me, quiz, check my level, where do I stand
+interview — PI, WAT, mock interview, personal interview, IIM interview prep
+profile — my calibre, my chances, IIM call, cutoff, profile strength, am I good enough
+tracker — how am I doing, my progress, effort score, consistency, on track
+general — everything else including greetings, concept doubts, study questions
+
+Return ONLY the one word. No explanation.`
+          },
+          { role: "user", content: message.slice(0, 300) }
+        ],
+      }),
+    });
+    const data = await res.json();
+    const raw = data?.choices?.[0]?.message?.content?.trim().toLowerCase() || "general";
+    const valid = ["motivation","emotional","assessment","interview","profile","tracker","general"];
+    return valid.includes(raw) ? raw : "general";
+  } catch {
+    return "general";
+  }
+}
+
 export async function mentorChat({ userId, userMessage, trackerData = {}, daysLeft, disableTools = false, assessmentAttendance = null }) {
   try {
     if (!userId) throw new Error("userId is required");
@@ -293,11 +347,14 @@ export async function mentorChat({ userId, userMessage, trackerData = {}, daysLe
     const sundayNote = isSundayEveningIST()
       ? "\n\nTODAY IS SUNDAY EVENING IST. You MUST initiate the weekly calibre assessment right now — do not wait for the student to ask. Open with exactly: \"Sunday. Weekly calibre check.\" Then immediately use catAssessmentTool to generate and ask the quant question first."
       : "";
-    const systemPrompt = buildSystemPrompt({
+    const intent = await classifyIntent(userMessage);
+    const systemPrompt = buildSystemPromptForIntent({
+      intent,
       trackerData: { ...trackerData, assessmentAttendance },
       longTermMemories,
       daysLeft,
     }) + sundayNote;
+    console.log(`[chain] intent=${intent} sections assembled`);
 
     const MAX_RECENT = 6;
     const SUMMARIZE_THRESHOLD = 10;

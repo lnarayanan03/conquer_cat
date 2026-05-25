@@ -448,10 +448,71 @@ app.post("/api/chat", async (req, res) => {
     if (!userMessage) {
       return res.status(400).json({ error: "userMessage is required" });
     }
+
+    // ── Fetch enrichment data from Supabase ────────────────────────
+    let pendingBacklog = { videos: [], concepts: [] };
+    let weeklyTimetable = null;
+    let assessmentPerformance = null;
+
+    if (supabase && userId) {
+      try {
+        // Fetch backlog and timetable from users table
+        const { data: userData } = await supabase
+          .from("users")
+          .select("backlog_videos, backlog_concepts, weekly_timetable")
+          .eq("id", userId)
+          .single();
+
+        if (userData) {
+          pendingBacklog.videos = (userData.backlog_videos || [])
+            .filter(v => !v.checked)
+            .map(v => v.text || v)
+            .filter(Boolean);
+          pendingBacklog.concepts = (userData.backlog_concepts || [])
+            .filter(c => !c.checked)
+            .map(c => c.text || c)
+            .filter(Boolean);
+          weeklyTimetable = userData.weekly_timetable || null;
+        }
+      } catch (err) {
+        console.warn("[chat] Backlog/timetable fetch failed:", err?.message);
+      }
+
+      try {
+        // Fetch last 7 days assessment performance
+        const since = new Date(Date.now() - 7 * 86400000)
+          .toISOString().split("T")[0];
+        const { data: perfData } = await supabase
+          .from("daily_question_log")
+          .select("topic, attempted, correct, wrong")
+          .eq("user_id", userId)
+          .gte("log_date", since)
+          .neq("topic", "all");
+
+        if (perfData && perfData.length > 0) {
+          const perf = { quant: { attempted: 0, correct: 0 }, varc: { attempted: 0, correct: 0 }, lrdi: { attempted: 0, correct: 0 } };
+          for (const row of perfData) {
+            if (perf[row.topic]) {
+              perf[row.topic].attempted += row.attempted || 0;
+              perf[row.topic].correct += row.correct || 0;
+            }
+          }
+          assessmentPerformance = perf;
+        }
+      } catch (err) {
+        console.warn("[chat] Assessment performance fetch failed:", err?.message);
+      }
+    }
+
     const result = await mentorChat({
       userId,
       userMessage,
-      trackerData: trackerData || req.body,
+      trackerData: {
+        ...(trackerData || req.body),
+        pendingBacklog,
+        weeklyTimetable,
+        assessmentPerformance,
+      },
       daysLeft,
     });
     if (result.assessment_data && supabase) {
@@ -697,7 +758,12 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
       .maybeSingle();
 
     if (existing && existing.completed) {
-      return res.json({ session: null, type, completed: true });
+      // If completed session is from a previous date, allow new session
+      if (existing.session_date !== today) {
+        // fall through to create new session
+      } else {
+        return res.json({ session: null, type, completed: true });
+      }
     }
 
     if (existing && !existing.completed) {

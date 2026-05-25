@@ -1530,7 +1530,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
   );
 }
 
-function AssessmentPage({ userId, onBack, setMentorMessages, isSunday }) {
+function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSend }) {
   const [session, setSession] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -1643,8 +1643,12 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday }) {
         return `${t.toUpperCase()}: ${correct}/${tAnswers.length}`;
       }).join(", ");
 
-      const autoMsg = `[${sessionType.toUpperCase()} ASSESSMENT DONE] Score: ${finalScore}/${questions.length}\n${topicScores}`;
-      setMentorMessages(p => [...p, { r:"user", t: autoMsg }]);
+      const autoMsg = `${sessionType === "weekly" ? "Weekly" : "Daily"} assessment complete. Score: ${finalScore}/${questions.length}. ${topicScores}.`;
+      if (onAutoSend) {
+        onAutoSend(autoMsg);
+      } else {
+        setMentorMessages(p => [...p, { r:"user", t: autoMsg }]);
+      }
 
       setCompleted(true);
       return;
@@ -1865,17 +1869,22 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
 
   const chartData = useMemo(() => {
     let totalEffort = 0;
-    const points = Array.from({length: totalDays}, (_, i) => {
-      const d = new Date(start); d.setDate(d.getDate() + i);
-      const k = toLocalDateKey(d); const e = data[k];
-      if (i+1 <= dn) totalEffort += effortScore(e || defaultDay(), backlogVideos, backlogConcepts);
-      return {
-        day: i+1,
-        targetLine: totalDays > 0 ? (Math.round(((i+1)/totalDays) * 100) || 0) : 0,
-        actualLine: i+1 <= dn ? (Math.round(totalEffort / (i+1)) || 0) : null,
-      };
-    });
-    const pastPoints = points.filter(p => p.actualLine !== null);
+    const points = [{ day: 0, targetLine: 0, actualLine: 0 }];
+    for (let i = 0; i < totalDays; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const k = toLocalDateKey(d);
+      const e = data[k];
+      if (i + 1 <= dn) {
+        totalEffort += effortScore(e || defaultDay(), backlogVideos, backlogConcepts);
+      }
+      points.push({
+        day: i + 1,
+        targetLine: totalDays > 0 ? Math.round(((i + 1) / totalDays) * 100) : 0,
+        actualLine: i + 1 <= dn ? Math.round(totalEffort / (i + 1)) : null,
+      });
+    }
+    const pastPoints = points.filter(p => p.day > 0 && p.actualLine !== null);
     if (pastPoints.length > 0 && pastPoints.every(p => p.actualLine === 0)) {
       console.warn("[Progress] All effort scores are 0 — check session field mapping");
     }
@@ -1947,7 +1956,7 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{top:0,right:12,bottom:0,left:-24}}>
                 <CartesianGrid stroke="#1f1f1f" vertical={false} />
-                <XAxis dataKey="day" domain={[1, totalDays]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
+                <XAxis dataKey="day" domain={[0, totalDays]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
                 <YAxis domain={[0, 100]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{background:"#111",border:"1px solid #2a2a2a",borderRadius:8,fontSize:11}}
@@ -5302,6 +5311,61 @@ export default function App() {
 
   const upd = (date, f, v) => setData(p => ({...p, [date]: {...(p[date]||defaultDay()), [f]:v}}));
 
+  const sendToVikram = async (autoMessage) => {
+    if (!userId || !autoMessage?.trim()) return;
+    setMentorMessages(p => [...p, { r: "user", t: autoMessage, auto: true }]);
+    setMentorMessages(p => [...p, { r: "ai", t: "...", loading: true }]);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 55000);
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          message: autoMessage,
+          daysLeft: dl,
+          totals,
+          dayNum: dn,
+          todayData: data[todayKey()] || defaultDay(),
+          mode,
+          userName: userName || "",
+          startDate: startDate || "",
+          interviewDate: interviewDate || "",
+          catResult: catResult || "",
+          catPercentile: catPercentile || "",
+          targetPercentile: targetPercentile || 0,
+          profile: {
+            category,
+            gender: avatarGender,
+            primaryDegree,
+            secondaryDegrees,
+            workExpYears,
+            workExpMonths,
+            workCompany,
+            workRole,
+            profileScore: calcResult?.profileScore,
+            hasMasters: calcResult?.hasMasters,
+            adjustedCutoffs: calcResult?.adjustedCutoffs,
+            targetPercentile: targetPercentile || 0,
+          },
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      const json = await res.json().catch(() => ({}));
+      const reply = json?.reply || json?.message || "I see it. Keep going.";
+      setMentorMessages(p => [...p.filter(m => !m.loading), { r: "ai", t: reply }]);
+    } catch (err) {
+      setMentorMessages(p => [...p.filter(m => !m.loading), {
+        r: "ai",
+        t: err?.name === "AbortError"
+          ? "Render is waking up. Check back in a moment."
+          : "I see it. Keep going."
+      }]);
+    }
+  };
+
   const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
 
   return (
@@ -5464,12 +5528,40 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={() => {
-          fetch("/api/log/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, date: sel, dayData: data[sel] || defaultDay() })
-          }).catch(err => { console.error("Log save failed:", err.message) })
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
+          const dayData = data[sel] || defaultDay();
+          try {
+            await fetch("/api/log/save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, date: sel, dayData })
+            });
+          } catch (err) {
+            console.error("Log save failed:", err.message);
+          }
+
+          const score = effortScore(dayData, backlogVideos, backlogConcepts);
+          const totalMins =
+            ((dayData.lc || dayData.lc_na) ? 120 : 0) +
+            ((dayData.as || dayData.as_na) ? 40 : 0) +
+            ((dayData.ap || dayData.ap_na) ? 120 : 0) +
+            ((dayData.vp || dayData.vp_na) ? 20 : 0) +
+            ((+dayData.ph || 0) * 60) + (+dayData.pm || 0);
+          const hrs = Math.floor(totalMins / 60);
+          const mins = totalMins % 60;
+          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+          const noLiveClass = !dayData.lc && !dayData.lc_na;
+
+          const autoMsg = [
+            `Day ${dn} saved. Effort score: ${score}/100.`,
+            `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
+            `Total study time: ${timeStr}.`,
+            noLiveClass ? "No live class today and not marked N/A." : "",
+            dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",
+            dayData.n?.trim() ? `Journal: ${dayData.n.trim()}` : "",
+          ].filter(Boolean).join(" ");
+
+          await sendToVikram(autoMsg);
         }} />}
         {tab === "backlog" && (
           <BacklogPage
@@ -5501,8 +5593,8 @@ export default function App() {
                   : "No class";
                 return `${day}: Live — ${live} | App — ${app}`;
               }).join("\n");
-              const autoMsg = `[TIMETABLE SAVED]\n${lines}`;
-              setMentorMessages(p => [...p, { r:"user", t: autoMsg }]);
+              const autoMsg = `Timetable updated for this week:\n${lines}`;
+              sendToVikram(autoMsg);
             }}
           />
         )}
@@ -5513,6 +5605,7 @@ export default function App() {
             onBack={() => setTab("today")}
             setMentorMessages={setMentorMessages}
             isSunday={isSundayIST}
+            onAutoSend={sendToVikram}
           />
         )}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}
