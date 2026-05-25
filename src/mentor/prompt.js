@@ -224,7 +224,7 @@ Completed backlog items are never shown — they are done.`);
       const e = td.weeklyTimetable[day];
       if (!e) return `${day}: Not set`;
       const live = e.topic && e.topic !== "None"
-        ? `${e.topic}${e.subtopic ? ` (${e.subtopic})` : ""} · 7PM`
+        ? `${e.topic}${e.subtopic ? ` (${e.subtopic})` : ""} · 7PM-9PM`
         : "No live class";
       const appTop = e.appSameAsLive ? e.topic : e.appTopic;
       const appSub = e.appSameAsLive ? e.subtopic : e.appSubtopic;
