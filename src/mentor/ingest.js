@@ -166,45 +166,19 @@ async function insertQuestions(questions) {
 
 export async function seedInitialBank() {
   const results = {};
-  const model = getGroq();
 
   for (const topic of TOPICS) {
     try {
-      console.log(`[ingest] Seeding ${topic}...`);
-      let totalInserted = 0;
-      const BATCHES = 5;
-      for (let batch = 0; batch < BATCHES; batch++) {
-        try {
-          const response = await model.invoke([
-            new SystemMessage(`You are a CAT exam question generator.
-CRITICAL JSON RULES — violations will cause crashes:
-- Return ONLY a raw JSON array. No markdown. No backticks. No explanation.
-- Never use apostrophes inside string values. Use full words instead.
-- Never use backslashes except in valid JSON escapes.
-- Never use double quotes inside string values. Rephrase instead.
-- Always close the array with ] as the final character.
-- Every string must be properly terminated with ".`),
-            new HumanMessage(buildSeedPrompt(topic, SEED_COUNT)),
-          ]);
-          const text = typeof response.content === "string"
-            ? response.content
-            : response.content.map(b => b.text || "").join("");
-          const parsed = parseJsonArray(text);
-          const inserted = await insertQuestions(parsed);
-          totalInserted += inserted;
-          console.log(`[ingest] ${topic} batch ${batch + 1}/${BATCHES}: ${inserted} inserted`);
-        } catch (batchErr) {
-          console.warn(`[ingest] ${topic} batch ${batch + 1} failed:`, batchErr?.message?.slice(0, 120));
-        }
-        // Small delay between batches to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-      results[topic] = totalInserted;
-      console.log(`[ingest] ${topic} total: ${totalInserted} questions inserted`);
+      console.log(`[ingest] Seeding ${topic} via Tavily...`);
+      const count = await ingestFromTavily(topic, 15);
+      results[topic] = count;
+      console.log(`[ingest] ${topic} total: ${count} questions inserted`);
     } catch (err) {
-      console.error(`[ingest] Seed failed for ${topic}:`, err?.message);
+      console.error(`[ingest] Seed failed for ${topic}:`, err?.message?.slice(0, 120));
       results[topic] = 0;
     }
+    // Delay between topics to avoid rate limits
+    await new Promise(resolve => setTimeout(resolve, 3000));
   }
 
   return results;
