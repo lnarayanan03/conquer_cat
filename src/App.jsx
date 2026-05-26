@@ -760,7 +760,7 @@ function TodayPage({
                 }}>Application Class</div>
                 <div className="row-sub" style={{
                   whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>{todayAppLabel || "10-12AM · Application class"}</div>
+                }}>{todayAppLabel || "10PM - 12AM · Application class"}</div>
               </div>
               <div style={{
                 flexShrink: 0,
@@ -1477,7 +1477,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
                     justifyContent:"space-between",marginBottom:6}}>
                     <div style={{fontSize:11,color:"#6e6e73",
                       letterSpacing:"0.06em",textTransform:"uppercase"}}>
-                      Application Class · 10-12AM
+                      Application Class · 10PM - 12AM
                     </div>
                     <label style={{display:"flex",alignItems:"center",
                       gap:6,cursor:"pointer",fontSize:11,color:"#6e6e73"}}>
@@ -1862,9 +1862,9 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
 
 function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, backlogConcepts }) {
   const subj = [
-    {id:"quant",lbl:"Quant",tar:totalDays * 10,act:totals.quant},
-    {id:"varc",lbl:"VARC",tar:totalDays * 5,act:totals.varc},
-    {id:"lrdi",lbl:"LRDI",tar:totalDays * 5,act:totals.lrdi},
+    {id:"quant",lbl:"Quant",tar:2000,act:totals.quant,dailyTarget:10},
+    {id:"varc",lbl:"VARC",tar:1000,act:totals.varc,dailyTarget:5},
+    {id:"lrdi",lbl:"LRDI",tar:1000,act:totals.lrdi,dailyTarget:5},
   ];
 
   const chartData = useMemo(() => {
@@ -1937,7 +1937,7 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
                   <div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`}} /></div>
                   <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
                     <span style={{fontSize:11,color:"var(--tt)"}}>{pct.toFixed(1)}% complete</span>
-                    <span style={{fontSize:11,color: nd <= (s.tar/totalDays) ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
+                    <span style={{fontSize:11,color: nd <= s.dailyTarget ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
                   </div>
                 </div>
               );
@@ -2229,7 +2229,10 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
           {["Mock Interview","WAT Topic","Doubt"].map(label => (
             <button key={label}
               onClick={() => {
-                if(label==="Doubt") return
+                if(label==="Doubt") {
+                  inputRef.current?.focus()
+                  return
+                }
                 setInp(
                   label==="Mock Interview"
                     ? "Start a mock PI interview with me right now"
@@ -4179,7 +4182,7 @@ function OnboardingScreen({ onStart }) {
         color:"#f97316",marginBottom:12}}>CONQUER</div>
       <div style={{fontSize:32,fontWeight:800,color:"#f5f5f7",
         letterSpacing:"-0.03em",marginBottom:8,textAlign:"center",
-        lineHeight:1.2}}>200 Days.<br/>One Goal.</div>
+        lineHeight:1.2}}>Time to<br/>Conquer CAT.</div>
       <div style={{fontSize:14,color:"#6e6e73",marginBottom:48,
         textAlign:"center",lineHeight:1.6}}>
         CAT 2026 · 99.9%ile
@@ -5172,7 +5175,7 @@ export default function App() {
   const todayAppTopic = todayClass.appSameAsLive ? todayClass.topic : todayClass.appTopic;
   const todayAppSubtopic = todayClass.appSameAsLive ? todayClass.subtopic : todayClass.appSubtopic;
   const todayAppLabel = todayAppTopic !== "None"
-    ? `${todayAppTopic}${todayAppSubtopic ? ` — ${todayAppSubtopic}` : ""} · 10-12AM`
+    ? `${todayAppTopic}${todayAppSubtopic ? ` — ${todayAppSubtopic}` : ""} · 10PM - 12AM`
     : "No application class scheduled";
 
   const isSundayIST = new Date().toLocaleDateString("en-US", {
@@ -5577,9 +5580,10 @@ export default function App() {
           const scheduledLiveClass = todayClass.topic !== "None";
           const missedLiveClass = scheduledLiveClass && !dayData.lc && !dayData.lc_na;
           const backlogAdded = missedLiveClass ? addMissedLiveClassToBacklog(todayClass, sel) : "";
+          const selDayNum = Math.max(1, Math.floor((new Date(sel + "T00:00:00") - START) / 86400000) + 1);
 
           const autoMsg = [
-            `Day ${dn} saved. Effort score: ${score}/100.`,
+            `Day ${selDayNum} saved. Effort score: ${score}/100.`,
             `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
             `Total study time: ${timeStr}.`,
             missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
@@ -5616,7 +5620,7 @@ export default function App() {
                 const appTop = e.appSameAsLive ? e.topic : e.appTopic;
                 const appSub = e.appSameAsLive ? e.subtopic : e.appSubtopic;
                 const app = appTop !== "None"
-                  ? `${appTop}${appSub ? ` (${appSub})` : ""} · 10-12AM`
+                  ? `${appTop}${appSub ? ` (${appSub})` : ""} · 10PM - 12AM`
                   : "No class";
                 return `${day}: Live — ${live} | App — ${app}`;
               }).join("\n");

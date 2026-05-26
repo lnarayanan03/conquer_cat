@@ -229,7 +229,7 @@ Completed backlog items are never shown — they are done.`);
       const appTop = e.appSameAsLive ? e.topic : e.appTopic;
       const appSub = e.appSameAsLive ? e.subtopic : e.appSubtopic;
       const app = appTop && appTop !== "None"
-        ? `${appTop}${appSub ? ` (${appSub})` : ""} · 10-12AM`
+        ? `${appTop}${appSub ? ` (${appSub})` : ""} · 10PM - 12AM`
         : "No application class";
       return `${day}: Live — ${live} | App — ${app}`;
     }).join("\n");
