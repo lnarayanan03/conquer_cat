@@ -1024,6 +1024,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer !important;
 }
 
+@media (max-width: 768px) {
+  .chat-input,
+  .textarea,
+  .time-select,
+  .onboarding-input,
+  .key-input,
+  .num-input {
+    font-size: 16px !important;
+  }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

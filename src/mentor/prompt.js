@@ -160,7 +160,8 @@ function effortScore(todayData = {}) {
   const lc = todayData.lc ? 10 : 0;
   const passage = todayData.vp ? 5 : 0;
   const sudoku = todayData.sk ? 2 : 0;
-  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku);
+  const vedic = todayData.vm ? 2 : 0;
+  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku + vedic);
 }
 
 function _effortScoreLocal(todayData = {}) {
@@ -172,7 +173,8 @@ function _effortScoreLocal(todayData = {}) {
   const lc = todayData.lc ? 10 : 0;
   const passage = todayData.vp ? 5 : 0;
   const sudoku = todayData.sk ? 2 : 0;
-  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku);
+  const vedic = todayData.vm ? 2 : 0;
+  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku + vedic);
 }
 
 export function sectionCriticalFacts({

@@ -213,6 +213,7 @@ const defaultDay = () => ({
   ah:0, eh:0,
   q:0, v:0, l:0,
   sk:false, skm:0, sks:0, skd:"medium",
+  vm:false, vmt:"",
   iq:"", n:"", backlog:[]
 });
 
@@ -302,7 +303,7 @@ function TimePickerWidget({ value, onChange, label, sub, dotColor }) {
 }
 
 const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = []) => {
-  const q = Math.min((+day.q||0)/10, 1) * 20;
+  const q = Math.min((+day.q||0)/10, 1) * 18;
   const v = Math.min((+day.v||0)/5, 1) * 12;
   const l = Math.min((+day.l||0)/5, 1) * 12;
   const vp = Math.min((+day.vp_count||0)/1, 1) * 8;
@@ -324,10 +325,10 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
     let sleepMins = sh * 60 + sm;
     if (wakeMins <= sleepMins) wakeMins += 24 * 60;
     const duration = (wakeMins - sleepMins) / 60;
-    if (duration >= 4 && duration <= 6) return 10;
-    if (duration >= 3.5 && duration < 4) return 6;
-    if (duration > 6 && duration <= 7) return 6;
-    if (duration >= 3 && duration < 3.5) return 3;
+    if (duration >= 4 && duration <= 6) return 8;
+    if (duration >= 3.5 && duration < 4) return 5;
+    if (duration > 6 && duration <= 7) return 5;
+    if (duration >= 3 && duration < 3.5) return 2;
     return 0;
   })();
   const backlogScore = (() => {
@@ -337,7 +338,8 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
     return Math.round((checked / allItems.length) * 10);
   })();
   const sudokuScore = day.sk ? 2 : 0;
-  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore));
+  const vedicScore = day.vm ? 2 : 0;
+  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore + vedicScore));
 };
 
 function calcMinPercentile(category) {
@@ -1004,7 +1006,7 @@ function TodayPage({
         )}
 
         <div>
-          <div className="sec-label">Self Progress</div>
+          <div className="sec-label">Sudoku</div>
           <div className="card">
             <div className="card-row">
               <div>
@@ -1062,6 +1064,33 @@ function TodayPage({
                 <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Vedic Math</div>
+          <div className="card">
+            <div className="card-row">
+              <div>
+                <div className="row-label">Vedic Math</div>
+                <div className="row-sub">Speed maths practice</div>
+              </div>
+              <Tog v={d.vm} onChange={v=>upd("vm",v)} />
+            </div>
+            <div className="card-row">
+              <div style={{flex:1,minWidth:0}}>
+                <div className="row-label">Topic learnt</div>
+                <div className="row-sub">Vedic Math concept</div>
+              </div>
+              <input
+                type="text"
+                className="time-select"
+                placeholder="e.g. Nikhilam"
+                value={d.vmt || ""}
+                onChange={e => upd("vmt", e.target.value)}
+                style={{width:150,minWidth:0}}
+              />
             </div>
           </div>
         </div>
@@ -2123,6 +2152,10 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 
 function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, calcResult, targetPercentile }) {
   const [inp, setInp] = useState("")
+  const [placeholder, setPlaceholder] = useState("Ask Vikram anything...")
+  const [selectedQuickAction, setSelectedQuickAction] = useState("")
+  const [hoverQuickAction, setHoverQuickAction] = useState("")
+  const [pressedQuickAction, setPressedQuickAction] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
@@ -2136,10 +2169,21 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
     setTimeout(() => inputRef.current?.blur(), 50)
   }
 
+  const focusDoubt = () => {
+    setPlaceholder("Ask your CAT doubt...")
+    setSelectedQuickAction("Doubt")
+    setInp(prev => prev || "I have a doubt: ")
+    setTimeout(() => {
+      inputRef.current?.focus()
+      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+    }, 0)
+  }
+
   const send = async ({ blur = false, mobileBlurOnly = false } = {}) => {
     if (!inp.trim() || loading) return
     const q = inp.trim()
     setInp("")
+    setSelectedQuickAction("")
     if (blur) blurInput(mobileBlurOnly)
     setMentorMessages(p => [...p, { r:"user", t:q }])
     setLoading(true)
@@ -2299,32 +2343,60 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
         flexShrink:0
       }}>
         <div style={{display:"flex",gap:8,marginBottom:10}}>
-          {["Mock Interview","WAT Topic","Doubt"].map(label => (
-            <button key={label}
+          {["Mock Interview","WAT Topic","Doubt"].map(label => {
+            const selected = selectedQuickAction === label;
+            const hovered = hoverQuickAction === label;
+            const pressed = pressedQuickAction === label;
+            const active = selected || hovered || pressed;
+            return (
+            <button key={label} type="button"
+              onPointerEnter={() => setHoverQuickAction(label)}
+              onPointerDown={() => {
+                setPressedQuickAction(label)
+              }}
+              onPointerUp={() => setPressedQuickAction("")}
+              onPointerLeave={() => {
+                setHoverQuickAction("")
+                setPressedQuickAction("")
+              }}
               onClick={() => {
-                if(label==="Doubt") {
-                  inputRef.current?.focus()
+                const quickText = label==="Mock Interview"
+                  ? "Start a mock PI interview with me right now"
+                  : label==="WAT Topic"
+                    ? "Give me a WAT topic and evaluate my response"
+                    : "I have a doubt: ";
+                if (selectedQuickAction === label) {
+                  setSelectedQuickAction("")
+                  setInp(prev => prev === quickText ? "" : prev)
                   return
                 }
-                setInp(
-                  label==="Mock Interview"
-                    ? "Start a mock PI interview with me right now"
-                    : "Give me a WAT topic and evaluate my response"
-                )
+                if(label==="Doubt") {
+                  focusDoubt()
+                  return
+                }
+                setSelectedQuickAction(label)
+                setInp(quickText)
               }}
-              style={{padding:"5px 12px",borderRadius:20,
-                border:"1px solid #2a2a2a",background:"#111",
-                color:"#6e6e73",fontSize:11,cursor:"pointer",
-                fontFamily:"inherit"}}>
+              style={{padding:"7px 13px",borderRadius:20,
+                border:`1px solid ${active ? "#f97316" : "#2a2a2a"}`,
+                background:active ? "rgba(249,115,22,0.12)" : "#111",
+                color:active ? "#f5f5f7" : "#d1d1d6",
+                boxShadow:active ? "0 0 14px rgba(249,115,22,0.22)" : "none",
+                transform:pressed ? "translateY(1px) scale(0.98)" : active ? "translateY(-1px) scale(1.04)" : "none",
+                fontSize:11,cursor:"pointer",
+                fontFamily:"inherit",fontWeight:700,
+                transition:"transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease",
+                touchAction:"manipulation",WebkitTapHighlightColor:"transparent",
+                userSelect:"none"}}>
               {label}
             </button>
-          ))}
+          )})}
         </div>
         <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder="Ask Vikram anything..."
+            placeholder={placeholder}
             enterKeyHint="send"
             inputMode="text"
             value={inp}
@@ -5660,6 +5732,7 @@ export default function App() {
             `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
             `Total study time: ${timeStr}.`,
             dayData.sk ? `Sudoku: solved ${dayData.skd || "medium"} in ${dayData.skm || 0}m ${dayData.sks || 0}s.` : "",
+            dayData.vm ? `Vedic Math: ${dayData.vmt?.trim() || "topic not specified"}.` : "",
             missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
             backlogAdded ? `Moved to video backlog: ${backlogAdded}.` : "",
             dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",

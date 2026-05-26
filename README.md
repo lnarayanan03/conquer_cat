@@ -302,6 +302,8 @@ create table if not exists public.daily_logs (
   sudoku_mins integer default 0,
   sudoku_seconds integer default 0,
   sudoku_difficulty text default 'medium',
+  vedic_math_done boolean default false,
+  vedic_math_topic text default '',
 
   wake_time text default '',
   sleep_time text default '',
