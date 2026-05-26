@@ -159,7 +159,8 @@ function effortScore(todayData = {}) {
   const hrs = Math.min(((+todayData.ah || 0) + (+todayData.eh || 0)) / 5, 1) * 20;
   const lc = todayData.lc ? 10 : 0;
   const passage = todayData.vp ? 5 : 0;
-  return Math.round(q + v + l + vp + hrs + lc + passage);
+  const sudoku = todayData.sk ? 2 : 0;
+  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku);
 }
 
 function _effortScoreLocal(todayData = {}) {
@@ -170,7 +171,8 @@ function _effortScoreLocal(todayData = {}) {
   const hrs = Math.min(((+todayData.ah || 0) + (+todayData.eh || 0)) / 5, 1) * 20;
   const lc = todayData.lc ? 10 : 0;
   const passage = todayData.vp ? 5 : 0;
-  return Math.round(q + v + l + vp + hrs + lc + passage);
+  const sudoku = todayData.sk ? 2 : 0;
+  return Math.round(q + v + l + vp + hrs + lc + passage + sudoku);
 }
 
 export function sectionCriticalFacts({

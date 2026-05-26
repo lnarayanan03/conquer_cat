@@ -212,6 +212,7 @@ const defaultDay = () => ({
   ph:0, pm:0,
   ah:0, eh:0,
   q:0, v:0, l:0,
+  sk:false, skm:0, sks:0, skd:"medium",
   iq:"", n:"", backlog:[]
 });
 
@@ -335,7 +336,8 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
     const checked = allItems.filter(item => item.checked).length;
     return Math.round((checked / allItems.length) * 10);
   })();
-  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore));
+  const sudokuScore = day.sk ? 2 : 0;
+  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore));
 };
 
 function calcMinPercentile(category) {
@@ -570,6 +572,12 @@ function TodayPage({
   const backlogCoverage = totalBacklog > 0
     ? Math.round((totalDone / totalBacklog) * 100)
     : 0;
+  const sudokuMins = Number(d.skm || 0);
+  const sudokuSecs = Number(d.sks || 0);
+  const sudokuTimeValid =
+    Number.isInteger(sudokuMins) && sudokuMins >= 0 &&
+    Number.isInteger(sudokuSecs) && sudokuSecs >= 0 && sudokuSecs < 60 &&
+    (!d.sk || sudokuMins + sudokuSecs > 0);
 
   return (
     <div className="page">
@@ -994,6 +1002,69 @@ function TodayPage({
             </div>
           </div>
         )}
+
+        <div>
+          <div className="sec-label">Self Progress</div>
+          <div className="card">
+            <div className="card-row">
+              <div>
+                <div className="row-label">Sudoku solved</div>
+                <div className="row-sub">Small reasoning signal</div>
+              </div>
+              <Tog v={d.sk} onChange={v=>upd("sk",v)} />
+            </div>
+            <div className="card-row">
+              <div>
+                <div className="row-label">Time taken</div>
+                <div className="row-sub">Minutes and seconds to solve</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <input
+                  type="number"
+                  className="time-select"
+                  min="0"
+                  step="1"
+                  value={d.skm ?? 0}
+                  onChange={e => upd("skm", e.target.value === "" ? "" : Number(e.target.value))}
+                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "#2a2a2a" : "#ff453a"}}
+                />
+                <span style={{fontSize:11,color:"#6e6e73"}}>m</span>
+                <input
+                  type="number"
+                  className="time-select"
+                  min="0"
+                  max="59"
+                  step="1"
+                  value={d.sks ?? 0}
+                  onChange={e => upd("sks", e.target.value === "" ? "" : Number(e.target.value))}
+                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "#2a2a2a" : "#ff453a"}}
+                />
+                <span style={{fontSize:11,color:"#6e6e73"}}>s</span>
+                <span style={{
+                  width:8,height:8,borderRadius:"50%",
+                  background:sudokuTimeValid ? "#30d158" : "#ff453a",
+                  flexShrink:0
+                }} />
+              </div>
+            </div>
+            <div className="card-row">
+              <div>
+                <div className="row-label">Difficulty</div>
+                <div className="row-sub">Puzzle level</div>
+              </div>
+              <select
+                className="time-select"
+                value={d.skd || "medium"}
+                onChange={e => upd("skd", e.target.value)}
+                style={{minWidth:96}}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
         <div>
           <div className="sec-label">Notes</div>
@@ -5588,6 +5659,7 @@ export default function App() {
             `Day ${selDayNum} saved. Effort score: ${score}/100.`,
             `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
             `Total study time: ${timeStr}.`,
+            dayData.sk ? `Sudoku: solved ${dayData.skd || "medium"} in ${dayData.skm || 0}m ${dayData.sks || 0}s.` : "",
             missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
             backlogAdded ? `Moved to video backlog: ${backlogAdded}.` : "",
             dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",

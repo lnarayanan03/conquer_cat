@@ -98,7 +98,8 @@ function buildMentorSystem(daysLeft, totals, dayNum, todayData, mode = "prep", u
     const hrs = Math.min(((+todayData.ah||0)+(+todayData.eh||0))/5, 1) * 20
     const lc = (todayData.lc ? 1 : 0) * 10
     const passage = (todayData.vp ? 1 : 0) * 5
-    return Math.round(q + v + l + vp + hrs + lc + passage)
+    const sudoku = todayData.sk ? 2 : 0
+    return Math.round(q + v + l + vp + hrs + lc + passage + sudoku)
   })()
 
   const studentName = userName || "the student"
@@ -660,6 +661,10 @@ app.post("/api/log/save", async (req, res) => {
         varc: dayData.v || 0,
         lrdi: dayData.l || 0,
         vp_count: dayData.vp_count || 0,
+        sudoku_done: dayData.sk || false,
+        sudoku_mins: dayData.skm || 0,
+        sudoku_seconds: dayData.sks || 0,
+        sudoku_difficulty: dayData.skd || "medium",
         wake_time: dayData.wt || "",
         sleep_time: dayData.st || "",
         live_class: dayData.lc || false,
@@ -697,6 +702,10 @@ app.get("/api/log/all/:userId", async (req, res) => {
         v: row.varc || 0,
         l: row.lrdi || 0,
         vp_count: row.vp_count || 0,
+        sk: row.sudoku_done || false,
+        skm: row.sudoku_mins || 0,
+        sks: row.sudoku_seconds || 0,
+        skd: row.sudoku_difficulty || "medium",
         wt: row.wake_time || "",
         st: row.sleep_time || "",
         lc: row.live_class || false,

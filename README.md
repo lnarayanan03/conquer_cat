@@ -298,6 +298,10 @@ create table if not exists public.daily_logs (
   varc integer default 0,
   lrdi integer default 0,
   vp_count integer default 0,
+  sudoku_done boolean default false,
+  sudoku_mins integer default 0,
+  sudoku_seconds integer default 0,
+  sudoku_difficulty text default 'medium',
 
   wake_time text default '',
   sleep_time text default '',
