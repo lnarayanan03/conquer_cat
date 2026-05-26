@@ -1036,6 +1036,24 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .num-input {
     font-size: 16px !important;
   }
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .time-select {
+    min-width: 0 !important;
+  }
+  .card-row {
+    gap: 10px;
+  }
+  .card-row > div:first-child {
+    min-width: 0;
+  }
+  .counter {
+    flex-shrink: 0;
+  }
 }
 
 @keyframes spin {
