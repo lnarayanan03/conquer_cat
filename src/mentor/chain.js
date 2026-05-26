@@ -134,6 +134,7 @@ async function runWithTools(model, baseMessages) {
         reply: normalizeContent(response.content),
         usedSearch,
         assessmentEvents,
+        usage: response.usage_metadata || null,
       };
     }
 
@@ -142,6 +143,7 @@ async function runWithTools(model, baseMessages) {
         reply: normalizeContent(response.content),
         usedSearch,
         assessmentEvents,
+        usage: response.usage_metadata || null,
       };
     }
 
@@ -192,6 +194,7 @@ async function runWithTools(model, baseMessages) {
     reply: normalizeContent(response?.content),
     usedSearch,
     assessmentEvents,
+    usage: response?.usage_metadata || null,
   };
 }
 
@@ -236,7 +239,8 @@ async function runWithPool(messages, withTools = true) {
 
       if (!result.reply) throw new Error("Empty reply");
 
-      console.log(`Response from ${slot.provider} ${slot.model}`);
+      const u = result.usage;
+      console.log(`Response from ${slot.provider} ${slot.model}${u ? ` | in=${u.input_tokens} out=${u.output_tokens} total=${u.total_tokens}` : ""}`);
       return { ...result, provider: slot.provider };
 
     } catch (err) {
