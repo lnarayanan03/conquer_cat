@@ -673,6 +673,7 @@ function TodayPage({
               gap: 10,
               width: "100%",
               boxSizing: "border-box",
+              borderTop: "1px solid var(--b1)",
             }}>
               <button
                 onClick={() => { const n=!d.as_na; upd("as_na",n); if(n) upd("as",false); }}
@@ -728,6 +729,7 @@ function TodayPage({
               gap: 10,
               width: "100%",
               boxSizing: "border-box",
+              borderTop: "1px solid var(--b1)",
             }}>
               <button
                 onClick={() => { const n=!d.ap_na; upd("ap_na",n); if(n) upd("ap",false); }}
@@ -779,6 +781,7 @@ function TodayPage({
               gap: 10,
               width: "100%",
               boxSizing: "border-box",
+              borderTop: "1px solid var(--b1)",
             }}>
               <button
                 onClick={() => { const n=!d.vp_na; upd("vp_na",n); if(n) upd("vp",false); }}
@@ -827,7 +830,7 @@ function TodayPage({
                 <Tog v={d.vp} onChange={v=>{upd("vp",v);if(v)upd("vp_na",false);}} />
               </div>
             </div>
-            <div className="card-row">
+            <div className="card-row" style={{borderTop:"1px solid var(--b1)"}}>
               <div>
                 <div className="row-label">Personal practice</div>
                 <div className="row-sub">Additional self-study</div>
@@ -909,49 +912,46 @@ function TodayPage({
 
         <div>
           <div className="sec-label">Timetable & Assessment</div>
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <div className="card">
-              <button
-                className="card-row"
-                onClick={() => setTab("timetable")}
-                style={{display:"flex",alignItems:"center",
-                  justifyContent:"space-between",width:"100%",
-                  background:"transparent",border:"none",
-                  cursor:"pointer",fontFamily:"inherit"}}
-              >
-                <div>
-                  <div className="row-label">Weekly Timetable</div>
-                  <div className="row-sub">iQuanta live + application class schedule</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("timetable")}
+              style={{display:"flex",alignItems:"center",
+                justifyContent:"space-between",width:"100%",
+                background:"transparent",border:"none",
+                cursor:"pointer",fontFamily:"inherit"}}
+            >
+              <div>
+                <div className="row-label">Weekly Timetable</div>
+                <div className="row-sub">iQuanta live + application class schedule</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="#6e6e73" strokeWidth="2"
+                strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button
+              className="card-row"
+              onClick={() => setTab("assessment")}
+              style={{display:"flex",alignItems:"center",
+                justifyContent:"space-between",width:"100%",
+                background:"transparent",border:"none",
+                cursor:"pointer",fontFamily:"inherit",
+                borderTop:"1px solid var(--b1)"}}
+            >
+              <div>
+                <div className="row-label">
+                  {isSundayIST ? "Weekly Assessment" : "Daily Assessment"}
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24"
-                  fill="none" stroke="#6e6e73" strokeWidth="2"
-                  strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
-            <div className="card">
-              <button
-                className="card-row"
-                onClick={() => setTab("assessment")}
-                style={{display:"flex",alignItems:"center",
-                  justifyContent:"space-between",width:"100%",
-                  background:"transparent",border:"none",
-                  cursor:"pointer",fontFamily:"inherit"}}
-              >
-                <div>
-                  <div className="row-label">
-                    {isSundayIST ? "Weekly Assessment" : "Daily Assessment"}
-                  </div>
-                  <div className="row-sub">
-                    {isSundayIST
-                      ? "10 questions per topic · Sunday calibre check"
-                      : "2 questions per topic · Daily calibre check"}
-                  </div>
+                <div className="row-sub">
+                  {isSundayIST
+                    ? "10 questions per topic · Sunday calibre check"
+                    : "2 questions per topic · Daily calibre check"}
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24"
-                  fill="none" stroke="#6e6e73" strokeWidth="2"
-                  strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="#6e6e73" strokeWidth="2"
+                strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
         </div>
 
@@ -997,10 +997,12 @@ function TodayPage({
 
         <div>
           <div className="sec-label">Notes</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div className="card"><textarea className="textarea" placeholder="iQuanta — topics covered, videos watched..." value={d.iq||""} onChange={e=>upd("iq",e.target.value)} rows={2} /></div>
-            <div className="card"><textarea className="textarea" placeholder="Journal — what did you study? focus level? what needs work tomorrow?" value={d.n||""} onChange={e=>upd("n",e.target.value)} rows={3} /></div>
-          </div>
+          <div className="card"><textarea className="textarea" placeholder="iQuanta — topics covered, videos watched..." value={d.iq||""} onChange={e=>upd("iq",e.target.value)} rows={2} /></div>
+        </div>
+
+        <div>
+          <div className="sec-label">Journal</div>
+          <div className="card"><textarea className="textarea" placeholder="Journal — what did you study? focus level? what needs work tomorrow?" value={d.n||""} onChange={e=>upd("n",e.target.value)} rows={3} /></div>
         </div>
 
         {showInstaCard && (
