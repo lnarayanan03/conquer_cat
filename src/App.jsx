@@ -1451,7 +1451,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
                 <div style={{marginBottom:10}}>
                   <div style={{fontSize:11,color:"#6e6e73",marginBottom:6,
                     letterSpacing:"0.06em",textTransform:"uppercase"}}>
-                    Live Class · 7PM-9PM
+                    Live Class · 7PM - 9PM
                   </div>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <select
@@ -5170,7 +5170,7 @@ export default function App() {
 
   const todayClass = getClassForDate(sel);
   const todayLiveLabel = todayClass.topic !== "None"
-    ? `${todayClass.topic}${todayClass.subtopic ? ` — ${todayClass.subtopic}` : ""} · 7PM-9PM`
+    ? `${todayClass.topic}${todayClass.subtopic ? ` — ${todayClass.subtopic}` : ""} · 7PM - 9PM`
     : "No live class scheduled";
   const todayAppTopic = todayClass.appSameAsLive ? todayClass.topic : todayClass.appTopic;
   const todayAppSubtopic = todayClass.appSameAsLive ? todayClass.subtopic : todayClass.appSubtopic;
@@ -5615,7 +5615,7 @@ export default function App() {
               const lines = DAYS_OF_WEEK.map(day => {
                 const e = tt[day];
                 const live = e.topic !== "None"
-                  ? `${e.topic}${e.subtopic ? ` (${e.subtopic})` : ""} · 7PM-9PM`
+                  ? `${e.topic}${e.subtopic ? ` (${e.subtopic})` : ""} · 7PM - 9PM`
                   : "No class";
                 const appTop = e.appSameAsLive ? e.topic : e.appTopic;
                 const appSub = e.appSameAsLive ? e.subtopic : e.appSubtopic;
