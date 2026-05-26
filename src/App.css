@@ -1025,6 +1025,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 @media (max-width: 768px) {
+  input,
+  textarea,
+  select,
   .chat-input,
   .textarea,
   .time-select,
