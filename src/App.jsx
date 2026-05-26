@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { Fragment, useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
@@ -12,7 +12,7 @@ function MentorAvatar({ size = 40 }) {
       borderRadius: "50%",
       flexShrink: 0,
       border: "2px solid #f97316",
-      background: "#000000",
+      background: "var(--avatar-bg, #000000)",
       boxShadow: "0 0 0 2px rgba(249,115,22,0.18), 0 4px 20px rgba(249,115,22,0.35)",
       overflow: "hidden",
       display: "flex",
@@ -27,7 +27,7 @@ function MentorAvatar({ size = 40 }) {
         preserveAspectRatio="xMidYMid slice"
         style={{display: "block"}}
       >
-        <circle cx="50" cy="50" r="50" fill="#000000"/>
+        <circle cx="50" cy="50" r="50" fill="var(--avatar-bg, #000000)"/>
 
         {/* Shirt */}
         <path d="M20 100 Q20 80 50 78 Q80 80 80 100Z" fill="#f97316" opacity="0.8"/>
@@ -592,6 +592,14 @@ function TodayPage({
   const isExamDay = date === EXAM_DATE_KEY;
   const showApplicationToggle = isApplicationWindow(date);
   const showFinalPush = isFinalPushDate(date);
+  const finalPushMessages = {
+    "2026-11-23": "Final week begins. Keep the work simple, steady, and clean.",
+    "2026-11-24": "Protect your rhythm today. Accuracy matters more than noise.",
+    "2026-11-25": "Revise calmly. The paper rewards the mind that does not rush.",
+    "2026-11-26": "Trust your process. One good decision at a time is enough.",
+    "2026-11-27": "Stay light. Eat well, sleep well, and let confidence settle.",
+    "2026-11-28": "No panic work today. Sharpen gently and save your fire.",
+  };
 
   if (isExamDay) {
     const reveal = isDdayRevealDay();
@@ -781,7 +789,7 @@ function TodayPage({
             <div style={{fontSize:12,color:"#f97316",opacity:0.8,fontStyle:"italic",marginTop:8}}>{todayQuote}</div>
             {showFinalPush && (
               <div className="final-push-note">
-                You are close now. Stay boring, stay calm, and let the paper meet the version of you that refused to quit.
+                {finalPushMessages[date] || "You are close now. Stay calm, stay sharp, and let the paper meet the version of you that refused to quit."}
               </div>
             )}
           </div>
@@ -1307,7 +1315,7 @@ function TodayPage({
               <div className="card-row">
                 <div>
                   <div className="row-label">CAT application submitted</div>
-                  <div className="row-sub">Key task · +1 effort point · Aug 1 - Sept 20</div>
+                  <div className="row-sub">Key task · Aug 1 - Sept 20</div>
                 </div>
                 <Tog v={d.ca} onChange={v=>upd("ca",v)} />
               </div>
@@ -2300,9 +2308,915 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
   );
 }
 
+/* ── Reverse Mountain entrance divider ── */
+function GrandLineDivider() {
+  return (
+    <div className="grand-line-wall" aria-label="Reverse Mountain">
+      <svg className="gl-mountain-svg" viewBox="0 0 1000 200"
+        preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="glRock" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1e5f91"/>
+            <stop offset="45%" stopColor="#174976"/>
+            <stop offset="100%" stopColor="#082844"/>
+          </linearGradient>
+          <linearGradient id="glDeep" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#08213f"/>
+            <stop offset="100%" stopColor="#020f22"/>
+          </linearGradient>
+          <linearGradient id="glWater" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="rgba(14,165,233,0.35)"/>
+            <stop offset="50%" stopColor="rgba(125,211,252,0.74)"/>
+            <stop offset="100%" stopColor="rgba(224,242,254,0.92)"/>
+          </linearGradient>
+          <linearGradient id="glSpray" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="rgba(56,189,248,0.12)"/>
+            <stop offset="100%" stopColor="rgba(224,242,254,0.76)"/>
+          </linearGradient>
+        </defs>
+
+        <rect x="0" y="166" width="1000" height="34" fill="rgba(14,116,144,0.5)"/>
+        <path d="M0,200 L0,152 C70,126 112,150 168,118 C220,88 270,122 325,88
+          C380,54 430,72 500,20 C570,72 620,54 675,88 C730,122 780,88 832,118
+          C888,150 930,126 1000,152 L1000,200Z"
+          fill="url(#glDeep)"/>
+        <path d="M0,200 L0,170 C52,146 92,166 145,138 C190,116 230,145 280,120
+          C322,99 360,126 410,102 C445,86 472,68 500,34 C528,68 555,86 590,102
+          C640,126 678,99 720,120 C770,145 810,116 855,138 C908,166 948,146 1000,170
+          L1000,200Z"
+          fill="url(#glRock)"/>
+        <path d="M0,200 L0,187 C46,177 82,188 122,180 C164,172 198,185 238,176
+          C280,168 315,181 355,172 C396,163 436,176 476,164 C486,160 494,155 500,148
+          C506,155 514,160 524,164 C564,176 604,163 645,172 C685,181 720,168 762,176
+          C802,185 836,172 878,180 C918,188 954,177 1000,187 L1000,200Z"
+          fill="rgba(5,24,50,0.88)"/>
+
+        {/* Four blue sea currents climbing to the summit */}
+        <path className="gl-current-l" d="M130,200 C142,176 146,151 153,126 C164,89 197,66 236,48
+          C208,78 192,108 188,141 C185,164 178,184 168,200Z" fill="url(#glWater)"/>
+        <path className="gl-current-r" d="M870,200 C858,176 854,151 847,126 C836,89 803,66 764,48
+          C792,78 808,108 812,141 C815,164 822,184 832,200Z" fill="url(#glWater)"/>
+        <path className="gl-current-l" d="M380,200 C392,166 402,136 424,105 C444,76 470,56 500,34
+          C484,75 474,112 470,146 C467,170 460,188 450,200Z" fill="url(#glWater)" opacity="0.92"/>
+        <path className="gl-current-r" d="M620,200 C608,166 598,136 576,105 C556,76 530,56 500,34
+          C516,75 526,112 530,146 C533,170 540,188 550,200Z" fill="url(#glWater)" opacity="0.92"/>
+        <ellipse className="gl-current-c" cx="500" cy="42" rx="86" ry="42" fill="url(#glSpray)" opacity="0.72"/>
+
+        {/* Snow/foam on highest ridges */}
+        <path d="M456,66 L500,26 L544,66 Q522,56 500,58 Q478,56 456,66Z" fill="rgba(235,248,255,0.58)"/>
+        <ellipse cx="325" cy="88" rx="34" ry="10" fill="rgba(220,240,255,0.34)"/>
+        <ellipse cx="675" cy="88" rx="34" ry="10" fill="rgba(220,240,255,0.34)"/>
+        <ellipse cx="168" cy="118" rx="30" ry="10" fill="rgba(220,240,255,0.25)"/>
+        <ellipse cx="832" cy="118" rx="30" ry="10" fill="rgba(220,240,255,0.25)"/>
+
+        {/* Mist and rock texture */}
+        <ellipse cx="500" cy="64" rx="150" ry="28" fill="rgba(255,255,255,0.06)"/>
+        {[95,185,275,365,455,545,635,725,815,905].map(x=>(
+          <line key={x} x1={x} y1="122" x2={x+10} y2="200"
+            stroke="rgba(0,0,0,0.16)" strokeWidth="1.5"/>
+        ))}
+        <rect x="0" y="196" width="1000" height="4" fill="rgba(125,211,252,0.78)"/>
+        <line x1="0" y1="194" x2="1000" y2="194" stroke="rgba(224,242,254,0.54)" strokeWidth="2"/>
+      </svg>
+
+      <div className="gl-text-layer">
+        <div className="gl-badge">
+          <span className="gl-badge-title">REVERSE MOUNTAIN</span>
+          <span className="gl-badge-sub">Four seas climb upward · Grand Line begins</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Red Line — dramatic full-width continental wall ── */
+function RedLineDivider() {
+  return (
+    <div className="red-line-wall" aria-label="Red Line — New World begins">
+      <svg className="rl-mountain-svg" viewBox="0 0 1000 200"
+        preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="rlRock" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6B0808"/>
+            <stop offset="45%" stopColor="#8B1010"/>
+            <stop offset="100%" stopColor="#3a0202"/>
+          </linearGradient>
+          <linearGradient id="rlFire" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="rgba(255,80,0,0.65)"/>
+            <stop offset="50%" stopColor="rgba(200,30,0,0.25)"/>
+            <stop offset="100%" stopColor="transparent"/>
+          </linearGradient>
+          <linearGradient id="rlDeep" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3a0000"/>
+            <stop offset="100%" stopColor="#200000"/>
+          </linearGradient>
+        </defs>
+        {/* Fire glow base */}
+        <rect x="0" y="165" width="1000" height="35" fill="url(#rlFire)"/>
+        {/* Deep shadow mountain (back layer) */}
+        <path d="M0,200 L0,155 C70,125 110,152 170,118 C220,92 265,130 315,104
+          C365,78 410,112 460,88 C510,64 555,98 605,76 C655,54 700,88 750,68
+          C800,48 845,80 895,58 C940,40 970,72 1000,52 L1000,200Z"
+          fill="url(#rlDeep)"/>
+        {/* Main rocky mountain */}
+        <path d="M0,200 L0,168 C55,142 90,162 145,135 C188,114 228,148 275,126
+          C315,108 352,138 398,118 C438,102 472,130 518,112 C558,96 592,122 638,106
+          C678,92 712,116 758,100 C798,86 832,110 878,94 C914,82 950,104 1000,88
+          L1000,200Z"
+          fill="url(#rlRock)"/>
+        {/* Front rocky base */}
+        <path d="M0,200 L0,186 C42,178 78,188 118,181 C158,174 192,185 230,177
+          C268,170 302,182 340,174 C378,166 412,179 450,172 C488,165 522,178 560,170
+          C598,162 632,176 670,168 C708,160 742,174 780,167 C818,159 852,173 890,165
+          C928,158 962,171 1000,163 L1000,200Z"
+          fill="rgba(85,8,8,0.9)"/>
+        {/* Snow/ice on tallest peaks */}
+        <ellipse cx="460" cy="82" rx="42" ry="14" fill="rgba(240,240,255,0.38)"/>
+        <ellipse cx="170" cy="112" rx="30" ry="10" fill="rgba(240,240,255,0.30)"/>
+        <ellipse cx="748" cy="92" rx="34" ry="11" fill="rgba(240,240,255,0.32)"/>
+        <ellipse cx="315" cy="98" rx="24" ry="8" fill="rgba(240,240,255,0.24)"/>
+        <ellipse cx="893" cy="88" rx="26" ry="9" fill="rgba(240,240,255,0.26)"/>
+        {/* Cloud mist near peaks */}
+        <ellipse cx="200" cy="118" rx="88" ry="24" fill="rgba(255,255,255,0.05)"/>
+        <ellipse cx="460" cy="88" rx="110" ry="26" fill="rgba(255,255,255,0.06)"/>
+        <ellipse cx="760" cy="98" rx="92" ry="22" fill="rgba(255,255,255,0.05)"/>
+        {/* Vertical rock texture lines */}
+        {[80,170,260,350,440,530,620,710,800,900].map(x=>(
+          <line key={x} x1={x} y1="120" x2={x+8} y2="200"
+            stroke="rgba(0,0,0,0.14)" strokeWidth="1.5"/>
+        ))}
+        {/* Glowing bottom lava edge */}
+        <rect x="0" y="196" width="1000" height="4" fill="rgba(255,70,20,0.9)"/>
+        <line x1="0" y1="194" x2="1000" y2="194" stroke="rgba(255,110,50,0.5)" strokeWidth="2"/>
+      </svg>
+      {/* Text overlay */}
+      <div className="rl-text-layer">
+        <div className="rl-badge">
+          <span className="rl-name">RED LINE</span>
+          <span className="rl-sub-text">New World begins — Final Phase</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Per-island SVG watermark ── */
+function IslandDecor({ name }) {
+  let content = null;
+  switch (name) {
+    case "Windmill Village": content = <>
+      <rect x="36" y="46" width="8" height="28" rx="2" fill="rgba(200,158,88,0.52)"/>
+      {[0,90,180,270].map(a=>(
+        <rect key={a} x="38.5" y="22" width="3" height="25" rx="1.5"
+          fill="rgba(230,198,128,0.56)" transform={`rotate(${a} 40 48)`}/>
+      ))}
+      <circle cx="40" cy="48" r="5.5" fill="rgba(215,175,102,0.62)"/>
+      <polygon points="8,78 22,62 36,78" fill="rgba(175,98,58,0.46)"/>
+      <polygon points="48,78 62,64 76,78" fill="rgba(175,98,58,0.42)"/>
+    </>; break;
+
+    case "Shells Town": content = <>
+      <path d="M40,68 Q18,57 16,38 Q16,18 40,13 Q64,18 64,38 Q62,57 40,68Z"
+        fill="rgba(220,182,142,0.3)" stroke="rgba(240,202,162,0.46)" strokeWidth="1.5"/>
+      <path d="M40,68 Q34,55 32,42 Q32,30 40,26 Q48,30 48,42 Q46,55 40,68Z" fill="rgba(202,162,122,0.2)"/>
+      <circle cx="18" cy="18" r="6.5" fill="none" stroke="rgba(98,138,202,0.62)" strokeWidth="2.2"/>
+      <line x1="18" y1="11" x2="18" y2="32" stroke="rgba(98,138,202,0.65)" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="11" y1="16" x2="25" y2="16" stroke="rgba(98,138,202,0.52)" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M11,32 Q18,36 25,32" fill="none" stroke="rgba(98,138,202,0.62)" strokeWidth="2" strokeLinecap="round"/>
+    </>; break;
+
+    case "Orange Town": content = <>
+      <rect x="36" y="44" width="8" height="28" fill="rgba(98,62,28,0.52)"/>
+      <circle cx="40" cy="36" r="19" fill="rgba(38,118,38,0.42)"/>
+      <circle cx="23" cy="42" r="10" fill="rgba(38,118,38,0.35)"/>
+      <circle cx="57" cy="42" r="10" fill="rgba(38,118,38,0.35)"/>
+      {[{x:33,y:28},{x:46,y:24},{x:41,y:44},{x:24,y:37},{x:54,y:37}].map((o,i)=>(
+        <g key={i}>
+          <circle cx={o.x} cy={o.y} r="5.2" fill="rgba(255,155,28,0.68)"/>
+          <line x1={o.x} y1={o.y-5} x2={o.x} y2={o.y-8} stroke="rgba(48,98,28,0.58)" strokeWidth="1.2"/>
+        </g>
+      ))}
+    </>; break;
+
+    case "Gecko Islands":
+    case "Syrup Village": content = <>
+      <polygon points="13,36 40,14 67,36" fill="rgba(178,98,58,0.46)"/>
+      <rect x="19" y="36" width="42" height="34" rx="1" fill="rgba(228,208,168,0.38)"/>
+      <rect x="26" y="42" width="10" height="10" rx="1" fill="rgba(198,235,255,0.42)"/>
+      <rect x="44" y="42" width="10" height="10" rx="1" fill="rgba(198,235,255,0.42)"/>
+      <rect x="35" y="58" width="10" height="12" rx="4 4 0 0" fill="rgba(138,95,54,0.52)"/>
+      <circle cx="11" cy="40" r="10" fill="rgba(38,118,38,0.42)"/>
+      <rect x="9" y="40" width="4" height="24" fill="rgba(78,46,16,0.52)"/>
+    </>; break;
+
+    case "Baratie": content = <>
+      <path d="M7,59 Q40,50 73,59 L69,71 Q40,76 11,71Z" fill="rgba(182,132,82,0.46)" stroke="rgba(202,154,102,0.52)" strokeWidth="1.5"/>
+      <rect x="22" y="32" width="36" height="28" rx="2" fill="rgba(228,198,148,0.4)"/>
+      <rect x="22" y="29" width="36" height="6" rx="1" fill="rgba(200,58,38,0.46)"/>
+      <rect x="32" y="13" width="16" height="14" rx="1" fill="rgba(255,255,255,0.58)"/>
+      <ellipse cx="40" cy="12" rx="13" ry="8" fill="rgba(255,255,255,0.6)"/>
+      <rect x="27" y="38" width="9" height="8" rx="1" fill="rgba(198,235,255,0.44)"/>
+      <rect x="44" y="38" width="9" height="8" rx="1" fill="rgba(198,235,255,0.44)"/>
+    </>; break;
+
+    case "Arlong Park": content = <>
+      <path d="M6,40 L63,33 L66,40 L63,47 L6,40Z" fill="rgba(98,142,192,0.46)"/>
+      {[12,20,28,36,44,52].map(x=>(
+        <polygon key={x} points={`${x},34 ${x+4},26 ${x+8},34`} fill="rgba(202,218,232,0.58)"/>
+      ))}
+      <rect x="36" y="50" width="36" height="22" rx="2" fill="rgba(58,98,142,0.38)"/>
+      <path d="M36,50 Q54,38 72,50" fill="rgba(58,98,142,0.3)" stroke="rgba(78,132,182,0.46)" strokeWidth="1.5"/>
+      <path d="M4,66 Q18,60 32,66 Q46,60 60,66 Q72,60 78,64" fill="none" stroke="rgba(98,178,255,0.4)" strokeWidth="2"/>
+    </>; break;
+
+    case "Loguetown": content = <>
+      <rect x="28" y="16" width="4.5" height="42" fill="rgba(140,108,68,0.58)"/>
+      <rect x="28" y="16" width="24" height="4.5" rx="1" fill="rgba(140,108,68,0.58)"/>
+      <line x1="42" y1="20" x2="42" y2="36" stroke="rgba(98,74,44,0.62)" strokeWidth="1.8"/>
+      <rect x="13" y="60" width="54" height="4" rx="1" fill="rgba(140,108,68,0.52)"/>
+      <rect x="5" y="37" width="14" height="23" rx="1" fill="rgba(142,122,92,0.32)"/>
+      <polygon points="5,37 12,24 19,37" fill="rgba(162,102,62,0.42)"/>
+      <rect x="61" y="33" width="14" height="27" rx="1" fill="rgba(142,122,92,0.28)"/>
+      <polygon points="61,33 68,21 75,33" fill="rgba(162,102,62,0.38)"/>
+    </>; break;
+
+    case "Sandy Island":
+    case "Alabasta": content = <>
+      <polygon points="40,8 10,68 70,68" fill="rgba(212,172,65,0.44)" stroke="rgba(232,192,85,0.58)" strokeWidth="1.5"/>
+      <polygon points="40,8 23,42 57,42" fill="rgba(245,205,102,0.26)"/>
+      <path d="M34,68 Q40,60 46,68Z" fill="rgba(148,98,38,0.58)"/>
+      {[0,45,90,135,180,225,270,315].map(a=>(
+        <line key={a}
+          x1={66+Math.cos(a*Math.PI/180)*9} y1={13+Math.sin(a*Math.PI/180)*9}
+          x2={66+Math.cos(a*Math.PI/180)*15} y2={13+Math.sin(a*Math.PI/180)*15}
+          stroke="rgba(255,212,52,0.62)" strokeWidth="1.5" strokeLinecap="round"/>
+      ))}
+      <circle cx="66" cy="13" r="9" fill="rgba(255,202,42,0.42)"/>
+    </>; break;
+
+    case "Skypiea": content = <>
+      <ellipse cx="33" cy="26" rx="19" ry="11" fill="rgba(255,255,255,0.4)"/>
+      <ellipse cx="18" cy="29" rx="13" ry="9" fill="rgba(255,255,255,0.34)"/>
+      <ellipse cx="49" cy="29" rx="15" ry="9" fill="rgba(255,255,255,0.34)"/>
+      <ellipse cx="63" cy="22" rx="13" ry="9" fill="rgba(255,255,222,0.32)"/>
+      <polygon points="56,25 49,47 54,47 47,68 66,40 60,40 67,25"
+        fill="rgba(255,222,52,0.68)" stroke="rgba(255,242,102,0.42)" strokeWidth="0.5"/>
+      <circle cx="33" cy="60" r="14" fill="rgba(255,202,52,0.16)" stroke="rgba(255,218,82,0.32)" strokeWidth="1"/>
+    </>; break;
+
+    case "Water 7": content = <>
+      <polygon points="19,22 40,7 61,22" fill="rgba(138,78,48,0.46)"/>
+      <rect x="23" y="22" width="34" height="40" rx="2" fill="rgba(182,162,122,0.38)"/>
+      <rect x="28" y="28" width="10" height="9" rx="1" fill="rgba(198,235,255,0.44)"/>
+      <rect x="42" y="28" width="10" height="9" rx="1" fill="rgba(198,235,255,0.44)"/>
+      <ellipse cx="40" cy="70" rx="36" ry="7" fill="rgba(98,162,255,0.22)"/>
+      <path d="M4,70 Q19,63 40,67 Q61,63 76,70" fill="none" stroke="rgba(98,182,255,0.44)" strokeWidth="2.2"/>
+      <path d="M18,65 Q38,59 58,65 Q54,71 40,74 Q26,71 18,65Z" fill="rgba(58,36,16,0.54)"/>
+    </>; break;
+
+    case "Enies Lobby": content = <>
+      {[0,30,60,90,120,150,180,210,240,270,300,330].map(a=>(
+        <line key={a}
+          x1={40+Math.cos(a*Math.PI/180)*10} y1={14+Math.sin(a*Math.PI/180)*10}
+          x2={40+Math.cos(a*Math.PI/180)*19} y2={14+Math.sin(a*Math.PI/180)*19}
+          stroke="rgba(255,232,82,0.52)" strokeWidth="1.5" strokeLinecap="round"/>
+      ))}
+      <circle cx="40" cy="14" r="10" fill="rgba(255,222,72,0.44)"/>
+      <rect x="17" y="30" width="11" height="44" rx="1" fill="rgba(182,162,122,0.5)" stroke="rgba(202,182,142,0.52)" strokeWidth="1"/>
+      <rect x="52" y="30" width="11" height="44" rx="1" fill="rgba(182,162,122,0.5)" stroke="rgba(202,182,142,0.52)" strokeWidth="1"/>
+      <path d="M17,30 Q40,17 63,30" fill="rgba(178,158,118,0.38)" stroke="rgba(202,182,142,0.52)" strokeWidth="1.5"/>
+    </>; break;
+
+    case "Thriller Bark": content = <>
+      <path d="M63,11 A17,17 0 1 0 63,45 A11,11 0 1 1 63,11Z" fill="rgba(202,212,178,0.38)"/>
+      <rect x="17" y="54" width="46" height="20" fill="rgba(52,42,74,0.5)"/>
+      <rect x="15" y="45" width="11" height="18" fill="rgba(52,42,74,0.5)"/>
+      <rect x="54" y="45" width="11" height="18" fill="rgba(52,42,74,0.5)"/>
+      <rect x="34" y="50" width="12" height="14" fill="rgba(52,42,74,0.5)"/>
+      <path d="M40,36 Q28,24 16,30 Q22,34 29,31 Q35,38 40,36 Q45,38 51,31 Q58,34 64,30 Q52,24 40,36Z"
+        fill="rgba(72,52,104,0.6)"/>
+    </>; break;
+
+    case "Sabaody Archipelago": content = <>
+      <path d="M37,74 Q35,55 31,43 Q26,32 23,17" stroke="rgba(68,138,54,0.6)" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+      <path d="M31,55 Q20,62 15,67" stroke="rgba(68,138,54,0.5)" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
+      <ellipse cx="23" cy="15" rx="16" ry="11" fill="rgba(54,158,54,0.44)"/>
+      {[{x:55,y:23,r:14},{x:64,y:46,r:9},{x:49,y:53,r:6.5},{x:67,y:17,r:5.5}].map((b,i)=>(
+        <circle key={i} cx={b.x} cy={b.y} r={b.r}
+          fill="rgba(178,245,255,0.13)" stroke="rgba(178,245,255,0.52)" strokeWidth="1.5"/>
+      ))}
+    </>; break;
+
+    case "Marineford": content = <>
+      <line x1="31" y1="9" x2="31" y2="57" stroke="rgba(202,222,255,0.57)" strokeWidth="2.2"/>
+      <rect x="31" y="9" width="30" height="20" rx="1" fill="rgba(202,222,255,0.36)" stroke="rgba(202,222,255,0.54)" strokeWidth="1"/>
+      <rect x="34" y="15" width="24" height="2.5" rx="1" fill="rgba(98,138,232,0.58)"/>
+      <rect x="34" y="21" width="18" height="2" rx="1" fill="rgba(98,138,232,0.46)"/>
+      <path d="M7,58 L73,58 L68,70 Q40,75 12,70Z" fill="rgba(98,118,182,0.44)" stroke="rgba(118,142,202,0.5)" strokeWidth="1.5"/>
+      <rect x="15" y="51" width="11" height="5.5" rx="2.7" fill="rgba(72,76,108,0.57)"/>
+      <rect x="54" y="51" width="11" height="5.5" rx="2.7" fill="rgba(72,76,108,0.57)"/>
+      <path d="M3,64 Q16,57 29,64 Q42,71 55,64 Q68,57 77,64" fill="none" stroke="rgba(98,162,255,0.38)" strokeWidth="2"/>
+    </>; break;
+
+    case "Fishman Island": content = <>
+      <path d="M17,74 Q17,52 23,45 Q19,39 26,33 Q22,26 28,23" stroke="rgba(255,122,102,0.6)" strokeWidth="3.2" fill="none" strokeLinecap="round"/>
+      <path d="M21,61 Q29,50 34,48" stroke="rgba(255,122,102,0.5)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <ellipse cx="56" cy="48" rx="14" ry="7.5" fill="rgba(98,212,232,0.44)" transform="rotate(-18,56,48)"/>
+      <polygon points="70,48 80,41 80,55" fill="rgba(98,212,232,0.44)" transform="rotate(-18,56,48)"/>
+      <circle cx="51" cy="46" r="2.5" fill="rgba(14,52,78,0.57)" transform="rotate(-18,56,48)"/>
+      {[{x:27,y:27,r:4.5},{x:64,y:23,r:3.5},{x:44,y:17,r:5.5}].map((b,i)=>(
+        <circle key={i} cx={b.x} cy={b.y} r={b.r} fill="none" stroke="rgba(154,228,255,0.5)" strokeWidth="1.4"/>
+      ))}
+    </>; break;
+
+    case "Dressrosa": content = <>
+      <path d="M9,73 L9,43 Q9,27 24,27" stroke="rgba(228,188,128,0.54)" strokeWidth="2.5" fill="none"/>
+      <path d="M24,27 Q40,19 56,27" stroke="rgba(228,188,128,0.54)" strokeWidth="2.5" fill="none"/>
+      <path d="M56,27 Q71,27 71,43 L71,73" stroke="rgba(228,188,128,0.54)" strokeWidth="2.5" fill="none"/>
+      <path d="M19,73 L19,51 Q19,42 27,42 Q35,42 35,51 L35,73" fill="rgba(228,188,128,0.1)" stroke="rgba(228,188,128,0.3)" strokeWidth="1.5"/>
+      <path d="M45,73 L45,51 Q45,42 53,42 Q61,42 61,51 L61,73" fill="rgba(228,188,128,0.1)" stroke="rgba(228,188,128,0.3)" strokeWidth="1.5"/>
+      {[{x:19,y:19,c:"rgba(255,98,154,0.6)"},{x:56,y:13,c:"rgba(255,78,124,0.55)"},{x:38,y:9,c:"rgba(255,154,184,0.6)"}].map((f,i)=>(
+        <g key={i}>
+          {[0,72,144,216,288].map(a=>(
+            <circle key={a} cx={f.x+Math.cos(a*Math.PI/180)*7} cy={f.y+Math.sin(a*Math.PI/180)*7} r="3.8" fill={f.c}/>
+          ))}
+          <circle cx={f.x} cy={f.y} r="5" fill="rgba(255,242,102,0.72)"/>
+        </g>
+      ))}
+    </>; break;
+
+    case "Whole Cake Island": content = <>
+      <ellipse cx="40" cy="63" rx="28" ry="8" fill="rgba(242,182,122,0.5)"/>
+      <rect x="13" y="48" width="54" height="18" rx="2" fill="rgba(242,177,117,0.44)"/>
+      <ellipse cx="40" cy="48" rx="27" ry="7.5" fill="rgba(255,202,152,0.54)"/>
+      <rect x="15" y="33" width="50" height="18" rx="2" fill="rgba(255,162,188,0.44)"/>
+      <ellipse cx="40" cy="33" rx="25" ry="7" fill="rgba(255,182,208,0.54)"/>
+      <rect x="17" y="19" width="46" height="16" rx="2" fill="rgba(255,202,228,0.44)"/>
+      <ellipse cx="40" cy="19" rx="23" ry="6.5" fill="rgba(255,222,242,0.6)"/>
+      <rect x="37" y="9" width="6" height="12" rx="2" fill="rgba(255,245,212,0.68)"/>
+      <ellipse cx="40" cy="8" rx="4" ry="5" fill="rgba(255,168,32,0.78)"/>
+    </>; break;
+
+    case "Wano": content = <>
+      {/* Torii gate — Wano's most iconic symbol */}
+      <rect x="13" y="30" width="5" height="46" rx="1.5" fill="rgba(202,52,28,0.72)"/>
+      <rect x="62" y="30" width="5" height="46" rx="1.5" fill="rgba(202,52,28,0.72)"/>
+      <rect x="9" y="26" width="62" height="6.5" rx="2" fill="rgba(202,52,28,0.78)"/>
+      <rect x="11" y="36" width="58" height="4" rx="1.5" fill="rgba(202,52,28,0.58)"/>
+      {/* Katana */}
+      <line x1="54" y1="10" x2="74" y2="74" stroke="rgba(215,228,242,0.57)" strokeWidth="2.2" strokeLinecap="round"/>
+      <rect x="51" y="7" width="7" height="10" rx="1.2" fill="rgba(188,148,57,0.6)"/>
+      {/* Sakura petals */}
+      {[{x:26,y:13},{x:40,y:16},{x:62,y:8},{x:14,y:18}].map((p,i)=>(
+        <g key={i}>
+          <circle cx={p.x}   cy={p.y}   r="5"   fill="rgba(255,182,208,0.6)"/>
+          <circle cx={p.x+5} cy={p.y+3} r="3.5" fill="rgba(255,162,190,0.5)"/>
+          <circle cx={p.x-4} cy={p.y+2} r="3.5" fill="rgba(255,182,208,0.54)"/>
+        </g>
+      ))}
+      {/* Mount Fuji */}
+      <polygon points="40,52 21,74 59,74" fill="rgba(232,238,248,0.42)" stroke="rgba(212,220,232,0.52)" strokeWidth="1"/>
+      <polygon points="40,52 32,63 48,63" fill="rgba(255,255,255,0.48)"/>
+    </>; break;
+
+    case "Egghead": content = <>
+      <path d="M11,67 Q11,18 40,12 Q69,18 69,67Z" fill="rgba(98,208,255,0.2)" stroke="rgba(98,208,255,0.44)" strokeWidth="1.5"/>
+      <ellipse cx="40" cy="67" rx="29" ry="6" fill="rgba(98,208,255,0.28)"/>
+      <rect x="25" y="29" width="30" height="26" rx="4" fill="rgba(78,168,228,0.44)" stroke="rgba(98,208,255,0.5)" strokeWidth="1.2"/>
+      <rect x="28" y="33" width="9" height="8" rx="2" fill="rgba(208,248,255,0.7)"/>
+      <rect x="43" y="33" width="9" height="8" rx="2" fill="rgba(208,248,255,0.7)"/>
+      <rect x="29" y="45" width="22" height="4" rx="2" fill="rgba(158,228,255,0.54)"/>
+      <line x1="40" y1="29" x2="40" y2="17" stroke="rgba(98,208,255,0.57)" strokeWidth="1.8"/>
+      <circle cx="40" cy="15" r="4" fill="rgba(98,228,255,0.72)"/>
+      <circle cx="15" cy="19" r="8" fill="none" stroke="rgba(158,208,255,0.44)" strokeWidth="2.2"/>
+      <circle cx="65" cy="21" r="7" fill="none" stroke="rgba(158,208,255,0.44)" strokeWidth="2.2"/>
+    </>; break;
+
+    case "Elbaf": content = <>
+      <path d="M7,58 Q40,48 73,58 L69,70 Q40,75 11,70Z" fill="rgba(138,86,36,0.5)" stroke="rgba(182,120,60,0.54)" strokeWidth="1.5"/>
+      <path d="M71,58 Q84,46 86,37 Q75,41 71,51Z" fill="rgba(138,86,36,0.54)"/>
+      <line x1="40" y1="58" x2="40" y2="16" stroke="rgba(138,86,36,0.57)" strokeWidth="2.2"/>
+      <path d="M40,16 L17,29 L17,55 L40,58 L63,55 L63,29Z" fill="rgba(202,57,38,0.4)" stroke="rgba(222,80,57,0.44)" strokeWidth="0.8"/>
+      <line x1="27" y1="34" x2="53" y2="34" stroke="rgba(255,228,102,0.54)" strokeWidth="1.8"/>
+      <line x1="40" y1="23" x2="40" y2="48" stroke="rgba(255,228,102,0.54)" strokeWidth="1.8"/>
+      <line x1="65" y1="17" x2="65" y2="51" stroke="rgba(153,123,70,0.57)" strokeWidth="2.8" strokeLinecap="round"/>
+      <path d="M56,17 Q51,26 57,34 Q65,26 60,17Z" fill="rgba(188,188,202,0.54)"/>
+    </>; break;
+
+    case "Hachinosu": content = <>
+      {/* Blackbeard's base — skull + crossbones + dark fortress */}
+      <circle cx="40" cy="38" r="20" fill="rgba(18,14,30,0.5)" stroke="rgba(80,60,100,0.46)" strokeWidth="1.5"/>
+      <circle cx="40" cy="34" r="10" fill="rgba(215,208,192,0.44)"/>
+      <circle cx="35.5" cy="37" r="3" fill="rgba(10,8,18,0.7)"/>
+      <circle cx="44.5" cy="37" r="3" fill="rgba(10,8,18,0.7)"/>
+      <path d="M35 42 L40 46 L45 42" fill="rgba(10,8,18,0.55)"/>
+      <line x1="29" y1="50" x2="51" y2="60" stroke="rgba(215,208,192,0.44)" strokeWidth="2.5" strokeLinecap="round"/>
+      <line x1="51" y1="50" x2="29" y2="60" stroke="rgba(215,208,192,0.44)" strokeWidth="2.5" strokeLinecap="round"/>
+      {/* Pirate flag on mast */}
+      <line x1="62" y1="14" x2="62" y2="52" stroke="rgba(120,100,60,0.52)" strokeWidth="1.8"/>
+      <rect x="62" y="14" width="14" height="10" rx="1" fill="rgba(18,14,30,0.7)"/>
+      {/* Dark fortress silhouette */}
+      <rect x="8" y="56" width="32" height="20" rx="1" fill="rgba(28,22,42,0.48)"/>
+      <rect x="5" y="48" width="8" height="14" rx="1" fill="rgba(28,22,42,0.52)"/>
+      <rect x="32" y="48" width="8" height="14" rx="1" fill="rgba(28,22,42,0.52)"/>
+    </>; break;
+
+    default: content = null;
+  }
+  if (!content) return null;
+  return (
+    <div className="island-decor" aria-hidden="true">
+      <svg viewBox="0 0 80 80" width="88" height="88" style={{overflow:'visible'}}>
+        {content}
+      </svg>
+    </div>
+  );
+}
+
+function MonthLoreScene({ name }) {
+  let content = null;
+  switch (name) {
+    case "Arlong Park": content = <>
+      <path d="M0 76 Q80 54 160 76 T320 76 V120 H0Z" fill="rgba(36,130,170,0.28)"/>
+      <g transform="translate(220 16)">
+        {[0,1,2,3,4,5].map(i => <polygon key={i} points={`${i*14},34 ${i*14+6},8 ${i*14+12},34`} fill="rgba(210,232,245,0.26)"/>)}
+        <path d="M0 40 L96 28 L108 42 L96 56 L0 40Z" fill="rgba(70,130,170,0.22)"/>
+      </g>
+      <path d="M20 84 Q54 66 88 84 Q122 102 156 84" fill="none" stroke="rgba(125,211,252,0.35)" strokeWidth="3"/>
+    </>; break;
+    case "Skypiea": content = <>
+      <ellipse cx="74" cy="42" rx="58" ry="26" fill="rgba(255,255,255,0.24)"/>
+      <ellipse cx="190" cy="66" rx="74" ry="30" fill="rgba(255,255,255,0.18)"/>
+      <ellipse cx="275" cy="34" rx="44" ry="20" fill="rgba(255,255,255,0.22)"/>
+      <polygon points="244,8 220,58 238,54 218,108 274,44 252,48 278,8" fill="rgba(255,230,75,0.62)"/>
+      <circle cx="86" cy="88" r="22" fill="none" stroke="rgba(255,215,0,0.22)" strokeWidth="3"/>
+    </>; break;
+    case "Enies Lobby": content = <>
+      {[0,30,60,90,120,150,180,210,240,270,300,330].map(a => (
+        <line key={a}
+          x1={160+Math.cos(a*Math.PI/180)*34} y1={28+Math.sin(a*Math.PI/180)*34}
+          x2={160+Math.cos(a*Math.PI/180)*72} y2={28+Math.sin(a*Math.PI/180)*72}
+          stroke="rgba(255,230,80,0.22)" strokeWidth="4" strokeLinecap="round"/>
+      ))}
+      <circle cx="160" cy="28" r="34" fill="rgba(255,220,70,0.18)"/>
+      <rect x="36" y="46" width="44" height="74" rx="3" fill="rgba(210,190,150,0.18)"/>
+      <rect x="240" y="46" width="44" height="74" rx="3" fill="rgba(210,190,150,0.18)"/>
+      <path d="M36 46 Q160 12 284 46" fill="none" stroke="rgba(230,210,170,0.28)" strokeWidth="5"/>
+    </>; break;
+    case "Marineford": content = <>
+      <path d="M0 92 Q80 72 160 92 T320 92 V120 H0Z" fill="rgba(96,165,250,0.18)"/>
+      <rect x="70" y="46" width="180" height="54" rx="4" fill="rgba(190,210,240,0.16)" stroke="rgba(190,210,240,0.22)" strokeWidth="2"/>
+      <rect x="100" y="26" width="120" height="24" rx="4" fill="rgba(220,235,255,0.14)"/>
+      <line x1="160" y1="24" x2="160" y2="0" stroke="rgba(220,235,255,0.34)" strokeWidth="3"/>
+      <rect x="160" y="0" width="54" height="18" rx="2" fill="rgba(220,235,255,0.22)"/>
+      {[52,268].map(x => <rect key={x} x={x} y="70" width="34" height="12" rx="6" fill="rgba(55,65,100,0.32)"/>)}
+    </>; break;
+    case "Wano": content = <>
+      <rect x="40" y="42" width="18" height="78" rx="4" fill="rgba(220,38,38,0.24)"/>
+      <rect x="262" y="42" width="18" height="78" rx="4" fill="rgba(220,38,38,0.24)"/>
+      <rect x="28" y="32" width="264" height="16" rx="5" fill="rgba(220,38,38,0.28)"/>
+      <rect x="48" y="60" width="224" height="8" rx="3" fill="rgba(220,38,38,0.2)"/>
+      <line x1="246" y1="8" x2="306" y2="114" stroke="rgba(230,240,255,0.28)" strokeWidth="5" strokeLinecap="round"/>
+      {[42,80,118,214].map((x,i) => <g key={i}>
+        <circle cx={x} cy={20+i*8} r="10" fill="rgba(255,180,210,0.22)"/>
+        <circle cx={x+10} cy={24+i*8} r="7" fill="rgba(255,150,190,0.18)"/>
+      </g>)}
+      <polygon points="160,62 104,120 216,120" fill="rgba(240,248,255,0.2)"/>
+    </>; break;
+    case "Egghead": content = <>
+      <path d="M54 112 Q54 22 160 14 Q266 22 266 112Z" fill="rgba(125,211,252,0.12)" stroke="rgba(125,211,252,0.28)" strokeWidth="3"/>
+      <ellipse cx="160" cy="112" rx="106" ry="16" fill="rgba(125,211,252,0.14)"/>
+      {[40,80,120,160,200,240,280].map(x => <line key={x} x1={x} y1="0" x2={x} y2="120" stroke="rgba(125,211,252,0.08)" strokeWidth="1"/>)}
+      {[30,60,90].map(y => <line key={y} x1="0" y1={y} x2="320" y2={y} stroke="rgba(125,211,252,0.08)" strokeWidth="1"/>)}
+      <rect x="126" y="42" width="68" height="52" rx="10" fill="rgba(96,165,250,0.18)" stroke="rgba(125,211,252,0.34)" strokeWidth="2"/>
+      <circle cx="82" cy="34" r="22" fill="none" stroke="rgba(125,211,252,0.24)" strokeWidth="4"/>
+      <circle cx="250" cy="40" r="18" fill="none" stroke="rgba(125,211,252,0.22)" strokeWidth="4"/>
+    </>; break;
+    case "Elbaf": content = <>
+      <path d="M12 92 Q160 50 308 92 L288 120 H32Z" fill="rgba(140,84,40,0.24)"/>
+      <line x1="160" y1="94" x2="160" y2="18" stroke="rgba(170,105,55,0.32)" strokeWidth="6"/>
+      <path d="M160 18 L84 48 L84 88 L160 98 L236 88 L236 48Z" fill="rgba(190,55,42,0.18)" stroke="rgba(255,220,110,0.2)" strokeWidth="3"/>
+      <line x1="112" y1="60" x2="208" y2="60" stroke="rgba(255,220,110,0.28)" strokeWidth="4"/>
+      <line x1="252" y1="16" x2="252" y2="88" stroke="rgba(180,180,190,0.34)" strokeWidth="7" strokeLinecap="round"/>
+      <path d="M232 18 Q218 42 232 62 Q256 42 244 18Z" fill="rgba(210,210,225,0.24)"/>
+    </>; break;
+    case "Baratie": content = <>
+      <path d="M38 92 Q160 54 282 92 L260 120 H60Z" fill="rgba(170,100,45,0.26)"/>
+      <rect x="110" y="38" width="100" height="48" rx="6" fill="rgba(245,220,160,0.18)"/>
+      <rect x="110" y="30" width="100" height="12" rx="3" fill="rgba(220,60,40,0.2)"/>
+      <ellipse cx="160" cy="24" rx="42" ry="18" fill="rgba(255,255,255,0.22)"/>
+      <rect x="138" y="8" width="44" height="22" rx="4" fill="rgba(255,255,255,0.2)"/>
+    </>; break;
+    default: content = null;
+  }
+  if (!content) return null;
+  return (
+    <div className="month-lore-scene" aria-hidden="true">
+      <svg viewBox="0 0 320 120" preserveAspectRatio="none">
+        {content}
+      </svg>
+    </div>
+  );
+}
+
+function ThousandSunny({ size = 72, flipX = false }) {
+  const rays = [0,45,90,135,180,225,270,315];
+  const maneAngles = [-45,-15,15,45,75,105,135,165,-75,-105,-135,-165];
+  return (
+    <svg width={size} height={Math.round(size*1.35)} viewBox="-35 -52 70 70"
+      style={{ transform: flipX ? 'scaleX(-1)' : 'none',
+        filter:'drop-shadow(0 4px 14px rgba(0,0,0,0.7)) drop-shadow(0 0 8px rgba(249,115,22,0.35))',
+        overflow:'visible' }} aria-hidden="true">
+      <defs>
+        <radialGradient id="hullG" cx="50%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#8B5e3c"/>
+          <stop offset="100%" stopColor="#4a1e08"/>
+        </radialGradient>
+      </defs>
+      {/* Wake */}
+      <ellipse cx="-26" cy="15" rx="9" ry="3.5" fill="rgba(100,180,255,0.18)"/>
+      <path d="M-32 10 Q-23 7 -32 4" stroke="rgba(140,210,255,0.5)" strokeWidth="2" fill="none" strokeLinecap="round"/>
+      <path d="M-30 17 Q-19 12 -30 7" stroke="rgba(140,210,255,0.3)" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+      {/* Hull shadow */}
+      <ellipse cx="0" cy="22" rx="28" ry="4" fill="rgba(0,0,0,0.35)"/>
+      {/* Hull body */}
+      <path d="M-28 6 L28 6 L24 18 Q0 23 -24 18 Z" fill="url(#hullG)"/>
+      <path d="M-27 6 L27 6 L24 13 Q0 16 -24 13 Z" fill="#7a3f12"/>
+      {/* Green stripe */}
+      <path d="M-26 7 L26 7 L23 11 Q0 14 -23 11 Z" fill="#1e7a34"/>
+      {/* Deck */}
+      <rect x="-22" y="-3" width="44" height="9" rx="2" fill="#8B4520"/>
+      <line x1="-22" y1="1.5" x2="22" y2="1.5" stroke="rgba(0,0,0,0.18)" strokeWidth="0.6"/>
+      <line x1="-12" y1="-3" x2="-12" y2="6" stroke="rgba(0,0,0,0.1)" strokeWidth="0.4"/>
+      <line x1="12" y1="-3" x2="12" y2="6" stroke="rgba(0,0,0,0.1)" strokeWidth="0.4"/>
+      {/* Porthole windows */}
+      <circle cx="-10" cy="9.5" r="2.3" fill="rgba(80,160,220,0.25)" stroke="rgba(180,120,40,0.8)" strokeWidth="0.8"/>
+      <circle cx="10" cy="9.5" r="2.3" fill="rgba(80,160,220,0.25)" stroke="rgba(180,120,40,0.8)" strokeWidth="0.8"/>
+      {/* Sun Face figurehead (bow = right) — was lion, now the iconic sun */}
+      <g transform="translate(33,6)">
+        {/* Outer glow ring */}
+        <circle cx="0" cy="0" r="13" fill="#f97316" opacity="0.15"/>
+        {/* Rays */}
+        {rays.map((a,i) => (
+          <line key={i}
+            x1={Math.cos(a*Math.PI/180)*7.5} y1={Math.sin(a*Math.PI/180)*7.5}
+            x2={Math.cos(a*Math.PI/180)*12}  y2={Math.sin(a*Math.PI/180)*12}
+            stroke="#f97316" strokeWidth="2.6" strokeLinecap="round"/>
+        ))}
+        {/* Sun body */}
+        <circle cx="0" cy="0" r="7.8" fill="#f97316"/>
+        <circle cx="0" cy="0" r="6.2" fill="#FFD700"/>
+        {/* Eyes */}
+        <circle cx="-2.1" cy="-1.5" r="1.4" fill="#2a1400"/>
+        <circle cx="2.1"  cy="-1.5" r="1.4" fill="#2a1400"/>
+        <circle cx="-1.7" cy="-1.9" r="0.5" fill="white" opacity="0.75"/>
+        <circle cx="2.5"  cy="-1.9" r="0.5" fill="white" opacity="0.75"/>
+        {/* Smile */}
+        <path d="M-2.6 1.6 Q0 4.2 2.6 1.6" stroke="#2a1400" strokeWidth="1.2" fill="none"/>
+        {/* Blush cheeks */}
+        <circle cx="-3.8" cy="0.6" r="2.2" fill="#ff8c42" opacity="0.55"/>
+        <circle cx="3.8"  cy="0.6" r="2.2" fill="#ff8c42" opacity="0.55"/>
+      </g>
+      {/* Stern */}
+      <path d="M-28 6 Q-34 10 -28 17" fill="#3a1408" stroke="rgba(0,0,0,0.2)" strokeWidth="0.5"/>
+      <rect x="-31" y="2" width="5" height="9" rx="2.5" fill="#5a2d0c"/>
+      {/* === MASTS === */}
+      {/* Mizzenmast (rear) */}
+      <line x1="-14" y1="-3" x2="-14" y2="-24" stroke="#6b3a12" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="-24" y1="-16" x2="-4" y2="-16" stroke="#6b3a12" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M-14 -22 L-4 -16 L-5 -3 L-14 -3Z" fill="rgba(245,235,200,0.82)" stroke="rgba(160,130,60,0.3)" strokeWidth="0.5"/>
+      <path d="M-14 -22 L-24 -16 L-22 -3 L-14 -3Z" fill="rgba(238,228,192,0.75)" stroke="rgba(160,130,60,0.25)" strokeWidth="0.5"/>
+      {/* Main mast */}
+      <line x1="2" y1="-3" x2="2" y2="-48" stroke="#6b3a12" strokeWidth="3.2" strokeLinecap="round"/>
+      <line x1="-19" y1="-36" x2="21" y2="-36" stroke="#6b3a12" strokeWidth="1.8" strokeLinecap="round"/>
+      <line x1="-17" y1="-22" x2="19" y2="-22" stroke="#6b3a12" strokeWidth="1.5" strokeLinecap="round"/>
+      {/* Main sails */}
+      <path d="M2 -46 L21 -36 L19 -22 L2 -18Z" fill="rgba(255,252,228,0.94)" stroke="rgba(160,130,60,0.3)" strokeWidth="0.5"/>
+      <path d="M2 -46 L-17 -36 L-15 -22 L2 -18Z" fill="rgba(248,244,218,0.9)" stroke="rgba(160,130,60,0.25)" strokeWidth="0.5"/>
+      <path d="M2 -18 L19 -22 L16 -3 L2 -3Z" fill="rgba(252,248,224,0.88)" stroke="rgba(160,130,60,0.2)" strokeWidth="0.5"/>
+      <path d="M2 -18 L-15 -22 L-12 -3 L2 -3Z" fill="rgba(245,240,212,0.84)" stroke="rgba(160,130,60,0.2)" strokeWidth="0.5"/>
+      {/* Straw Hat emblem on main sail — Luffy's iconic hat */}
+      {/* Brim — wide, flat */}
+      <ellipse cx="12" cy="-25.5" rx="13.5" ry="3.8" fill="#d4a843" stroke="#9a7520" strokeWidth="0.6"/>
+      <ellipse cx="12" cy="-25.8" rx="11"   ry="2.4" fill="#e8bc50" opacity="0.6"/>
+      {/* Crown */}
+      <path d="M2.8 -25.8 Q1.5 -38.5 12 -39.5 Q22.5 -38.5 21.2 -25.8Z"
+        fill="#e8bc50" stroke="#9a7520" strokeWidth="0.6"/>
+      {/* Crown highlight */}
+      <path d="M5.5 -26.5 Q4.5 -37 12 -38 Q19.5 -37 18.5 -26.5Z"
+        fill="rgba(255,235,140,0.32)"/>
+      {/* Red band */}
+      <path d="M3.5 -30 Q12 -32.5 20.5 -30"
+        stroke="#cc2200" strokeWidth="3.8" fill="none" strokeLinecap="butt"/>
+      {/* Straw texture */}
+      <line x1="5.5"  y1="-26" x2="7"    y2="-38" stroke="rgba(100,60,0,0.15)" strokeWidth="0.5"/>
+      <line x1="9"    y1="-25.5" x2="9.5"  y2="-39" stroke="rgba(100,60,0,0.12)" strokeWidth="0.5"/>
+      <line x1="12"   y1="-25.5" x2="12"   y2="-39.5" stroke="rgba(100,60,0,0.10)" strokeWidth="0.5"/>
+      <line x1="15"   y1="-25.5" x2="14.5" y2="-39" stroke="rgba(100,60,0,0.12)" strokeWidth="0.5"/>
+      <line x1="18.5" y1="-26" x2="17"   y2="-38" stroke="rgba(100,60,0,0.15)" strokeWidth="0.5"/>
+      {/* Foremast */}
+      <line x1="18" y1="-3" x2="18" y2="-22" stroke="#6b3a12" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="10" y1="-14" x2="28" y2="-14" stroke="#6b3a12" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M18 -20 L28 -14 L26 -3 L18 -3Z" fill="rgba(252,246,218,0.85)" stroke="rgba(160,130,60,0.25)" strokeWidth="0.5"/>
+      <path d="M18 -20 L10 -14 L12 -3 L18 -3Z" fill="rgba(245,238,208,0.8)" stroke="rgba(160,130,60,0.2)" strokeWidth="0.5"/>
+      {/* Crow's nest */}
+      <path d="M-4 -48 L8 -48 L9 -45 L-5 -45Z" fill="#7a4520"/>
+      <rect x="-4" y="-48" width="12" height="3" rx="1" fill="#8B5030"/>
+      {/* Jolly Roger flag */}
+      <line x1="2" y1="-48" x2="-3" y2="-52" stroke="#5a3010" strokeWidth="1.6"/>
+      <path d="M-3 -52 L-15 -49 L-3 -46Z" fill="#0d0d0d"/>
+      <circle cx="-9" cy="-49" r="2" fill="white" opacity="0.65"/>
+      <path d="M-12.5 -47 L-5.5 -47" stroke="white" strokeWidth="0.8" opacity="0.55"/>
+      {/* Anchor on stern — SVG anchor shape */}
+      <g transform="translate(-19,12)" opacity="0.5">
+        <circle cx="0" cy="-3" r="2" fill="none" stroke="rgba(200,160,0,0.8)" strokeWidth="0.8"/>
+        <line x1="0" y1="-1" x2="0" y2="4" stroke="rgba(200,160,0,0.8)" strokeWidth="0.8"/>
+        <path d="M-3 -3 L3 -3" stroke="rgba(200,160,0,0.8)" strokeWidth="0.8" strokeLinecap="round"/>
+        <path d="M-3 4 Q0 6 3 4" stroke="rgba(200,160,0,0.8)" strokeWidth="0.8" fill="none" strokeLinecap="round"/>
+      </g>
+    </svg>
+  );
+}
+
+function SeaIsleSvg({ name = "", variant = 0 }) {
+  const cloudsRight = variant % 2 === 0;
+  const lore = (() => {
+    switch (name) {
+      case "Shells Town": return <>
+        <rect x="26" y="17" width="14" height="20" rx="1.5" fill="#d8e7f8" stroke="#5b89b8" strokeWidth="1"/>
+        <rect x="24" y="14" width="18" height="5" rx="1" fill="#5b89b8"/>
+        <line x1="33" y1="18" x2="33" y2="34" stroke="#3f6f9e" strokeWidth="1.4"/>
+        <path d="M27,27 Q33,32 39,27" fill="none" stroke="#3f6f9e" strokeWidth="1.4"/>
+      </>;
+      case "Gecko Islands": return <>
+        <polygon points="19,27 31,16 43,27" fill="#b95f2f"/>
+        <rect x="22" y="27" width="18" height="12" rx="1" fill="#ead39a"/>
+        <circle cx="48" cy="26" r="9" fill="#1f8f2b"/>
+        <rect x="47" y="28" width="3" height="12" fill="#7a4520"/>
+      </>;
+      case "Loguetown": return <>
+        <rect x="28" y="11" width="4" height="27" fill="#8a6032"/>
+        <rect x="28" y="11" width="18" height="4" fill="#8a6032"/>
+        <line x1="40" y1="15" x2="40" y2="27" stroke="#5f3a1d" strokeWidth="1.3"/>
+        <rect x="15" y="33" width="34" height="4" rx="1" fill="#8a6032"/>
+      </>;
+      case "Cactus Island": return <>
+        <rect x="17" y="21" width="7" height="18" rx="3.5" fill="#157a32"/>
+        <rect x="38" y="17" width="7" height="22" rx="3.5" fill="#157a32"/>
+        <circle cx="22" cy="18" r="4" fill="#f59e0b"/>
+        <circle cx="42" cy="14" r="4" fill="#f59e0b"/>
+        <rect x="28" y="29" width="10" height="9" rx="2" fill="#8b5a2b"/>
+      </>;
+      case "Drum Island": return <>
+        <polygon points="31,5 12,38 50,38" fill="#7b8da0"/>
+        <polygon points="31,5 22,20 40,20" fill="#f5fbff"/>
+        <circle cx="48" cy="16" r="4" fill="#f8fafc"/>
+        <circle cx="14" cy="28" r="3" fill="#f8fafc"/>
+      </>;
+      case "Sandy Island": return <>
+        <polygon points="31,9 12,39 50,39" fill="#d6a040"/>
+        <polygon points="31,9 24,22 38,22" fill="#f6d37a"/>
+        <circle cx="49" cy="14" r="5" fill="#ffd166"/>
+        <path d="M12,38 Q25,32 50,38" fill="none" stroke="#b98028" strokeWidth="1.6"/>
+      </>;
+      case "Jaya": return <>
+        <circle cx="30" cy="24" r="12" fill="#243b24"/>
+        <circle cx="26" cy="23" r="2" fill="#e8e2c7"/>
+        <circle cx="34" cy="23" r="2" fill="#e8e2c7"/>
+        <path d="M25,30 Q30,34 35,30" stroke="#e8e2c7" strokeWidth="1.2" fill="none"/>
+        <rect x="45" y="16" width="3" height="22" fill="#7a4520"/>
+      </>;
+      case "Water 7": return <>
+        <rect x="18" y="17" width="26" height="21" rx="2" fill="#b9d6e8"/>
+        <polygon points="18,17 31,9 44,17" fill="#8b5a2b"/>
+        <path d="M12,38 Q23,31 31,36 Q40,31 50,38" fill="none" stroke="#4fc3f7" strokeWidth="2"/>
+        <rect x="25" y="23" width="5" height="5" fill="#e0f7ff"/>
+        <rect x="34" y="23" width="5" height="5" fill="#e0f7ff"/>
+      </>;
+      case "Thriller Bark": return <>
+        <path d="M45,7 A10,10 0 1 0 45,27 A7,7 0 1 1 45,7Z" fill="#e8ecc8"/>
+        <rect x="17" y="28" width="28" height="12" fill="#36214f"/>
+        <rect x="22" y="20" width="6" height="11" fill="#36214f"/>
+        <rect x="36" y="20" width="6" height="11" fill="#36214f"/>
+        <path d="M17,28 Q31,17 45,28" fill="#4c2a70"/>
+      </>;
+      case "Sabaody Archipelago": return <>
+        <path d="M22,39 Q22,28 27,17" stroke="#2f8f3d" strokeWidth="3" fill="none"/>
+        <ellipse cx="28" cy="15" rx="12" ry="8" fill="#30a246"/>
+        <circle cx="46" cy="18" r="7" fill="none" stroke="#b9f6ff" strokeWidth="1.7"/>
+        <circle cx="42" cy="31" r="5" fill="none" stroke="#b9f6ff" strokeWidth="1.4"/>
+        <circle cx="51" cy="30" r="4" fill="none" stroke="#b9f6ff" strokeWidth="1.2"/>
+      </>;
+      case "Fish-Man Island": return <>
+        <path d="M17,39 Q17,25 23,19 Q20,13 26,10" stroke="#ff7a66" strokeWidth="3" fill="none"/>
+        <ellipse cx="42" cy="27" rx="10" ry="6" fill="#5eead4"/>
+        <polygon points="51,27 58,22 58,32" fill="#5eead4"/>
+        <circle cx="39" cy="25" r="1.7" fill="#073b4c"/>
+        <circle cx="30" cy="13" r="4" fill="none" stroke="#bae6fd" strokeWidth="1.3"/>
+      </>;
+      case "Punk Hazard": return <>
+        <path d="M11,38 L31,9 L31,40Z" fill="#93c5fd"/>
+        <path d="M51,38 L31,9 L31,40Z" fill="#ef4444"/>
+        <path d="M18,18 L23,13 L21,24 L27,22" stroke="#e0f2fe" strokeWidth="1.5" fill="none"/>
+        <path d="M43,15 Q50,23 41,31 Q45,23 37,18" fill="#fb923c"/>
+      </>;
+      case "Dressrosa": return <>
+        <path d="M15,39 L15,25 Q15,16 31,16 Q47,16 47,25 L47,39" fill="none" stroke="#e5b96f" strokeWidth="2.3"/>
+        {[20,31,42].map((x,i)=><path key={i} d={`M${x},39 L${x},27`} stroke="#e5b96f" strokeWidth="1.7"/>)}
+        <circle cx="49" cy="13" r="4" fill="#fb7185"/>
+        <circle cx="44" cy="17" r="4" fill="#f9a8d4"/>
+        <circle cx="50" cy="19" r="4" fill="#fb7185"/>
+      </>;
+      case "Zou": return <>
+        <rect x="20" y="20" width="7" height="19" rx="3" fill="#8c7a68"/>
+        <rect x="37" y="20" width="7" height="19" rx="3" fill="#8c7a68"/>
+        <ellipse cx="32" cy="20" rx="20" ry="9" fill="#6b8f4e"/>
+        <path d="M43,19 Q55,17 51,28" stroke="#8c7a68" strokeWidth="4" fill="none" strokeLinecap="round"/>
+      </>;
+      case "Whole Cake Island": return <>
+        <rect x="16" y="29" width="30" height="10" rx="2" fill="#f9a8d4"/>
+        <ellipse cx="31" cy="29" rx="15" ry="4" fill="#fecdd3"/>
+        <rect x="18" y="20" width="26" height="10" rx="2" fill="#fed7aa"/>
+        <ellipse cx="31" cy="20" rx="13" ry="4" fill="#ffedd5"/>
+        <rect x="29" y="11" width="4" height="9" rx="1" fill="#fef3c7"/>
+        <ellipse cx="31" cy="10" rx="3" ry="4" fill="#fb923c"/>
+      </>;
+      default: return null;
+    }
+  })();
+  return (
+    <svg width="62" height="50" viewBox="0 0 62 50" className="sea-isle-svg" aria-hidden="true">
+      <ellipse cx="31" cy="42" rx="26" ry="7.5" fill="#c8a850" opacity="0.52"/>
+      <ellipse cx="31" cy="40" rx="23" ry="6.5" fill="#267018"/>
+      <ellipse cx="31" cy="38" rx="20" ry="5.2" fill="#339922"/>
+      {!lore && variant % 4 === 0 && <>
+        <rect x="29.5" y="15" width="3" height="23" rx="1.5" fill="#7a4520"/>
+        <ellipse cx="30" cy="15" rx="10" ry="6" fill="#1d7a11" transform="rotate(-14 30 15)"/>
+        <ellipse cx="31" cy="13" rx="9" ry="5" fill="#28a018" transform="rotate(9 31 13)"/>
+      </>}
+      {!lore && variant % 4 === 1 && <>
+        <polygon points="20,36 25,14 30,36" fill="#124e0a"/>
+        <polygon points="20,28 25,12 30,28" fill="#1a7a12"/>
+        <rect x="24" y="36" width="2" height="4" fill="#7a4520"/>
+        <polygon points="30,36 35,13 40,36" fill="#124e0a"/>
+        <polygon points="30,28 35,10 40,28" fill="#1a7a12"/>
+        <rect x="34" y="36" width="2" height="4" fill="#7a4520"/>
+      </>}
+      {!lore && variant % 4 === 2 && <>
+        <polygon points="31,6 17,36 45,36" fill="#6b5e50"/>
+        <polygon points="31,6 24,22 38,22" fill="#8a7a68"/>
+        <polygon points="31,6 27,15 35,15" fill="rgba(255,255,255,0.88)"/>
+        <polygon points="14,36 17,26 20,36" fill="#124e0a"/>
+      </>}
+      {!lore && variant % 4 === 3 && <>
+        <circle cx="19" cy="26" r="9" fill="#124e0a"/>
+        <circle cx="31" cy="20" r="11" fill="#1a7a12"/>
+        <circle cx="43" cy="26" r="9" fill="#124e0a"/>
+        <circle cx="29" cy="19" r="4" fill="rgba(80,220,60,0.28)"/>
+      </>}
+      {lore}
+      <ellipse cx={cloudsRight ? 47 : 15} cy="8" rx="9" ry="5" fill="white" opacity="0.82"/>
+      <ellipse cx={cloudsRight ? 42 : 10} cy="9" rx="7" ry="4.5" fill="white" opacity="0.82"/>
+      <ellipse cx={cloudsRight ? 52 : 20} cy="9" rx="5.5" ry="4" fill="white" opacity="0.76"/>
+    </svg>
+  );
+}
+
 function CalendarPage({ data, sel, onSel, start, totalDays }) {
   const today = todayKey();
   const monthRefs = useRef({});
+  const startRef = useRef(null);
+  const startXRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const svgPathElemRef = useRef(null);
+  const ddayRef = useRef(null);
+
+  // ── One Piece toggle ──────────────────────────────────────────
+  const [voyageMode, setVoyageMode] = useState(
+    () => localStorage.getItem('op_voyage_mode') !== 'off'
+  );
+  const toggleVoyageMode = useCallback(() => {
+    setVoyageMode(prev => {
+      const next = !prev;
+      localStorage.setItem('op_voyage_mode', next ? 'on' : 'off');
+      return next;
+    });
+  }, []);
+  // Month islands are fixed by calendar month, not by array index.
+  const MONTH_ISLANDS = {
+    5: "Arlong Park",
+    6: "Skypiea",
+    7: "Enies Lobby",
+    8: "Marineford",
+    9: "Wano",
+    10: "Egghead",
+    11: "Elbaf",
+  };
+  const PRE_MAY_ISLANDS = {
+    1: "Shells Town",
+    2: "Gecko Islands",
+    3: "Loguetown",
+    4: "Baratie",
+  };
+
+  const PRE_GRAND_LINE_ISLES = [
+    { name:"Shells Town", incident:"Luffy defied Captain Morgan and Zoro joined the crew.", advice:"CAT move: pick your first strong ally today. Do one timed set and review every mistake instead of just counting attempts." },
+    { name:"Gecko Islands", incident:"Usopp protected Syrup Village and the crew earned the Going Merry.", advice:"CAT move: protect the basics. Revise one weak concept until it feels boringly clear, then solve five clean questions from it." },
+    { name:"Loguetown", incident:"At Roger's execution town, Luffy survived Buggy and Smoker and still chose the Grand Line.", advice:"CAT move: before a new phase, clean your error log. Carry only lessons forward, not panic." },
+  ];
+  const PARADISE_ISLES = [
+    { name:"Cactus Island", incident:"Whiskey Peak welcomed the crew as guests, then revealed the Baroque Works trap.", advice:"CAT move: traps look familiar. In QA/LRDI, pause before the obvious route and check hidden constraints." },
+    { name:"Drum Island", incident:"Luffy climbed a winter mountain to save Nami and Chopper joined the crew.", advice:"CAT move: when energy is low, reduce the climb. Do one focused 45-minute block with full review." },
+    { name:"Sandy Island", incident:"In Alabasta, Luffy beat Crocodile after repeated failure and stopped a civil war.", advice:"CAT move: if a section keeps beating you, change the method. Redo old wrong questions by topic, not by mock." },
+    { name:"Jaya", incident:"Mock Town laughed at dreams, but the path to Skypiea was real.", advice:"CAT move: ignore noise after a bad mock. Extract three fixes, schedule them, and move." },
+    { name:"Water 7", incident:"The crew fractured over the Going Merry, then rebuilt around hard truth and Franky.", advice:"CAT move: audit honestly. If your strategy is broken, rebuild it now instead of emotionally defending it." },
+    { name:"Thriller Bark", incident:"Nightmare Luffy borrowed strength, beat Moria, and Brook joined.", advice:"CAT move: borrow structure. Use templates for RC summaries, LRDI tables, and QA formula recall until speed returns." },
+    { name:"Sabaody Archipelago", incident:"Luffy punched a Celestial Dragon and the crew was scattered by Kuma.", advice:"CAT move: pressure can scatter your mind. Practice one sectional under strict time and train recovery after setbacks." },
+  ];
+  const NEW_WORLD_ISLES = [
+    { name:"Fish-Man Island", incident:"Ten thousand meters under the sea, Luffy defeated Hody and claimed the island.", advice:"CAT move: deep work wins. Take one ugly topic underwater today and stay with it until the fear drops." },
+    { name:"Punk Hazard", incident:"Fire and ice split the island while Caesar's experiments poisoned children.", advice:"CAT move: split extremes. For strong topics, chase speed; for weak topics, chase accuracy first." },
+    { name:"Dressrosa", incident:"Gear 4 broke Doflamingo's rule and the Straw Hat Grand Fleet formed.", advice:"CAT move: unlock your Gear 4 by combining revision plus mocks. One without the other is incomplete." },
+    { name:"Zou", incident:"On a walking elephant, the crew learned about Road Poneglyphs.", advice:"CAT move: find your Road Poneglyphs. Identify the 4-5 score levers that actually move your percentile." },
+    { name:"Whole Cake Island", incident:"Luffy crashed Big Mom's wedding, saved Sanji, and beat Katakuri with Snakeman.", advice:"CAT move: adapt mid-fight. If a mock pattern changes, do not freeze. Switch routes and protect accuracy." },
+  ];
+
+  const seaPassageFor = (monthNum) => {
+    if (monthNum === 5) return PARADISE_ISLES.slice(0, 4);
+    if (monthNum === 6) return PARADISE_ISLES.slice(4, 5);
+    if (monthNum === 7) return PARADISE_ISLES.slice(5, 7);
+    if (monthNum === 8) return NEW_WORLD_ISLES;
+    return [];
+  };
+
+  const seaIsleScatter = (phase, idx) => {
+    const lanes = {
+      east: ["7%", "41%", "18%"],
+      paradise: ["6%", "56%", "17%", "66%", "31%", "50%", "12%"],
+      newWorld: ["9%", "61%", "23%", "52%", "35%"],
+    };
+    return lanes[phase][idx % lanes[phase].length];
+  };
+
+  const seaRocks = useMemo(() => ([
+    { x: "5%", y: "10%", s: 0.46, r: -8 },
+    { x: "87%", y: "12%", s: 0.42, r: 12 },
+    { x: "3%", y: "26%", s: 0.52, r: -18 },
+    { x: "91%", y: "30%", s: 0.58, r: 7 },
+    { x: "7%", y: "43%", s: 0.44, r: 15 },
+    { x: "88%", y: "48%", s: 0.5, r: -6 },
+    { x: "4%", y: "64%", s: 0.62, r: -12 },
+    { x: "92%", y: "68%", s: 0.52, r: 18 },
+    { x: "10%", y: "82%", s: 0.42, r: 9 },
+    { x: "84%", y: "86%", s: 0.62, r: -10 },
+    { x: "42%", y: "11%", s: 0.34, r: 14 },
+    { x: "55%", y: "91%", s: 0.38, r: -16 },
+    { x: "23%", y: "38%", s: 0.32, r: 10 },
+    { x: "70%", y: "56%", s: 0.36, r: -14 },
+  ]), []);
+
+  const seaCyclones = useMemo(() => ([
+    { x: "78%", y: "15%", s: 0.82 },
+    { x: "9%", y: "47%", s: 0.62 },
+    { x: "70%", y: "84%", s: 0.72 },
+  ]), []);
+  const seaMountains = useMemo(() => ([
+    { x: "0%", y: "34%", s: 0.22 },
+    { x: "0%", y: "72%", s: 0.20 },
+  ]), []);
+  const seaReefs = useMemo(() => ([
+    { x: "52%", y: "9%", s: 0.6 },
+    { x: "34%", y: "28%", s: 0.48 },
+    { x: "8%", y: "82%", s: 0.56 },
+    { x: "60%", y: "62%", s: 0.52 },
+  ]), []);
+
+
+  const [mapNote, setMapNote] = useState("");
+  const [mapNotePos, setMapNotePos] = useState({ left: "50%", top: 120 });
+  const [svgDims, setSvgDims] = useState({ w: 600, h: 1200 });
+  const [svgPathD, setSvgPathD] = useState('');
+  const [shipPos, setShipPos] = useState({ x: 50, y: 50, flip: false });
+
+  const lastPrepDay = useMemo(() => {
+    const d = new Date(EXAM_DATE);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }, []);
+
+  const openIslandNote = useCallback((isle, event) => {
+    const container = mapContainerRef.current;
+    const target = event.currentTarget;
+    if (container && target) {
+      const c = container.getBoundingClientRect();
+      const r = target.getBoundingClientRect();
+      const left = Math.max(18, Math.min(c.width - 378, r.left - c.left + r.width / 2 - 180));
+      const top = Math.max(18, r.top - c.top - 18);
+      setMapNotePos({ left, top });
+    }
+    setMapNote(isle);
+  }, []);
+
   const calendarData = useMemo(() => {
     const dayMeta = new Map();
     Array.from({length: totalDays}, (_, i) => {
@@ -2319,11 +3233,8 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       if (isFinalPushDate(k)) status = `${status} final-push`.trim();
       dayMeta.set(k, { k, day:i+1, isToday: k===today, status });
     });
-
     const startMonth = new Date(start.getFullYear(), start.getMonth(), 1);
-    const lastPrepDay = new Date(EXAM_DATE);
-    lastPrepDay.setDate(lastPrepDay.getDate() - 1);
-    const months = [];
+    const rawMonths = [];
     for (
       let cursor = new Date(startMonth);
       cursor <= lastPrepDay;
@@ -2331,85 +3242,533 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
     ) {
       const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
       const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
-      const visibleStart = monthStart < start ? new Date(start) : monthStart;
-      const visibleEnd = monthEnd > lastPrepDay ? lastPrepDay : monthEnd;
+      const monthNum = cursor.getMonth() + 1;
       const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}`;
       const monthLabel = cursor.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
-      const state = monthKey < today.slice(0, 7)
-        ? "past"
-        : monthKey === today.slice(0, 7)
-          ? "current"
-          : "future";
+      const state = monthKey < today.slice(0,7) ? "past" : monthKey === today.slice(0,7) ? "current" : "future";
+      // Show only prep-range days: first month starts from prep start, last month ends at lastPrepDay
+      const isFirstMonth = monthStart.getFullYear() === start.getFullYear() && monthStart.getMonth() === start.getMonth();
+      const displayStart = isFirstMonth ? new Date(start) : new Date(monthStart);
+      const displayEnd   = monthEnd > lastPrepDay ? new Date(lastPrepDay) : new Date(monthEnd);
       const cells = [];
-      for (let i = 0; i < visibleStart.getDay(); i++) cells.push(null);
-      for (let d = new Date(visibleStart); d <= visibleEnd; d.setDate(d.getDate() + 1)) {
-        const meta = dayMeta.get(toLocalDateKey(d));
-        if (meta) cells.push({...meta, dateNum: d.getDate()});
+      // Leading blanks based on displayStart's day-of-week for proper grid alignment
+      for (let i = 0; i < displayStart.getDay(); i++) cells.push(null);
+      for (let d = new Date(displayStart); d <= displayEnd; d.setDate(d.getDate() + 1)) {
+        const dk = toLocalDateKey(d);
+        const meta = dayMeta.get(dk);
+        cells.push(meta ? {...meta, dateNum: d.getDate()} : { k: dk, day: null, isToday: dk===today, status:'', dateNum: d.getDate() });
       }
-      months.push({ key: monthKey, label: monthLabel, state, cells });
+      rawMonths.push({ key: monthKey, monthNum, label: monthLabel, state, cells });
     }
-    return months;
-  }, [data, start, totalDays, today]);
+    // Assign fixed month islands; dividers sit after May and after August.
+    return rawMonths.map((m, i) => ({
+      ...m,
+      island: MONTH_ISLANDS[m.monthNum] || PRE_MAY_ISLANDS[m.monthNum] || `Island ${i + 1}`,
+      islandSlug: (MONTH_ISLANDS[m.monthNum] || PRE_MAY_ISLANDS[m.monthNum] || `Island ${i + 1}`)
+        .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+      showGrandLine: m.monthNum === 5,
+      showRedLine:   m.monthNum === 8,
+    }));
+  }, [data, start, totalDays, today, lastPrepDay]);
+
+  const voyagePct = useMemo(() => {
+    if (!calendarData.length) return 0;
+    const now = new Date(today + "T00:00:00");
+    if (today >= EXAM_DATE_KEY) return 99.5;
+    const currentMonthIdx = calendarData.findIndex(m => m.monthNum === now.getMonth() + 1);
+    if (currentMonthIdx < 0) return now < start ? 2 : 92;
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthSpan = Math.max(1, monthEnd - monthStart);
+    const monthFrac = Math.max(0, Math.min(1, (now - monthStart) / monthSpan));
+    const totalSegments = calendarData.length + 1; // start island -> month islands -> Laughtale
+    const segmentProgress = currentMonthIdx + 1 + Math.min(0.72, monthFrac * 0.72);
+    return Math.max(3, Math.min(96, (segmentProgress / totalSegments) * 100));
+  }, [calendarData, start, today]);
+
+  // Build SVG path from island DOM positions
+  const buildPath = useCallback(() => {
+    const container = mapContainerRef.current;
+    if (!container || calendarData.length === 0) return;
+    const cRect = container.getBoundingClientRect();
+    const W = container.offsetWidth;
+    const H = container.scrollHeight || container.clientHeight;
+    // Path goes through the gold checkpoint dot at top-center of each island card
+    // The dot is at top: -10px on the card, height 14px, so its center = card.top - 3px
+    const DOT_OFFSET = 3; // px below card.top = center of the 14px dot (top:-10 + 7 = -3)
+    const pts = [];
+    if (startXRef.current || startRef.current) {
+      const r = (startXRef.current || startRef.current).getBoundingClientRect();
+      pts.push({ x: r.left - cRect.left + r.width / 2, y: r.top - cRect.top + r.height / 2 });
+    }
+    calendarData.forEach(m => {
+      const el = monthRefs.current[m.key];
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const x = r.left - cRect.left + r.width / 2;
+      const y = r.top  - cRect.top  - DOT_OFFSET;
+      pts.push({ x, y });
+    });
+    if (ddayRef.current) {
+      const r = ddayRef.current.getBoundingClientRect();
+      pts.push({ x: r.left - cRect.left + r.width/2, y: r.top - cRect.top + 20 });
+    }
+    if (pts.length < 2) return;
+    const tension = 0.42;
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const p0 = pts[Math.max(0, i-2)], p1 = pts[i-1], p2 = pts[i], p3 = pts[Math.min(pts.length-1, i+1)];
+      const cp1x = p1.x + (p2.x - p0.x)*tension/2, cp1y = p1.y + (p2.y - p0.y)*tension/2;
+      const cp2x = p2.x - (p3.x - p1.x)*tension/2, cp2y = p2.y - (p3.y - p1.y)*tension/2;
+      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    const nextDims = { w: W, h: Math.max(H + 100, 400) };
+    setSvgDims(prev => (prev.w === nextDims.w && prev.h === nextDims.h ? prev : nextDims));
+    setSvgPathD(prev => (prev === d ? prev : d));
+  }, [calendarData]);
+
+  useLayoutEffect(() => { buildPath(); }, [buildPath]);
+
+  useEffect(() => {
+    const h = () => setTimeout(buildPath, 80);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, [buildPath]);
+
+  // Position ship along path
+  useEffect(() => {
+    if (!svgPathElemRef.current || !svgPathD) return;
+    try {
+      const totalLen = svgPathElemRef.current.getTotalLength();
+      if (totalLen < 1) return;
+      const pct = Math.max(0.005, Math.min(0.995, voyagePct/100));
+      const pt = svgPathElemRef.current.getPointAtLength(totalLen * pct);
+      const delta = 5;
+      const ptB = svgPathElemRef.current.getPointAtLength(Math.max(0, totalLen*pct - delta));
+      const ptF = svgPathElemRef.current.getPointAtLength(Math.min(totalLen, totalLen*pct + delta));
+      setShipPos({ x: pt.x, y: pt.y, flip: ptF.x - ptB.x < 0 });
+    } catch(e) {}
+  }, [svgPathD, voyagePct]);
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <div className="page-title">{totalDays} Days</div>
-        <div className="page-sub">Every cell is a choice. Nov 29 is the day.</div>
+    <div className={`page calendar-page${voyageMode ? "" : " cal-plain-mode"}`}>
+      <div className="page-header cal-pg-header">
+        <div>
+          <div className="page-title">{totalDays} Days</div>
+          <div className="page-sub">Every cell is a choice. Nov 29 is the day.</div>
+        </div>
+        {/* ── One Piece / Grid toggle ── */}
+        <button type="button" className={`op-mode-toggle ${voyageMode ? "opm-on" : "opm-off"}`}
+          onClick={toggleVoyageMode} title="Switch calendar theme">
+          <span className="opm-icon">{voyageMode ? "⚓" : "📅"}</span>
+          <span className="opm-track">
+            <span className="opm-knob"/>
+          </span>
+          <span className="opm-label">{voyageMode ? "One Piece" : "Grid"}</span>
+        </button>
       </div>
       <div className="sections">
         <div className="month-strip">
           {calendarData.map(m => (
-            <button
-              key={m.key}
-              type="button"
-              className={`month-chip ${m.state}`}
-              onClick={() => monthRefs.current[m.key]?.scrollIntoView({ behavior:"smooth", block:"start" })}
-            >
+            <button key={m.key} type="button" className={`month-chip ${m.state}`}
+              onClick={() => monthRefs.current[m.key]?.scrollIntoView({ behavior:"smooth", block:"center" })}>
               {m.label}
             </button>
           ))}
         </div>
-        <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-          {[{bg:"rgba(249,115,22,.14)",bd:"rgba(249,115,22,.3)",lbl:"All targets met"},
-            {bg:"rgba(249,115,22,.05)",bd:"rgba(249,115,22,.15)",lbl:"Partial"},
-            {bg:"rgba(59,130,246,.12)",bd:"rgba(59,130,246,.35)",lbl:"CAT application pending"},
-            {bg:"rgba(48,209,88,.12)",bd:"rgba(48,209,88,.4)",lbl:"Final push"},
-            {bg:"var(--s2)",bd:"var(--b1)",lbl:"No entry"}].map(l => (
-            <div key={l.lbl} style={{display:"flex",alignItems:"center",gap:6}}>
-              <div style={{width:11,height:11,borderRadius:3,background:l.bg,border:`1px solid ${l.bd}`}} />
-              <span style={{fontSize:11,color:"var(--tt)"}}>{l.lbl}</span>
+        <div className="calendar-legend">
+          {[
+            {cls:"done",lbl:"All targets met"},
+            {cls:"partial",lbl:"Partial"},
+            {cls:"cat-app",lbl:"CAT application pending"},
+            {cls:"push",lbl:"Final push"},
+            {cls:"empty",lbl:"No entry"},
+          ].map(l => (
+            <div key={l.lbl} className="calendar-legend-item">
+              <div className={`calendar-legend-swatch ${l.cls}`} />
+              <span>{l.lbl}</span>
             </div>
           ))}
         </div>
-        <div className="calendar-months">
-          {calendarData.map(month => (
-            <div key={month.key} className="calendar-month" ref={el => { monthRefs.current[month.key] = el }}>
-              <div className="calendar-month-title">{month.label}</div>
-              <div className="calendar-week-head">
-                {["S","M","T","W","T","F","S"].map((d, i) => <span key={`${d}-${i}`}>{d}</span>)}
-              </div>
-              <div className="calendar-month-grid">
-                {month.cells.map((d, i) => d ? (
-                  <button key={d.k}
-                    type="button"
-                    className={`cal-cell ${d.status} ${d.isToday?"today":""} ${d.k===sel?"selected":""}`}
-                    onClick={() => onSel(d.k)}
-                    title={`Day ${d.day}`}
-                  >
-                    <span className="cal-day-num">{d.day}</span>
-                    <span className="cal-date-num">{d.dateNum}</span>
-                  </button>
-                ) : <span key={`blank-${i}`} className="cal-cell blank" />)}
+
+        {/* ===== VOYAGE SEA MAP (One Piece mode only) ===== */}
+        {voyageMode && <div className="calendar-months" ref={mapContainerRef}>
+          <div className="sea-celestial" aria-hidden="true">
+            {/* ---- SUN (light mode) ---- */}
+            <svg className="sea-sun" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="sgA" cx="38%" cy="33%" r="65%">
+                  <stop offset="0%" stopColor="#fef3c7"/>
+                  <stop offset="35%" stopColor="#fbbf24"/>
+                  <stop offset="72%" stopColor="#f59e0b"/>
+                  <stop offset="100%" stopColor="#b45309"/>
+                </radialGradient>
+              </defs>
+              {/* Soft outer glow halo */}
+              <circle cx="50" cy="50" r="46" fill="rgba(251,191,36,0.07)"/>
+              {/* 8 main tapered rays */}
+              {[0,45,90,135,180,225,270,315].map((deg, i) => {
+                const r = deg * Math.PI / 180;
+                const tipX = 50 + 46*Math.sin(r), tipY = 50 - 46*Math.cos(r);
+                const lA = r - 0.22, rA = r + 0.22;
+                const lX = 50 + 26*Math.sin(lA), lY = 50 - 26*Math.cos(lA);
+                const rX = 50 + 26*Math.sin(rA), rY = 50 - 26*Math.cos(rA);
+                return <polygon key={i} points={`${tipX},${tipY} ${lX},${lY} ${rX},${rY}`}
+                  fill="#fbbf24" opacity="0.88"/>;
+              })}
+              {/* 8 shorter secondary rays */}
+              {[22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5].map((deg, i) => {
+                const r = deg * Math.PI / 180;
+                const tipX = 50 + 37*Math.sin(r), tipY = 50 - 37*Math.cos(r);
+                const lA = r - 0.14, rA = r + 0.14;
+                const lX = 50 + 26*Math.sin(lA), lY = 50 - 26*Math.cos(lA);
+                const rX = 50 + 26*Math.sin(rA), rY = 50 - 26*Math.cos(rA);
+                return <polygon key={i} points={`${tipX},${tipY} ${lX},${lY} ${rX},${rY}`}
+                  fill="#fcd34d" opacity="0.65"/>;
+              })}
+              {/* Sun body */}
+              <circle cx="50" cy="50" r="24" fill="url(#sgA)"/>
+              {/* Aged parchment ring */}
+              <circle cx="50" cy="50" r="24" fill="none" stroke="rgba(180,83,9,0.35)" strokeWidth="1.2"/>
+              {/* Highlight shimmer */}
+              <ellipse cx="42" cy="41" rx="7" ry="5" fill="rgba(255,255,255,0.38)" style={{filter:"blur(2px)"}}/>
+              <circle cx="42" cy="41" r="2.5" fill="rgba(255,255,255,0.6)"/>
+            </svg>
+
+            {/* ---- MOON (dark mode) ---- */}
+            <svg className="sea-moon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="mgA" cx="36%" cy="30%" r="68%">
+                  <stop offset="0%" stopColor="#ffffff"/>
+                  <stop offset="42%" stopColor="#e2e8f0"/>
+                  <stop offset="100%" stopColor="#94a3b8"/>
+                </radialGradient>
+                <mask id="cmA">
+                  <rect width="100" height="100" fill="black"/>
+                  <circle cx="50" cy="50" r="36" fill="white"/>
+                  <circle cx="66" cy="42" r="27" fill="black"/>
+                </mask>
+              </defs>
+              {/* Soft glow aura */}
+              <circle cx="50" cy="50" r="44" fill="rgba(186,230,253,0.08)"/>
+              {/* Moon crescent via mask */}
+              <circle cx="50" cy="50" r="36" fill="url(#mgA)" mask="url(#cmA)"/>
+              {/* Subtle crater textures */}
+              <circle cx="35" cy="38" r="4" fill="rgba(148,163,184,0.28)" mask="url(#cmA)"/>
+              <circle cx="44" cy="58" r="2.5" fill="rgba(148,163,184,0.22)" mask="url(#cmA)"/>
+              <circle cx="28" cy="55" r="2" fill="rgba(148,163,184,0.18)" mask="url(#cmA)"/>
+              {/* Stars nearby */}
+              <circle cx="15" cy="20" r="1.6" fill="rgba(255,255,255,0.62)"/>
+              <circle cx="82" cy="76" r="1.1" fill="rgba(255,255,255,0.48)"/>
+              <circle cx="78" cy="16" r="1.3" fill="rgba(255,255,255,0.55)"/>
+              <circle cx="10" cy="70" r="0.9" fill="rgba(255,255,255,0.38)"/>
+              <circle cx="88" cy="35" r="0.8" fill="rgba(255,255,255,0.4)"/>
+            </svg>
+          </div>
+
+          {/* ---- COMPASS ROSE (SVG) ---- */}
+          <svg className="sea-compass" viewBox="0 0 130 130" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            {/* Background — class allows light/dark override via CSS */}
+            <circle cx="65" cy="65" r="62" className="compass-bg-fill"/>
+            {/* Outer gold ring */}
+            <circle cx="65" cy="65" r="61" fill="none" stroke="rgba(255,215,0,0.88)" strokeWidth="2.5"/>
+            {/* Middle ring */}
+            <circle cx="65" cy="65" r="54" fill="none" stroke="rgba(255,215,0,0.18)" strokeWidth="0.8"/>
+            {/* Inner decorative ring */}
+            <circle cx="65" cy="65" r="44" fill="none" stroke="rgba(255,215,0,0.1)" strokeWidth="0.6"/>
+            {/* 32 tick marks */}
+            {Array.from({length:32},(_,i)=>{
+              const angle=(i*360/32)*Math.PI/180;
+              const isCard=i%8===0, isMid=i%4===0;
+              const r1=isCard?46:isMid?48:50, r2=isCard?54:isMid?52:51;
+              return <line key={i}
+                x1={65+r1*Math.sin(angle)} y1={65-r1*Math.cos(angle)}
+                x2={65+r2*Math.sin(angle)} y2={65-r2*Math.cos(angle)}
+                stroke={isCard?"rgba(255,215,0,0.72)":"rgba(255,215,0,0.28)"} strokeWidth={isCard?1.8:0.7}/>;
+            })}
+            {/* Cardinal cross lines */}
+            <line x1="65" y1="11" x2="65" y2="119" stroke="rgba(255,215,0,0.2)" strokeWidth="0.7"/>
+            <line x1="11" y1="65" x2="119" y2="65" stroke="rgba(255,215,0,0.2)" strokeWidth="0.7"/>
+            {/* N arrow — red tip (pirate tradition) */}
+            <polygon points="65,13 60.5,54 65,47 69.5,54" fill="#ef4444"/>
+            <polygon points="65,63 60.5,54 65,47 69.5,54" fill="rgba(255,255,255,0.88)"/>
+            {/* S arrow */}
+            <polygon points="65,117 60.5,76 65,83 69.5,76" fill="rgba(230,230,235,0.82)"/>
+            <polygon points="65,67 60.5,76 65,83 69.5,76" fill="rgba(180,190,200,0.6)"/>
+            {/* E arrow */}
+            <polygon points="117,65 76,60.5 83,65 76,69.5" fill="rgba(230,230,235,0.82)"/>
+            <polygon points="67,65 76,60.5 83,65 76,69.5" fill="rgba(180,190,200,0.6)"/>
+            {/* W arrow */}
+            <polygon points="13,65 54,60.5 47,65 54,69.5" fill="rgba(230,230,235,0.82)"/>
+            <polygon points="63,65 54,60.5 47,65 54,69.5" fill="rgba(180,190,200,0.6)"/>
+            {/* Center jewel */}
+            <circle cx="65" cy="65" r="5.5" fill="rgba(255,215,0,0.95)" stroke="rgba(120,85,10,0.5)" strokeWidth="0.8"/>
+            <circle cx="65" cy="65" r="2.5" fill="#7c5c0a"/>
+            {/* Cardinal labels */}
+            <text x="65" y="8" textAnchor="middle" dominantBaseline="middle" fill="#ef4444" fontSize="13" fontWeight="900" fontFamily="'Trebuchet MS',Georgia,serif" letterSpacing="0">N</text>
+            <text x="65" y="126" textAnchor="middle" dominantBaseline="middle" fill="#ffe66d" fontSize="11" fontWeight="900" fontFamily="'Trebuchet MS',Georgia,serif">S</text>
+            <text x="125" y="65" textAnchor="middle" dominantBaseline="middle" fill="#ffe66d" fontSize="11" fontWeight="900" fontFamily="'Trebuchet MS',Georgia,serif">E</text>
+            <text x="5" y="65" textAnchor="middle" dominantBaseline="middle" fill="#ffe66d" fontSize="11" fontWeight="900" fontFamily="'Trebuchet MS',Georgia,serif">W</text>
+          </svg>
+
+          {/* SVG Route Path Overlay */}
+          {svgPathD && (
+            <svg className="voyage-path-svg" width={svgDims.w} height={svgDims.h} aria-hidden="true">
+              <defs>
+                <filter id="pathGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur stdDeviation="5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="dotGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              {/* Wide glow halo */}
+              <path d={svgPathD} fill="none" stroke="rgba(249,115,22,0.1)" strokeWidth="20" filter="url(#pathGlow)"/>
+              {/* Thick soft outer dots */}
+              <path d={svgPathD} fill="none" stroke="rgba(249,115,22,0.2)" strokeWidth="6" strokeDasharray="14 10" strokeLinecap="round"/>
+              {/* Main bright dotted line */}
+              <path ref={svgPathElemRef} d={svgPathD} fill="none"
+                stroke="rgba(249,115,22,0.9)" strokeWidth="2.8"
+                strokeDasharray="10 7" strokeLinecap="round" filter="url(#dotGlow)"/>
+            </svg>
+          )}
+          {/* Invisible measurement path before SVG is built */}
+          {!svgPathD && (
+            <svg width="0" height="0" style={{position:'absolute',opacity:0}} aria-hidden="true">
+              <path ref={svgPathElemRef} d="M0 0" fill="none"/>
+            </svg>
+          )}
+
+          {/* Thousand Sunny ship marker */}
+          {svgPathD && (
+            <div className="voyage-ship-marker" style={{
+              position:"absolute", left:shipPos.x, top:shipPos.y,
+              transform:"translate(-50%,-50%)", zIndex:10, pointerEvents:"none"
+            }} aria-label="Thousand Sunny">
+              <div className="voyage-ship-inner">
+                <div className={`wind-wrap ${shipPos.flip ? 'wind-right' : 'wind-left'}`} aria-hidden="true">
+                  <span className="wind-streak ws-1"/>
+                  <span className="wind-streak ws-2"/>
+                  <span className="wind-streak ws-3"/>
+                  <span className="wind-streak ws-4"/>
+                  <span className="wind-streak ws-5"/>
+                  <span className="wind-streak ws-6"/>
+                </div>
+                <ThousandSunny size={72} flipX={shipPos.flip}/>
+                <div className="ship-label">Thousand Sunny</div>
               </div>
             </div>
+          )}
+
+          {/* Start island */}
+          <div className="map-start-island" ref={startRef} aria-label="Windmill Island start">
+            <IslandDecor name="Windmill Village"/>
+            <div className="map-start-x" ref={startXRef}>X</div>
+            <div className="map-start-name">Windmill Island</div>
+          </div>
+
+          {/* Map motivation popup */}
+          {mapNote && (
+            <div className="map-note map-note-chat" style={{left: mapNotePos.left, top: mapNotePos.top}}>
+              {typeof mapNote === "string" ? (
+                <span>{mapNote}</span>
+              ) : (
+                <span>
+                  <strong>{mapNote.name}</strong>
+                  <em>{mapNote.incident}</em>
+                  <b>{mapNote.advice}</b>
+                </span>
+              )}
+              <button type="button" onClick={() => setMapNote("")} aria-label="Close">x</button>
+            </div>
+          )}
+
+          <div className="sea-rock-layer" aria-hidden="true">
+            {seaRocks.map((rock, idx) => (
+              <span key={idx} className={`sea-rock sea-rock-${idx % 3}`}
+                style={{left: rock.x, top: rock.y, transform: `scale(${rock.s}) rotate(${rock.r}deg)`}} />
+            ))}
+          </div>
+          <div className="sea-cyclone-layer" aria-hidden="true">
+            {seaCyclones.map((cyclone, idx) => (
+              <span key={idx} className={`sea-cyclone sea-cyclone-${idx % 2}`}
+                style={{left: cyclone.x, top: cyclone.y, transform: `scale(${cyclone.s})`}} />
+            ))}
+          </div>
+          <div className="sea-mountain-layer" aria-hidden="true">
+            {seaMountains.map((mountain, idx) => (
+              <span key={idx} className={`sea-mountain sea-mountain-${idx % 2}`}
+                style={{left: mountain.x, top: mountain.y, transform: `scale(${mountain.s})`}} />
+            ))}
+          </div>
+          <div className="sea-reef-layer" aria-hidden="true">
+            {seaReefs.map((reef, idx) => (
+              <span key={idx} className={`sea-reef sea-reef-${idx % 2}`}
+                style={{left: reef.x, top: reef.y, transform: `scale(${reef.s})`}} />
+            ))}
+          </div>
+          {calendarData[0]?.monthNum >= 5 && (
+            <div className="map-route-hint bend-0 pre-grand-passage" aria-label="East Blue islands before Reverse Mountain">
+              {PRE_GRAND_LINE_ISLES.map((isle, isleIdx) => (
+                <button type="button"
+                  key={isle.name}
+                  className={`sea-isle story-isle story-isle-${isleIdx % 4} sea-east`}
+                  style={{marginLeft: seaIsleScatter("east", isleIdx)}}
+                  onClick={(event) => openIslandNote(isle, event)}
+                  aria-label={isle.name}>
+                  <SeaIsleSvg name={isle.name} variant={isleIdx} />
+                  <span className="sea-isle-name">{isle.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Month islands + sea passages */}
+          {calendarData.map((month, monthIdx) => (
+            <Fragment key={month.key}>
+              {/* Island card */}
+              <div className={`calendar-month route-${monthIdx % 3} island-theme-${month.islandSlug}`}
+                ref={el => { monthRefs.current[month.key] = el }}>
+                <IslandDecor name={month.island}/>
+                <MonthLoreScene name={month.island}/>
+                <div className="calendar-month-title">
+                  <span className="island-name">{month.island}</span>
+                  <small className="island-month">{month.label}</small>
+                </div>
+                <div className="calendar-week-head">
+                  {["S","M","T","W","T","F","S"].map((d,i) => <span key={`${d}-${i}`}>{d}</span>)}
+                </div>
+                <div className="calendar-month-grid">
+                  {month.cells.map((d,i) => d ? (
+                    d.status === 'locked'
+                      ? <span key={d.k} className="cal-cell locked">
+                          <span className="cal-date-num">{d.dateNum}</span>
+                        </span>
+                      : <button key={d.k} type="button"
+                          className={`cal-cell ${d.status} ${d.isToday?"today":""} ${d.k===sel?"selected":""}`}
+                          onClick={() => onSel(d.k)} title={d.day ? `Day ${d.day}` : undefined}>
+                          {d.day && <span className="cal-day-num">{d.day}</span>}
+                          <span className="cal-date-num">{d.dateNum}</span>
+                        </button>
+                  ) : <span key={`blank-${i}`} className="cal-cell blank"/>)}
+                </div>
+              </div>
+
+              {/* Grand Line entrance — after Arlong Park / May */}
+              {month.showGrandLine && <GrandLineDivider/>}
+
+              {/* Red Line — massive continental wall, New World begins */}
+              {month.showRedLine && <RedLineDivider/>}
+
+              {/* Sea passage — story-ordered small islands between main month islands */}
+              {monthIdx < calendarData.length - 1 && (
+                <div className={`map-route-hint bend-${monthIdx % 3}`}>
+                  {seaPassageFor(month.monthNum).map((isle, isleIdx) => (
+                    <button type="button"
+                      key={isle.name}
+                      className={`sea-isle story-isle story-isle-${isleIdx % 4} ${month.monthNum >= 8 ? "sea-new-world" : "sea-paradise"}`}
+                      style={{marginLeft: seaIsleScatter(month.monthNum >= 8 ? "newWorld" : "paradise", isleIdx)}}
+                      onClick={(event) => openIslandNote(isle, event)}
+                      aria-label={isle.name}>
+                      <SeaIsleSvg name={isle.name} variant={isleIdx + month.monthNum} />
+                      <span className="sea-isle-name">{isle.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Fragment>
           ))}
-        </div>
-        <div className={`dday-island${sel===EXAM_DATE_KEY ? " selected" : ""}`} onClick={() => onSel(EXAM_DATE_KEY)} role="button" tabIndex={0}>
-          <div className="dday-label">D-Day</div>
-          <div className="dday-date">Nov 29</div>
-          <div className="dday-copy">CAT 2026. Go break the exam.</div>
-        </div>
+
+          {/* Approach to Laughtale */}
+          <div className="map-route-hint bend-1 dday-approach"/>
+
+          {/* Laughtale — D-Day island */}
+          <div ref={ddayRef}
+            className={`dday-island${sel===EXAM_DATE_KEY ? " selected" : ""}`}
+            onClick={() => onSel(EXAM_DATE_KEY)} role="button" tabIndex={0}>
+            <div className="dday-compass" aria-hidden="true">
+              <span>N</span>
+            </div>
+            <div className="one-piece-watermark" aria-hidden="true">ONE PIECE</div>
+            <div className="dday-treasure-pile" aria-hidden="true">
+              <svg viewBox="0 0 230 150" width="250" height="164" aria-hidden="true">
+                <ellipse cx="122" cy="116" rx="90" ry="24" fill="rgba(255,215,0,0.16)"/>
+                <g opacity="0.98">
+                  {[36,52,68,84,100,116,132,148,164,180].map((x, i) => (
+                    <g key={x} transform={`translate(${x} ${100 - (i % 3) * 8})`}>
+                      <ellipse cx="0" cy="0" rx="12" ry="4" fill="#b8860b"/>
+                      <ellipse cx="0" cy="-4" rx="12" ry="4" fill="#ffd84a"/>
+                      <ellipse cx="0" cy="-8" rx="11" ry="3.6" fill="#d9a318"/>
+                    </g>
+                  ))}
+                </g>
+                <g transform="translate(70 46)">
+                  <path d="M6 42 Q8 18 45 12 Q82 18 84 42 Z" fill="#8b4513" stroke="#4a250b" strokeWidth="3"/>
+                  <rect x="6" y="38" width="78" height="54" rx="7" fill="#8b4513" stroke="#4a250b" strokeWidth="3"/>
+                  <path d="M6 42 Q45 58 84 42 L84 54 Q45 70 6 54Z" fill="#a85517" opacity="0.94"/>
+                  <rect x="39" y="42" width="14" height="20" rx="3" fill="#ffd84a" stroke="#9a6a08" strokeWidth="2"/>
+                  <path d="M14 33 Q45 17 76 33" fill="none" stroke="#ffd84a" strokeWidth="5" opacity="0.84"/>
+                  <path d="M18 50 Q45 64 72 50" fill="none" stroke="#ffd84a" strokeWidth="4" opacity="0.72"/>
+                </g>
+                <g>
+                  <polygon points="84,37 93,52 75,52" fill="#38bdf8" stroke="#cffafe" strokeWidth="1.5"/>
+                  <polygon points="136,30 146,47 126,47" fill="#ef4444" stroke="#fecaca" strokeWidth="1.5"/>
+                  <polygon points="166,58 177,74 155,74" fill="#22c55e" stroke="#bbf7d0" strokeWidth="1.5"/>
+                </g>
+                <g opacity="0.9">
+                  {[20,32,44,190,204,216,58,176].map((x, i) => (
+                    <ellipse key={x} cx={x} cy={122 - (i % 2) * 10} rx="13" ry="4" fill={i % 2 ? "#ffd84a" : "#d9a318"}/>
+                  ))}
+                </g>
+                <path d="M22 124 Q84 94 120 110 Q156 91 212 120" fill="none" stroke="rgba(255,230,109,0.62)" strokeWidth="4"/>
+              </svg>
+            </div>
+            <div className="dday-label">Laughtale</div>
+            <div className="dday-date">Nov 29</div>
+            <div className="dday-copy">The final island. CAT 2026. Claim the treasure.</div>
+          </div>
+
+        </div>}{/* end .calendar-months (voyage mode) */}
+
+        {/* ===== PLAIN GRID MODE ===== */}
+        {!voyageMode && (
+          <div className="plain-cal-wrap">
+            {calendarData.map(month => (
+              <div key={month.key} className="plain-month-card"
+                ref={el => { monthRefs.current[month.key] = el }}>
+                <div className="plain-month-hdr">{month.label}</div>
+                <div className="calendar-week-head">
+                  {["S","M","T","W","T","F","S"].map((d,i) => <span key={`${d}-${i}`}>{d}</span>)}
+                </div>
+                <div className="calendar-month-grid">
+                  {month.cells.map((d,i) => d ? (
+                    d.status === 'locked'
+                      ? <span key={d.k} className="cal-cell locked">
+                          <span className="cal-date-num">{d.dateNum}</span>
+                        </span>
+                      : <button key={d.k} type="button"
+                          className={`cal-cell ${d.status} ${d.isToday?"today":""} ${d.k===sel?"selected":""}`}
+                          onClick={() => onSel(d.k)} title={d.day ? `Day ${d.day}` : undefined}>
+                          {d.day && <span className="cal-day-num">{d.day}</span>}
+                          <span className="cal-date-num">{d.dateNum}</span>
+                        </button>
+                  ) : <span key={`blank-${i}`} className="cal-cell blank"/>)}
+                </div>
+              </div>
+            ))}
+            {/* D-Day in plain mode */}
+            <div ref={ddayRef}
+              className={`plain-dday${sel===EXAM_DATE_KEY?" selected":""}`}
+              onClick={() => onSel(EXAM_DATE_KEY)} role="button" tabIndex={0}>
+              <div className="plain-dday-tag">D-DAY</div>
+              <div className="plain-dday-date">Nov 29</div>
+              <div className="plain-dday-copy">CAT 2026. Go break the exam.</div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -3054,7 +4413,7 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
       width:s, height:s, minWidth:s, minHeight:s,
       borderRadius:"50%", flexShrink:0,
       border:`3px solid ${border}`,
-      background:"#0a0a14",
+      background:"var(--avatar-bg, #0a0a14)",
       boxShadow:`0 0 0 2px rgba(0,0,0,0.5), 0 4px 24px ${border}66`,
       overflow:"hidden",
       display:"flex", alignItems:"center", justifyContent:"center",
@@ -3062,8 +4421,8 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
       <svg width={size} height={size} viewBox="0 0 100 100">
         <defs>
           <radialGradient id="bgGrad" cx="50%" cy="30%" r="70%">
-            <stop offset="0%" stopColor="#1a1a2e"/>
-            <stop offset="100%" stopColor="#0a0a14"/>
+            <stop offset="0%" stopColor="var(--avatar-bg-highlight, #1a1a2e)"/>
+            <stop offset="100%" stopColor="var(--avatar-bg, #0a0a14)"/>
           </radialGradient>
         </defs>
         <circle cx="50" cy="50" r="50" fill="url(#bgGrad)"/>
@@ -5367,6 +6726,20 @@ export default function App() {
     const theme = appTheme === "light" ? "light" : "dark";
     localStorage.setItem("conquer_theme", theme);
     document.documentElement.style.colorScheme = theme;
+    document.documentElement.dataset.theme = theme;
+    document.body.dataset.theme = theme;
+    document.documentElement.style.backgroundColor = theme === "light" ? "#f7f4ee" : "#000000";
+    document.body.style.backgroundColor = theme === "light" ? "#f7f4ee" : "#000000";
+    // Dynamic Island / status bar color on iPhone (theme-color meta tag)
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute("content", appTheme === "light" ? "#f7f4ee" : "#000000");
+    }
+    // Also update apple-mobile-web-app-status-bar-style
+    const metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    if (metaStatusBar) {
+      metaStatusBar.setAttribute("content", appTheme === "light" ? "default" : "black-translucent");
+    }
   }, [appTheme]);
   useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
   useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
@@ -5836,7 +7209,7 @@ export default function App() {
   const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
 
   return (
-    <div className={`app theme-${appTheme === "light" ? "light" : "dark"}`}>
+    <div className={`app theme-${appTheme === "light" ? "light" : "dark"}${tab === "calendar" ? " on-calendar" : ""}`}>
       <header className="mobile-header">
         <button
           className="mobile-menu-btn"
@@ -5917,7 +7290,7 @@ export default function App() {
             strokeLinecap="round">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
-        </button>
+        </button>c
         <div className="days-pill">
           <div className="dp-num">{dl}</div>
           <div className="dp-lab">days to CAT</div>
@@ -5994,7 +7367,7 @@ export default function App() {
         </button>
       </aside>
 
-      <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
+      <main className={`main${tab==="chat" ? " mentor-main" : ""}${tab==="calendar" ? " calendar-main" : ""}`}>
         {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
           const dayData = data[sel] || defaultDay();
           try {
