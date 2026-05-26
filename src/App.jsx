@@ -179,6 +179,9 @@ function isMobileKeyboardViewport() {
 
 const EXAM_DATE = new Date("2026-11-29T00:00:00");
 const AC = "#f97316";
+const EXAM_DATE_KEY = "2026-11-29";
+const APPLICATION_START_KEY = "2026-08-01";
+const APPLICATION_END_KEY = "2026-09-20";
 
 const toLocalDateKey = (date) => {
   const y = date.getFullYear();
@@ -187,6 +190,10 @@ const toLocalDateKey = (date) => {
   return `${y}-${m}-${d}`;
 };
 const todayKey = () => toLocalDateKey(new Date());
+const isDateKeyBetween = (key, startKey, endKey) => key >= startKey && key <= endKey;
+const isApplicationWindow = (key) => isDateKeyBetween(key, APPLICATION_START_KEY, APPLICATION_END_KEY);
+const isFinalPushDate = (key) => isDateKeyBetween(key, "2026-11-23", EXAM_DATE_KEY);
+const isDdayRevealDay = () => todayKey() >= EXAM_DATE_KEY;
 const getDaysLeft = () => {
   const now = new Date()
   now.setHours(0, 0, 0, 0)
@@ -214,6 +221,7 @@ const defaultDay = () => ({
   q:0, v:0, l:0,
   sk:false, skm:0, sks:0, skd:"medium",
   vm:false, vmt:"",
+  ca:false,
   iq:"", n:"", backlog:[]
 });
 
@@ -339,7 +347,8 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
   })();
   const sudokuScore = day.sk ? 2 : 0;
   const vedicScore = day.vm ? 2 : 0;
-  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore + vedicScore));
+  const catApplicationScore = day.ca ? 1 : 0;
+  return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore + vedicScore + catApplicationScore));
 };
 
 function calcMinPercentile(category) {
@@ -580,6 +589,187 @@ function TodayPage({
     Number.isInteger(sudokuMins) && sudokuMins >= 0 &&
     Number.isInteger(sudokuSecs) && sudokuSecs >= 0 && sudokuSecs < 60 &&
     (!d.sk || sudokuMins + sudokuSecs > 0);
+  const isExamDay = date === EXAM_DATE_KEY;
+  const showApplicationToggle = isApplicationWindow(date);
+  const showFinalPush = isFinalPushDate(date);
+
+  if (isExamDay) {
+    const reveal = isDdayRevealDay();
+    const ddayMotifs = [
+      {
+        symbol: "👒",
+        title: "Straw Hat Resolve",
+        copy: "Put the dream on your head. Walk in like the sea already made space for you.",
+        source: "One Piece spirit",
+      },
+      {
+        symbol: "⚡",
+        title: "Saiyan Calm",
+        copy: "Power is not noise today. It is quiet pressure, clean breathing, and one more sharp decision.",
+        source: "Dragon Ball spirit",
+      },
+      {
+        symbol: "⚔",
+        title: "Soul Blade",
+        copy: "Cut only what matters. Skip the traps. Slice through the paper with discipline.",
+        source: "Bleach spirit",
+      },
+      {
+        symbol: "✦",
+        title: "Five-Leaf Will",
+        copy: "When the section gets loud, your months of practice get louder. You earned that voice.",
+        source: "Black Clover spirit",
+      },
+      {
+        symbol: "🥊",
+        title: "Final Round",
+        copy: "Guard up. Feet steady. Question by question. No panic gets to sit in your corner.",
+        source: "Boxing anime spirit",
+      },
+      {
+        symbol: "🔥",
+        title: "Break Point",
+        copy: "The exam is not bigger than your preparation. Let it meet the version of you that stayed.",
+        source: "Shonen fire spirit",
+      },
+      {
+        symbol: "🍥",
+        title: "Hidden Leaf Grit",
+        copy: "No shortcut built you. Repetition did. Walk in with the stubborn courage that kept returning.",
+        source: "Naruto spirit",
+      },
+      {
+        symbol: "💥",
+        title: "Hero Academia",
+        copy: "A real hero moves while afraid. Today your quirk is preparation, patience, and clean execution.",
+        source: "My Hero Academia spirit",
+      },
+      {
+        symbol: "🥊",
+        title: "Ippo Steps",
+        copy: "Small steps made the fighter. Small choices will make the score. Keep your rhythm.",
+        source: "Hajime no Ippo spirit",
+      },
+      {
+        symbol: "🏐",
+        title: "Court Momentum",
+        copy: "Jump for the next point only. The last miss cannot touch the next serve.",
+        source: "Haikyuu spirit",
+      },
+      {
+        symbol: "🏀",
+        title: "Zone Focus",
+        copy: "The crowd disappears. The clock disappears. Only the next question and your hand remain.",
+        source: "Kuroko's Basketball spirit",
+      },
+      {
+        symbol: "🧭",
+        title: "Scout Discipline",
+        copy: "Look straight at the giant. Break it into parts. Attack the weak point without drama.",
+        source: "Attack on Titan spirit",
+      },
+      {
+        symbol: "🛡",
+        title: "Shield Rise",
+        copy: "Every hard day became armor. Today, pressure hits you and turns into structure.",
+        source: "Shield Hero spirit",
+      },
+      {
+        symbol: "🌊",
+        title: "Water Breathing",
+        copy: "Inhale, read, eliminate, choose. Let calm become your technique.",
+        source: "Demon Slayer spirit",
+      },
+      {
+        symbol: "🏃",
+        title: "Long Run",
+        copy: "This was never one sprint. It was the road you kept taking when nobody clapped.",
+        source: "Run with the Wind spirit",
+      },
+    ];
+    return (
+      <div className="page">
+        <div className="page-header">
+          <div className="page-title">{reveal ? "D-Day." : "Almost there."}</div>
+          <div className="page-sub">29 November 2026 · CAT exam day</div>
+        </div>
+        <div className="sections">
+          {!reveal ? (
+            <div className="card dday-today-card locked">
+              <div style={{fontSize:11,color:"#f97316",fontWeight:800,letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}}>
+                Surprise under construction
+              </div>
+              <div style={{fontSize:26,fontWeight:900,color:"var(--tp)",lineHeight:1.15,marginBottom:10}}>
+                This opens when it matters.
+              </div>
+              <div style={{fontSize:13,color:"var(--tt)",lineHeight:1.7}}>
+                This opens strictly on Nov 29. The final room is being kept quiet for you.
+              </div>
+            </div>
+          ) : (
+            <div className="card dday-today-card reveal">
+              <div className="dday-confetti" aria-hidden="true" />
+              <div style={{fontSize:11,color:"#f97316",fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:10}}>
+                Today is not for logging
+              </div>
+              <div style={{fontSize:32,fontWeight:900,color:"var(--tp)",lineHeight:1.05,marginBottom:12}}>
+                Go break the exam.
+              </div>
+              <div style={{fontSize:13,color:"var(--tt)",lineHeight:1.75,marginBottom:18,position:"relative"}}>
+                No checklist today. No score pressure. Walk in calm, read cleanly, choose sharply, and trust the work you stacked for months.
+              </div>
+              <div className="dday-scroll-stage">
+                {ddayMotifs.map((item, idx) => (
+                  <div
+                    key={item.title}
+                    className="dday-anime-card"
+                    style={{animationDelay:`${idx * 120}ms`}}
+                  >
+                    <div className="dday-card-mark" aria-hidden="true">{item.symbol}</div>
+                    <div className="dday-symbol" aria-hidden="true">{item.symbol}</div>
+                    <div className="dday-card-body">
+                      <div className="dday-card-title">{item.title}</div>
+                      <div className="dday-card-copy">{item.copy}</div>
+                      <div className="dday-card-source">- {item.source}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="dday-mentor-message">
+                <div className="mentor-avatar">
+                  <MentorAvatar size={52}/>
+                </div>
+                <div className="mentor-bubble ai dday-mentor-bubble" style={{flex:1}}>
+                  <div className="dday-mentor-title">Vikram's final note</div>
+                  Vikram here. You do not need a new strategy today. You need the courage to execute the one you earned. Breathe before every section. Fight every question on merit. Leave nothing emotional inside the hall. You are ready, and the paper is walking into your arena now.
+                </div>
+              </div>
+              <div className="dday-gita-card">
+                <div className="dday-gita-watermark" aria-hidden="true">
+                  <span className="dday-peacock">🪶</span>
+                  <span className="dday-flute">♫</span>
+                  <span className="dday-chariot">☸</span>
+                </div>
+                <div className="dday-gita-content">
+                  <div className="dday-gita-label">Gita Upadesam</div>
+                  <div className="dday-gita-line">Yada yada hi dharmasya glanir bhavati Bharata...</div>
+                  <div className="dday-card-copy">
+                    When duty shakes, guidance appears. Krishna did not fight in Arjuna's place; he steadied Arjuna until Arjuna could stand, aim, and act.
+                  </div>
+                  <div className="dday-final-line">
+                    Do your karma. Release the result. Step into the hall like you are guided, protected, and fully awake.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <button className="save-btn" onClick={() => setTab("calendar")}>
+            Back to Calendar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -589,6 +779,11 @@ function TodayPage({
             <div className="page-title">{greet}</div>
             <div className="page-sub">{fmt} · Day {dn} of {totalDays}</div>
             <div style={{fontSize:12,color:"#f97316",opacity:0.8,fontStyle:"italic",marginTop:8}}>{todayQuote}</div>
+            {showFinalPush && (
+              <div className="final-push-note">
+                You are close now. Stay boring, stay calm, and let the paper meet the version of you that refused to quit.
+              </div>
+            )}
           </div>
           <div className="badge"><span>{dl}d left</span></div>
         </div>
@@ -642,9 +837,9 @@ function TodayPage({
                   boxSizing: "border-box",
                   padding: "4px 8px",
                   borderRadius: 20,
-                  border: d.lc_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  border: d.lc_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
                   background: d.lc_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.lc_na ? "#6e6e73" : "#3a3a3a",
+                  color: d.lc_na ? "var(--tt)" : "var(--tt)",
                   fontSize: 10,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -694,9 +889,9 @@ function TodayPage({
                   boxSizing: "border-box",
                   padding: "4px 8px",
                   borderRadius: 20,
-                  border: d.as_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  border: d.as_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
                   background: d.as_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.as_na ? "#6e6e73" : "#3a3a3a",
+                  color: d.as_na ? "var(--tt)" : "var(--tt)",
                   fontSize: 10,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -750,9 +945,9 @@ function TodayPage({
                   boxSizing: "border-box",
                   padding: "4px 8px",
                   borderRadius: 20,
-                  border: d.ap_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  border: d.ap_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
                   background: d.ap_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.ap_na ? "#6e6e73" : "#3a3a3a",
+                  color: d.ap_na ? "var(--tt)" : "var(--tt)",
                   fontSize: 10,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -802,9 +997,9 @@ function TodayPage({
                   boxSizing: "border-box",
                   padding: "4px 8px",
                   borderRadius: 20,
-                  border: d.vp_na ? "1px solid #6e6e73" : "1px solid #2a2a2a",
+                  border: d.vp_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
                   background: d.vp_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.vp_na ? "#6e6e73" : "#3a3a3a",
+                  color: d.vp_na ? "var(--tt)" : "var(--tt)",
                   fontSize: 10,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -871,16 +1066,16 @@ function TodayPage({
             <div style={{
               display:"flex", justifyContent:"space-between",
               alignItems:"center", padding:"12px 16px",
-              borderTop:"1px solid #1f1f1f", marginTop:4
+              borderTop:"1px solid var(--b1)", marginTop:4
             }}>
-              <span style={{fontSize:11,color:"#6e6e73",
+              <span style={{fontSize:11,color:"var(--tt)",
                 letterSpacing:"0.06em",textTransform:"uppercase"}}>
                 Total Studied
               </span>
               <span style={{fontSize:16,fontWeight:700,
                 color: totalMins >= 240 ? "#30d158"
                   : totalMins >= 120 ? "#f97316"
-                    : "#f5f5f7"
+                    : "var(--tp)"
               }}>{totalDisplay}</span>
             </div>
           </div>
@@ -912,7 +1107,7 @@ function TodayPage({
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="#6e6e73" strokeWidth="2"
+                fill="none" stroke="var(--tt)" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
@@ -936,7 +1131,7 @@ function TodayPage({
                 <div className="row-sub">iQuanta live + application class schedule</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="#6e6e73" strokeWidth="2"
+                fill="none" stroke="var(--tt)" strokeWidth="2"
                 strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
             <button
@@ -959,7 +1154,7 @@ function TodayPage({
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="#6e6e73" strokeWidth="2"
+                fill="none" stroke="var(--tt)" strokeWidth="2"
                 strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
@@ -1028,9 +1223,9 @@ function TodayPage({
                   step="1"
                   value={d.skm ?? 0}
                   onChange={e => upd("skm", e.target.value === "" ? "" : Number(e.target.value))}
-                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "#2a2a2a" : "#ff453a"}}
+                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "var(--b2)" : "#ff453a"}}
                 />
-                <span style={{fontSize:11,color:"#6e6e73"}}>m</span>
+                <span style={{fontSize:11,color:"var(--tt)"}}>m</span>
                 <input
                   type="number"
                   className="time-select"
@@ -1039,9 +1234,9 @@ function TodayPage({
                   step="1"
                   value={d.sks ?? 0}
                   onChange={e => upd("sks", e.target.value === "" ? "" : Number(e.target.value))}
-                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "#2a2a2a" : "#ff453a"}}
+                  style={{width:64,minWidth:64,padding:"8px 6px",borderColor:sudokuTimeValid ? "var(--b2)" : "#ff453a"}}
                 />
-                <span style={{fontSize:11,color:"#6e6e73"}}>s</span>
+                <span style={{fontSize:11,color:"var(--tt)"}}>s</span>
                 <span style={{
                   width:8,height:8,borderRadius:"50%",
                   background:sudokuTimeValid ? "#30d158" : "#ff453a",
@@ -1104,6 +1299,21 @@ function TodayPage({
           <div className="sec-label">Journal</div>
           <div className="card"><textarea className="textarea" placeholder="Journal — what did you study? focus level? what needs work tomorrow?" value={d.n||""} onChange={e=>upd("n",e.target.value)} rows={3} /></div>
         </div>
+
+        {showApplicationToggle && (
+          <div>
+            <div className="sec-label">CAT Exam Application</div>
+            <div className={`card application-card${d.ca ? " done" : ""}`}>
+              <div className="card-row">
+                <div>
+                  <div className="row-label">CAT application submitted</div>
+                  <div className="row-sub">Key task · +1 effort point · Aug 1 - Sept 20</div>
+                </div>
+                <Tog v={d.ca} onChange={v=>upd("ca",v)} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {showInstaCard && (
           <InstaCard
@@ -1261,8 +1471,8 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
             {icon}
           </div>
           <div>
-            <div style={{fontSize:15, fontWeight:800, color:"#f5f5f7"}}>{title}</div>
-            <div style={{fontSize:11, color:"#6e6e73", marginTop:2}}>{subtitle}</div>
+            <div style={{fontSize:15, fontWeight:800, color:"var(--tp)"}}>{title}</div>
+            <div style={{fontSize:11, color:"var(--tt)", marginTop:2}}>{subtitle}</div>
           </div>
         </div>
 
@@ -1280,9 +1490,9 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
               }
             }}
             style={{
-              flex:1, background:"#111",
-              border:"1px solid #2a2a2a", borderRadius:8,
-              padding:"10px 12px", color:"#f5f5f7",
+              flex:1, background:"var(--s2)",
+              border:"1px solid var(--b2)", borderRadius:8,
+              padding:"10px 12px", color:"var(--tp)",
               fontSize:14, fontFamily:"inherit",
               outline:"none", minWidth:0
             }}
@@ -1301,19 +1511,19 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
         {pending.length > 0 && (
           <div style={{marginBottom:14}}>
             <div className="sec-label">Pending ({pending.length})</div>
-            <div style={{borderTop:"1px solid #1a1a1a"}}>
+            <div style={{borderTop:"1px solid var(--b1)"}}>
               {pending.map(item => (
                 <div key={item.id} style={{
                   display:"flex", alignItems:"center",
                   gap:12, padding:"12px 0",
-                  borderBottom:"1px solid #1a1a1a"
+                  borderBottom:"1px solid var(--b1)"
                 }}>
                   <button
                     onClick={() => toggleItem(item.id)}
                     style={{
                       width:22, height:22,
                       borderRadius:6,
-                      border:"2px solid #3a3a3a",
+                      border:"2px solid var(--b2)",
                       background:"transparent",
                       cursor:"pointer", flexShrink:0,
                       display:"flex", alignItems:"center",
@@ -1322,13 +1532,13 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                   />
                   <span style={{
                     flex:1, fontSize:14,
-                    color:"#f5f5f7", lineHeight:1.4
+                    color:"var(--tp)", lineHeight:1.4
                   }}>{item.text}</span>
                   <button
                     onClick={() => deleteItem(item.id)}
                     style={{
                       background:"transparent", border:"none",
-                      color:"#3a3a3a", fontSize:18,
+                      color:"var(--tt)", fontSize:18,
                       cursor:"pointer", padding:"0 4px",
                       lineHeight:1
                     }}
@@ -1342,12 +1552,12 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
         {done.length > 0 && (
           <div>
             <div className="sec-label">Completed ({done.length})</div>
-            <div style={{borderTop:"1px solid #1a1a1a"}}>
+            <div style={{borderTop:"1px solid var(--b1)"}}>
               {done.map(item => (
                 <div key={item.id} style={{
                   display:"flex", alignItems:"center",
                   gap:12, padding:"12px 0",
-                  borderBottom:"1px solid #1a1a1a",
+                  borderBottom:"1px solid var(--b1)",
                   opacity:0.5
                 }}>
                   <button
@@ -1370,14 +1580,14 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                   </button>
                   <span style={{
                     flex:1, fontSize:14,
-                    color:"#6e6e73", lineHeight:1.4,
+                    color:"var(--tt)", lineHeight:1.4,
                     textDecoration:"line-through"
                   }}>{item.text}</span>
                   <button
                     onClick={() => deleteItem(item.id)}
                     style={{
                       background:"transparent", border:"none",
-                      color:"#3a3a3a", fontSize:18,
+                      color:"var(--tt)", fontSize:18,
                       cursor:"pointer", padding:"0 4px"
                     }}
                   >×</button>
@@ -1389,11 +1599,11 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
 
         {items.length === 0 && (
           <div style={{
-            textAlign:"center", color:"#444",
+            textAlign:"center", color:"var(--tt)",
             fontSize:13, padding:"34px 0", lineHeight:2
           }}>
             Nothing here yet.<br/>
-            <span style={{color:"#6e6e73"}}>Add the first item above.</span>
+            <span style={{color:"var(--tt)"}}>Add the first item above.</span>
           </div>
         )}
       </div>
@@ -1425,7 +1635,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
             borderRadius:10, display:"flex",
             justifyContent:"space-between", alignItems:"center"
           }}>
-            <span style={{fontSize:12,color:"#6e6e73"}}>
+            <span style={{fontSize:12,color:"var(--tt)"}}>
               Coverage: {totalDone}/{total} completed
             </span>
             <span style={{
@@ -1508,17 +1718,17 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
   };
 
   const dropStyle = {
-    background:"#111", border:"1px solid #2a2a2a",
+    background:"var(--s2)", border:"1px solid var(--b2)",
     borderRadius:8, padding:"8px 10px",
-    color:"#f5f5f7", fontSize:13, fontFamily:"inherit",
+    color:"var(--tp)", fontSize:13, fontFamily:"inherit",
     outline:"none", cursor:"pointer",
     appearance:"none", WebkitAppearance:"none",
     minWidth:90
   };
   const inputStyle = {
-    flex:1, background:"#111", border:"1px solid #2a2a2a",
+    flex:1, background:"var(--s2)", border:"1px solid var(--b2)",
     borderRadius:8, padding:"8px 10px",
-    color:"#f5f5f7", fontSize:13, fontFamily:"inherit",
+    color:"var(--tp)", fontSize:13, fontFamily:"inherit",
     outline:"none", minWidth:0
   };
 
@@ -1551,7 +1761,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
                 </div>
 
                 <div style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:"#6e6e73",marginBottom:6,
+                  <div style={{fontSize:11,color:"var(--tt)",marginBottom:6,
                     letterSpacing:"0.06em",textTransform:"uppercase"}}>
                     Live Class · 7PM - 9PM
                   </div>
@@ -1577,12 +1787,12 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
                 <div>
                   <div style={{display:"flex",alignItems:"center",
                     justifyContent:"space-between",marginBottom:6}}>
-                    <div style={{fontSize:11,color:"#6e6e73",
+                    <div style={{fontSize:11,color:"var(--tt)",
                       letterSpacing:"0.06em",textTransform:"uppercase"}}>
                       Application Class · 10PM - 12AM
                     </div>
                     <label style={{display:"flex",alignItems:"center",
-                      gap:6,cursor:"pointer",fontSize:11,color:"#6e6e73"}}>
+                      gap:6,cursor:"pointer",fontSize:11,color:"var(--tt)"}}>
                       <input type="checkbox"
                         checked={entry.appSameAsLive}
                         onChange={e => updateDay(day, "appSameAsLive", e.target.checked)}
@@ -1611,7 +1821,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
                     </div>
                   )}
                   {entry.appSameAsLive && entry.topic !== "None" && (
-                    <div style={{fontSize:12,color:"#6e6e73",fontStyle:"italic"}}>
+                    <div style={{fontSize:12,color:"var(--tt)",fontStyle:"italic"}}>
                       {entry.topic}{entry.subtopic ? ` — ${entry.subtopic}` : ""}
                     </div>
                   )}
@@ -1793,7 +2003,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
       </div>
       <div className="card" style={{padding:"20px 16px",textAlign:"center"}}>
         <div style={{color:"#ff453a",marginBottom:8}}>{error}</div>
-        <div style={{fontSize:12,color:"#6e6e73"}}>
+        <div style={{fontSize:12,color:"var(--tt)"}}>
           The question bank may still be seeding. Try again in a few minutes.
         </div>
       </div>
@@ -1818,7 +2028,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
         <div style={{fontSize:18,fontWeight:700,color:"#30d158",marginBottom:8}}>
           {sessionType === "weekly" ? "Weekly" : "Daily"} assessment complete
         </div>
-        <div style={{fontSize:14,color:"#6e6e73"}}>
+        <div style={{fontSize:14,color:"var(--tt)"}}>
           Vikram has your results. Check the chat.
         </div>
         <button
@@ -1852,11 +2062,11 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
           <div className="page-title">
             {sessionType === "weekly" ? "Weekly" : "Daily"} Assessment
           </div>
-          <div style={{fontSize:12,color:"#6e6e73"}}>
+          <div style={{fontSize:12,color:"var(--tt)"}}>
             {currentIdx + 1}/{questions.length}
           </div>
         </div>
-        <div style={{marginTop:8,height:4,background:"#1f1f1f",borderRadius:2}}>
+        <div style={{marginTop:8,height:4,background:"var(--b1)",borderRadius:2}}>
           <div style={{
             height:"100%",borderRadius:2,
             background:topicColor,
@@ -1878,7 +2088,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
           }}>
             {q.topic} · {q.difficulty?.replace("_"," ")}
           </div>
-          <div style={{fontSize:15,color:"#f5f5f7",
+          <div style={{fontSize:15,color:"var(--tp)",
             lineHeight:1.7,whiteSpace:"pre-wrap"}}>
             {q.question_text}
           </div>
@@ -1889,9 +2099,9 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
             const isSelected = selected === option;
             const isCorrect = result && option === result.correctAnswer;
             const isWrong = result && isSelected && !result.isCorrect;
-            let bg = "#111";
-            let border = "1px solid #2a2a2a";
-            let color = "#f5f5f7";
+            let bg = "var(--s2)";
+            let border = "1px solid var(--b2)";
+            let color = "var(--tp)";
             if (isCorrect) { bg = "rgba(48,209,88,0.15)"; border = "1px solid #30d158"; color = "#30d158"; }
             else if (isWrong) { bg = "rgba(255,69,58,0.15)"; border = "1px solid #ff453a"; color = "#ff453a"; }
             else if (isSelected && !result) { bg = `${topicColor}22`; border = `1px solid ${topicColor}`; color = topicColor; }
@@ -1924,7 +2134,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
             }}>
               {result.isCorrect ? "✓ Correct" : "✗ Wrong"}
             </div>
-            <div style={{fontSize:13,color:"#a1a1a6",lineHeight:1.6}}>
+            <div style={{fontSize:13,color:"var(--ts)",lineHeight:1.6}}>
               {result.explanation}
             </div>
           </div>
@@ -1936,7 +2146,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
             disabled={!selected || submitting}
             style={{
               width:"100%",padding:"14px",
-              background: selected ? topicColor : "#2a2a2a",
+              background: selected ? topicColor : "var(--b2)",
               border:"none",borderRadius:10,
               color:"white",fontSize:15,fontWeight:700,
               cursor: selected ? "pointer" : "not-allowed",
@@ -2057,12 +2267,12 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{top:0,right:12,bottom:0,left:-24}}>
-                <CartesianGrid stroke="#1f1f1f" vertical={false} />
-                <XAxis dataKey="day" domain={[0, totalDays]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
-                <YAxis domain={[0, 100]} tick={{fontSize:9,fill:"#6e6e73"}} tickLine={false} axisLine={false} />
+                <CartesianGrid stroke="var(--b1)" vertical={false} />
+                <XAxis dataKey="day" domain={[0, totalDays]} tick={{fontSize:9,fill:"var(--tt)"}} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 100]} tick={{fontSize:9,fill:"var(--tt)"}} tickLine={false} axisLine={false} />
                 <Tooltip
-                  contentStyle={{background:"#111",border:"1px solid #2a2a2a",borderRadius:8,fontSize:11}}
-                  labelStyle={{color:"#a1a1a6"}} itemStyle={{color:"#f5f5f7"}}
+                  contentStyle={{background:"var(--s2)",border:"1px solid var(--b2)",borderRadius:8,fontSize:11}}
+                  labelStyle={{color:"var(--ts)"}} itemStyle={{color:"var(--tp)"}}
                   labelFormatter={v => `Day ${v}`}
                   formatter={(v, n) => [`${Math.round(v)}%`, n === "targetLine" ? "Target" : "Actual"]}
                 />
@@ -2091,58 +2301,114 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
 }
 
 function CalendarPage({ data, sel, onSel, start, totalDays }) {
-  const days = useMemo(() => Array.from({length: totalDays}, (_, i) => {
-    const d = new Date(start); d.setDate(d.getDate() + i);
-    const k = toLocalDateKey(d); const e = data[k];
-    let status = "";
-    if (e) {
-      const mq=(+e.q||0)>=10, mv=(+e.v||0)>=5, ml=(+e.l||0)>=5, mvp=(+e.vp_count||0)>=1;
-      status = mq && mv && ml && mvp ? "done" : "partial";
-    }
-    return { k, day:i+1, isToday: k===todayKey(), status };
-  }), [data, start, totalDays]);
-
-  const months = useMemo(() => {
-    const labels = [];
-    for (let i = 0; i < totalDays; i += 30) {
+  const today = todayKey();
+  const monthRefs = useRef({});
+  const calendarData = useMemo(() => {
+    const dayMeta = new Map();
+    Array.from({length: totalDays}, (_, i) => {
       const d = new Date(start);
       d.setDate(d.getDate() + i);
-      const label = d.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
-      if (!labels.includes(label)) labels.push(label);
+      const k = toLocalDateKey(d);
+      const e = data[k];
+      let status = "";
+      if (e) {
+        const mq=(+e.q||0)>=10, mv=(+e.v||0)>=5, ml=(+e.l||0)>=5, mvp=(+e.vp_count||0)>=1;
+        status = mq && mv && ml && mvp ? "done" : "partial";
+      }
+      if (isApplicationWindow(k) && !e?.ca) status = `${status} app-due`.trim();
+      if (isFinalPushDate(k)) status = `${status} final-push`.trim();
+      dayMeta.set(k, { k, day:i+1, isToday: k===today, status });
+    });
+
+    const startMonth = new Date(start.getFullYear(), start.getMonth(), 1);
+    const lastPrepDay = new Date(EXAM_DATE);
+    lastPrepDay.setDate(lastPrepDay.getDate() - 1);
+    const months = [];
+    for (
+      let cursor = new Date(startMonth);
+      cursor <= lastPrepDay;
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+    ) {
+      const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+      const visibleStart = monthStart < start ? new Date(start) : monthStart;
+      const visibleEnd = monthEnd > lastPrepDay ? lastPrepDay : monthEnd;
+      const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,"0")}`;
+      const monthLabel = cursor.toLocaleDateString("en-IN", { month:"short", year:"numeric" });
+      const state = monthKey < today.slice(0, 7)
+        ? "past"
+        : monthKey === today.slice(0, 7)
+          ? "current"
+          : "future";
+      const cells = [];
+      for (let i = 0; i < visibleStart.getDay(); i++) cells.push(null);
+      for (let d = new Date(visibleStart); d <= visibleEnd; d.setDate(d.getDate() + 1)) {
+        const meta = dayMeta.get(toLocalDateKey(d));
+        if (meta) cells.push({...meta, dateNum: d.getDate()});
+      }
+      months.push({ key: monthKey, label: monthLabel, state, cells });
     }
-    return labels;
-  }, [start, totalDays]);
+    return months;
+  }, [data, start, totalDays, today]);
 
   return (
     <div className="page">
       <div className="page-header">
         <div className="page-title">{totalDays} Days</div>
-        <div className="page-sub">Every cell is a choice. Leave none empty.</div>
+        <div className="page-sub">Every cell is a choice. Nov 29 is the day.</div>
       </div>
       <div className="sections">
+        <div className="month-strip">
+          {calendarData.map(m => (
+            <button
+              key={m.key}
+              type="button"
+              className={`month-chip ${m.state}`}
+              onClick={() => monthRefs.current[m.key]?.scrollIntoView({ behavior:"smooth", block:"start" })}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
         <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
           {[{bg:"rgba(249,115,22,.14)",bd:"rgba(249,115,22,.3)",lbl:"All targets met"},
             {bg:"rgba(249,115,22,.05)",bd:"rgba(249,115,22,.15)",lbl:"Partial"},
-            {bg:"#111",bd:"#1f1f1f",lbl:"No entry"}].map(l => (
+            {bg:"rgba(59,130,246,.12)",bd:"rgba(59,130,246,.35)",lbl:"CAT application pending"},
+            {bg:"rgba(48,209,88,.12)",bd:"rgba(48,209,88,.4)",lbl:"Final push"},
+            {bg:"var(--s2)",bd:"var(--b1)",lbl:"No entry"}].map(l => (
             <div key={l.lbl} style={{display:"flex",alignItems:"center",gap:6}}>
               <div style={{width:11,height:11,borderRadius:3,background:l.bg,border:`1px solid ${l.bd}`}} />
               <span style={{fontSize:11,color:"var(--tt)"}}>{l.lbl}</span>
             </div>
           ))}
         </div>
-        <div className="cal-grid">
-          {days.map(d => (
-            <div key={d.k}
-              className={`cal-cell ${d.status} ${d.isToday?"today":""} ${d.k===sel?"selected":""}`}
-              onClick={() => onSel(d.k)}
-              title={`Day ${d.day}`}
-            >{d.day}</div>
+        <div className="calendar-months">
+          {calendarData.map(month => (
+            <div key={month.key} className="calendar-month" ref={el => { monthRefs.current[month.key] = el }}>
+              <div className="calendar-month-title">{month.label}</div>
+              <div className="calendar-week-head">
+                {["S","M","T","W","T","F","S"].map((d, i) => <span key={`${d}-${i}`}>{d}</span>)}
+              </div>
+              <div className="calendar-month-grid">
+                {month.cells.map((d, i) => d ? (
+                  <button key={d.k}
+                    type="button"
+                    className={`cal-cell ${d.status} ${d.isToday?"today":""} ${d.k===sel?"selected":""}`}
+                    onClick={() => onSel(d.k)}
+                    title={`Day ${d.day}`}
+                  >
+                    <span className="cal-day-num">{d.day}</span>
+                    <span className="cal-date-num">{d.dateNum}</span>
+                  </button>
+                ) : <span key={`blank-${i}`} className="cal-cell blank" />)}
+              </div>
+            </div>
           ))}
         </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {months.map(m => (
-            <span key={m} style={{fontSize:11,color:"var(--tt)",background:"#111",border:"1px solid #1f1f1f",borderRadius:6,padding:"3px 10px"}}>{m}</span>
-          ))}
+        <div className={`dday-island${sel===EXAM_DATE_KEY ? " selected" : ""}`} onClick={() => onSel(EXAM_DATE_KEY)} role="button" tabIndex={0}>
+          <div className="dday-label">D-Day</div>
+          <div className="dday-date">Nov 29</div>
+          <div className="dday-copy">CAT 2026. Go break the exam.</div>
         </div>
       </div>
     </div>
@@ -2270,7 +2536,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
       display:"flex", flexDirection:"column", overflow:"hidden"
     }}>
       <div style={{padding:"32px 40px 16px", flexShrink:0,
-        borderBottom:"1px solid #1f1f1f"}}>
+        borderBottom:"1px solid var(--b1)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div className="mentor-avatar">
             <MentorAvatar size={56}/>
@@ -2287,10 +2553,10 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
       <div className="mentor-page-messages" style={{flex:1, overflowY:"auto", padding:"20px 40px",
         display:"flex", flexDirection:"column", gap:12}}>
         {mentorMessages.length === 0 && (
-          <div style={{textAlign:"center",color:"#444",fontSize:13,
+          <div style={{textAlign:"center",color:"var(--tt)",fontSize:13,
             marginTop:40,lineHeight:1.8}}>
             Vikram is watching.<br/>
-            <span style={{color:"#6e6e73"}}>Say something.</span>
+            <span style={{color:"var(--tt)"}}>Say something.</span>
           </div>
         )}
         {mentorMessages.map((m, i) => (
@@ -2309,7 +2575,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             {m.r !== "user" && (
               <div style={{flexShrink: 0}}><MentorAvatar size={44}/></div>
             )}
-            <div style={{
+            <div className={`mentor-bubble ${m.r === "user" ? "user" : "ai"}`} style={{
               maxWidth: "70%",
               padding: "10px 14px",
               borderRadius: m.r === "user"
@@ -2317,9 +2583,9 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
                 : "18px 18px 18px 4px",
               fontSize: "13px",
               lineHeight: "1.65",
-              backgroundColor: m.r === "user" ? "#f97316" : "#1c1c1e",
-              color: "white",
-              border: m.r === "user" ? "none" : "1px solid #2a2a2a",
+              backgroundColor: m.r === "user" ? "#f97316" : "var(--s2)",
+              color: m.r === "user" ? "white" : "var(--tp)",
+              border: m.r === "user" ? "none" : "1px solid var(--b1)",
               wordBreak: "break-word",
               boxSizing: "border-box"
             }}>
@@ -2338,8 +2604,8 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
 
       <div className="mentor-page-composer" style={{
         padding:"16px 40px 24px",
-        borderTop:"1px solid #1f1f1f",
-        background:"#000",
+        borderTop:"1px solid var(--b1)",
+        background:"var(--s1)",
         flexShrink:0
       }}>
         <div style={{display:"flex",gap:8,marginBottom:10}}>
@@ -2350,6 +2616,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
             const active = selected || hovered || pressed;
             return (
             <button key={label} type="button"
+              className={`quick-action-btn${active ? " active" : ""}`}
               onPointerEnter={() => setHoverQuickAction(label)}
               onPointerDown={() => {
                 setPressedQuickAction(label)
@@ -2378,9 +2645,9 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
                 setInp(quickText)
               }}
               style={{padding:"7px 13px",borderRadius:20,
-                border:`1px solid ${active ? "#f97316" : "#2a2a2a"}`,
-                background:active ? "rgba(249,115,22,0.12)" : "#111",
-                color:active ? "#f5f5f7" : "#d1d1d6",
+                border:`1px solid ${active ? "#f97316" : "var(--b2)"}`,
+                background:active ? "rgba(249,115,22,0.12)" : "var(--s2)",
+                color:active ? "var(--tp)" : "var(--ts)",
                 boxShadow:active ? "0 0 14px rgba(249,115,22,0.22)" : "none",
                 transform:pressed ? "translateY(1px) scale(0.98)" : active ? "translateY(-1px) scale(1.04)" : "none",
                 fontSize:11,cursor:"pointer",
@@ -2661,7 +2928,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                 {m.r !== "user" && (
                   <div style={{flexShrink: 0}}><MentorAvatar size={44}/></div>
                 )}
-                <div style={{
+                <div className={`mentor-bubble ${m.r === "user" ? "user" : "ai"}`} style={{
                   maxWidth: "70%",
                   padding: "10px 14px",
                   borderRadius: m.r === "user"
@@ -2669,9 +2936,9 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                     : "18px 18px 18px 4px",
                   fontSize: "13px",
                   lineHeight: "1.65",
-                  backgroundColor: m.r === "user" ? "#f97316" : "#1c1c1e",
-                  color: "white",
-                  border: m.r === "user" ? "none" : "1px solid #2a2a2a",
+                  backgroundColor: m.r === "user" ? "#f97316" : "var(--s2)",
+                  color: m.r === "user" ? "white" : "var(--tp)",
+                  border: m.r === "user" ? "none" : "1px solid var(--b1)",
                   wordBreak: "break-word",
                   boxSizing: "border-box"
                 }}>
@@ -2866,6 +3133,7 @@ function AvatarPreview({ gender="male", skinTone="medium", hairStyle="wavy",
 function ProfilePage({
   userName, userId,
   startDate, dayNumber, totalDays, setTab,
+  appTheme, setAppTheme,
   targetPercentile, setTargetPercentile,
   setSharedCalcResult,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
@@ -2884,9 +3152,9 @@ function ProfilePage({
   const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"];
   const chipStyle = (active) => ({
     padding:"6px 14px", borderRadius:20,
-    border: active ? "1px solid #f97316" : "1px solid #2a2a2a",
-    background: active ? "rgba(249,115,22,0.15)" : "#111",
-    color: active ? "#f97316" : "#6e6e73",
+    border: active ? "1px solid #f97316" : "1px solid var(--b2)",
+    background: active ? "rgba(249,115,22,0.15)" : "var(--s2)",
+    color: active ? "#f97316" : "var(--tt)",
     fontSize:12, cursor:"pointer", fontFamily:"inherit"
   });
   useEffect(() => {
@@ -2978,6 +3246,27 @@ function ProfilePage({
         </div>
 
         <div>
+          <div className="sec-label">Appearance</div>
+          <div className="card theme-card">
+            <div>
+              <div className="row-label">Theme</div>
+              <div className="row-sub">Choose how Conquer CAT looks</div>
+            </div>
+            <button
+              type="button"
+              className={`theme-switch ${appTheme === "light" ? "light" : "dark"}`}
+              onClick={() => setAppTheme(appTheme === "light" ? "dark" : "light")}
+              aria-label={`Switch to ${appTheme === "light" ? "dark" : "light"} mode`}
+            >
+              <span className="theme-switch-icon" aria-hidden="true">
+                {appTheme === "light" ? "☀" : "☾"}
+              </span>
+              <span>{appTheme === "light" ? "Light" : "Dark"}</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
           <div className="sec-label">Category</div>
           <div className="card" style={{padding:"14px 16px"}}>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -3002,20 +3291,20 @@ function ProfilePage({
                 onChange={e => setTargetPercentile(parseFloat(e.target.value) || 0)}
                 style={{
                   flex:1,
-                  background:"#111",
-                  border:"1px solid #2a2a2a",
+                  background:"var(--s2)",
+                  border:"1px solid var(--b2)",
                   borderRadius:8,
                   padding:"10px 14px",
-                  color:"#f5f5f7",
+                  color:"var(--tp)",
                   fontSize:20,
                   fontWeight:700,
                   outline:"none",
                   fontFamily:"inherit",
-                  colorScheme:"dark",
+                  colorScheme: appTheme === "light" ? "light" : "dark",
                   minWidth:0
                 }}
               />
-              <span style={{fontSize:12,color:"#6e6e73"}}>percentile</span>
+              <span style={{fontSize:12,color:"var(--tt)"}}>percentile</span>
             </div>
             {targetPercentile > 0 && (
               <div style={{
@@ -3041,7 +3330,7 @@ function ProfilePage({
         {calcResult && (
           <div>
             <div className="sec-label">Your IIM Cutoffs</div>
-            <div style={{fontSize:11,color:"#444",marginBottom:8,fontStyle:"italic"}}>
+            <div style={{fontSize:11,color:"var(--tt)",marginBottom:8,fontStyle:"italic"}}>
               Secure ABC target → eligible for all 21 IIMs
             </div>
             {calcResult.isGEM && (
@@ -3055,17 +3344,17 @@ function ProfilePage({
                 <div style={{fontSize:12,color:"#ff453a",fontWeight:600,marginBottom:2}}>
                   GEM Profile (General Engineer Male)
                 </div>
-                <div style={{fontSize:11,color:"#6e6e73",lineHeight:1.5}}>
+                <div style={{fontSize:11,color:"var(--tt)",lineHeight:1.5}}>
                   Toughest competition pool. IIM-A realistically needs 99.7+. Work experience and strong academics are your best levers.
                 </div>
               </div>
             )}
-            <div className="card" style={{padding:"4px 0"}}>
+            <div className="card" style={{padding:0}}>
               {[
                 { label:"IIM A / B / C", sub:"Ahmedabad · Bangalore · Calcutta", key:"ABC", color:"#30d158" },
                 { label:"IIM K / L / I / S", sub:"Kozhikode · Lucknow · Indore · Shillong", key:"KLIS", color:"#f97316" },
                 { label:"New IIMs", sub:"Ranchi · Raipur · Trichy · Nagpur & others", key:"newIIM", color:"#3b82f6" },
-              ].map(g => {
+              ].map((g, idx, arr) => {
                 const needed = calcResult.adjustedCutoffs[g.key];
                 const meets = targetPercentile > 0 && targetPercentile >= needed;
                 const close = targetPercentile > 0 && !meets && targetPercentile >= needed - 1;
@@ -3075,7 +3364,7 @@ function ProfilePage({
                     justifyContent:"space-between",
                     alignItems:"center",
                     padding:"14px 16px",
-                    borderBottom:"1px solid #1a1a1a",
+                    borderBottom: idx === arr.length - 1 ? "none" : "1px solid var(--b1)",
                     gap:12
                   }}>
                     <div style={{flex:1,minWidth:0}}>
@@ -3104,7 +3393,7 @@ function ProfilePage({
                       }}>
                         {needed.toFixed(1)}%
                       </div>
-                      <div style={{fontSize:9,color:"#6e6e73"}}>needed</div>
+                      <div style={{fontSize:9,color:"var(--tt)"}}>needed</div>
                     </div>
                   </div>
                 );
@@ -3146,7 +3435,7 @@ function ProfilePage({
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="#6e6e73" strokeWidth="2"
+              fill="none" stroke="var(--tt)" strokeWidth="2"
               strokeLinecap="round">
               <polyline points="9 18 15 12 9 6"/>
             </svg>
@@ -3201,9 +3490,9 @@ function ProfileEditPage({
   const chipStyle = (active) => ({
     padding:"6px 12px",
     borderRadius:999,
-    border: active ? "1px solid #f97316" : "1px solid #2a2a2a",
-    background: active ? "rgba(249,115,22,0.15)" : "#111",
-    color: active ? "#f97316" : "#6e6e73",
+    border: active ? "1px solid #f97316" : "1px solid var(--b2)",
+    background: active ? "rgba(249,115,22,0.15)" : "var(--s2)",
+    color: active ? "#f97316" : "var(--tt)",
     fontSize:12,
     cursor:"pointer",
     fontFamily:"inherit"
@@ -3220,11 +3509,11 @@ function ProfileEditPage({
   });
   const pinInputStyle = {
     width:"100%",
-    background:"#111",
-    border:"1px solid #2a2a2a",
+    background:"var(--s2)",
+    border:"1px solid var(--b2)",
     borderRadius:8,
     padding:"10px 12px",
-    color:"#f5f5f7",
+    color:"var(--tp)",
     fontSize:14,
     letterSpacing:"0.08em",
     textAlign:"center",
@@ -3359,12 +3648,12 @@ function ProfileEditPage({
               hasMustache={avatarMustache}
               size={86}
             />
-            <div style={{fontSize:18,fontWeight:800,color:"#f5f5f7"}}>
+            <div style={{fontSize:18,fontWeight:800,color:"var(--tp)"}}>
               {userName}
             </div>
             <div style={{width:"100%",display:"flex",flexDirection:"column",gap:12}}>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Gender</span>
+                <span style={{fontSize:12,color:"var(--tt)",width:76}}>Gender</span>
                 <div style={{display:"flex",gap:6}}>
                   {["male","female"].map(g => (
                     <button key={g} type="button" onClick={() => {
@@ -3378,7 +3667,7 @@ function ProfileEditPage({
                 </div>
               </div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Skin</span>
+                <span style={{fontSize:12,color:"var(--tt)",width:76}}>Skin</span>
                 <div style={{display:"flex",gap:8}}>
                   {[{id:"light",color:"#f1c27d"},{id:"medium",color:"#c68642"},{id:"dark",color:"#8d5524"}].map(s => (
                     <button key={s.id} type="button" onClick={() => updateAvatar("skin", s.id)}
@@ -3387,7 +3676,7 @@ function ProfileEditPage({
                 </div>
               </div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Hair</span>
+                <span style={{fontSize:12,color:"var(--tt)",width:76}}>Hair</span>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {(avatarGender === "female" ? ["short","wavy","long","curly","bun"] : ["short","wavy","curly"]).map(h => (
                     <button key={h} type="button" onClick={() => updateAvatar("hair", h)}
@@ -3396,7 +3685,7 @@ function ProfileEditPage({
                 </div>
               </div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Hair color</span>
+                <span style={{fontSize:12,color:"var(--tt)",width:76}}>Hair color</span>
                 <div style={{display:"flex",gap:8}}>
                   {[{id:"black",color:"#0a0a0a"},{id:"brown",color:"#6b3a2a"},{id:"blonde",color:"#c8a850"},{id:"grey",color:"#888888"}].map(h => (
                     <button key={h.id} type="button" onClick={() => updateAvatar("hairColor", h.id)}
@@ -3405,7 +3694,7 @@ function ProfileEditPage({
                 </div>
               </div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                <span style={{fontSize:12,color:"#6e6e73",width:76}}>Outfit</span>
+                <span style={{fontSize:12,color:"var(--tt)",width:76}}>Outfit</span>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   {[{id:"orange",color:"#f97316"},{id:"blue",color:"#3b82f6"},{id:"green",color:"#22c55e"},{id:"purple",color:"#a855f7"},{id:"red",color:"#ef4444"},{id:"white",color:"#e5e5e5"}].map(s => (
                     <button key={s.id} type="button" onClick={() => updateAvatar("shirt", s.id)}
@@ -3418,20 +3707,20 @@ function ProfileEditPage({
                   <input type="checkbox" checked={avatarGlasses}
                     onChange={e => updateAvatar("glasses", e.target.checked)}
                     style={{accentColor:"#f97316"}} />
-                  <span style={{fontSize:12,color:"#6e6e73"}}>Glasses</span>
+                  <span style={{fontSize:12,color:"var(--tt)"}}>Glasses</span>
                 </label>
                 {avatarGender === "male" && <>
                   <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
                     <input type="checkbox" checked={avatarBeard}
                       onChange={e => updateAvatar("beard", e.target.checked)}
                       style={{accentColor:"#f97316"}} />
-                    <span style={{fontSize:12,color:"#6e6e73"}}>Beard</span>
+                    <span style={{fontSize:12,color:"var(--tt)"}}>Beard</span>
                   </label>
                   <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
                     <input type="checkbox" checked={avatarMustache}
                       onChange={e => updateAvatar("mustache", e.target.checked)}
                       style={{accentColor:"#f97316"}} />
-                    <span style={{fontSize:12,color:"#6e6e73"}}>Mustache</span>
+                    <span style={{fontSize:12,color:"var(--tt)"}}>Mustache</span>
                   </label>
                 </>}
               </div>
@@ -3509,7 +3798,7 @@ function ProfileEditPage({
                     background: pinForm.oldPin.length === 4 &&
                       pinForm.newPin.length === 4 &&
                       pinForm.confirmPin.length === 4
-                      ? "#f97316" : "#2a2a2a",
+                      ? "#f97316" : "var(--b2)",
                     border:"none",
                     borderRadius:9,
                     color:"white",
@@ -3525,7 +3814,7 @@ function ProfileEditPage({
                 >
                   {changingPin ? "Updating..." : "Save PIN"}
                 </button>
-                <div style={{fontSize:10,color:"#444",textAlign:"center"}}>
+                <div style={{fontSize:10,color:"var(--tt)",textAlign:"center"}}>
                   You will need this new PIN on other devices.
                 </div>
               </div>
@@ -3549,9 +3838,9 @@ function AcademicProfilePage({
 }) {
   const [saved, setSaved] = useState(false);
   const inputStyle = {
-    width:"100%", background:"#111",
-    border:"1px solid #2a2a2a", borderRadius:8,
-    padding:"10px 12px", color:"#f5f5f7",
+    width:"100%", background:"var(--s2)",
+    border:"1px solid var(--b2)", borderRadius:8,
+    padding:"10px 12px", color:"var(--tp)",
     fontSize:14, fontFamily:"inherit",
     outline:"none", boxSizing:"border-box"
   };
@@ -3616,11 +3905,11 @@ function AcademicProfilePage({
                   style={{
                     padding:"3px 10px",borderRadius:20,
                     border:(primaryDegree?.gpaScale||"percentage")===scale
-                      ?"1px solid #f97316":"1px solid #2a2a2a",
+                      ?"1px solid #f97316":"1px solid var(--b2)",
                     background:(primaryDegree?.gpaScale||"percentage")===scale
-                      ?"rgba(249,115,22,0.15)":"#111",
+                      ?"rgba(249,115,22,0.15)":"var(--s2)",
                     color:(primaryDegree?.gpaScale||"percentage")===scale
-                      ?"#f97316":"#6e6e73",
+                      ?"#f97316":"var(--tt)",
                     fontSize:11,cursor:"pointer",
                     fontFamily:"inherit"
                   }}>
@@ -3653,7 +3942,7 @@ function AcademicProfilePage({
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="#6e6e73" strokeWidth="2"
+                fill="none" stroke="var(--tt)" strokeWidth="2"
                 strokeLinecap="round">
                 <polyline points="9 18 15 12 9 6"/>
               </svg>
@@ -3719,7 +4008,7 @@ function AcademicProfilePage({
                   .filter(([,v]) => v !== 0)
                   .map(([k,v]) => (
                     <div key={k} style={{display:"flex",justifyContent:"space-between",fontSize:12,gap:10}}>
-                      <span style={{color:"#6e6e73"}}>
+                      <span style={{color:"var(--tt)"}}>
                         {k === "gemPenalty" ? "GEM profile penalty"
                           : k === "femaleDiversity" ? "Female diversity bonus"
                             : k === "nonEngineerDiversity" ? "Non-engineer diversity"
@@ -3778,9 +4067,9 @@ function SecondaryDegreesPage({
     "MS","M.Phil","LLM","PGDM","CA","CS","CFA","Other"
   ];
   const inputStyle = {
-    width:"100%", background:"#111",
-    border:"1px solid #2a2a2a", borderRadius:8,
-    padding:"10px 12px", color:"#f5f5f7",
+    width:"100%", background:"var(--s2)",
+    border:"1px solid var(--b2)", borderRadius:8,
+    padding:"10px 12px", color:"var(--tp)",
     fontSize:14, fontFamily:"inherit",
     outline:"none", boxSizing:"border-box"
   };
@@ -3836,15 +4125,15 @@ function SecondaryDegreesPage({
                     marginBottom:8,gap:12}}>
                   <div style={{flex:1}}>
                     <div style={{fontSize:14,fontWeight:600,
-                      color:"#f5f5f7",marginBottom:2}}>
+                      color:"var(--tp)",marginBottom:2}}>
                       {displayText || "Additional degree"}
                     </div>
                     {deg.college && (
-                      <div style={{fontSize:12,color:"#6e6e73"}}>
+                      <div style={{fontSize:12,color:"var(--tt)"}}>
                         {deg.college}
                       </div>
                     )}
-                    <div style={{fontSize:11,color:"#444",marginTop:2}}>
+                    <div style={{fontSize:11,color:"var(--tt)",marginTop:2}}>
                       {deg.gpa ? `${deg.gpa} ${
                         deg.gpaScale==="10" ? "/ 10 CGPA"
                         : deg.gpaScale==="4" ? "/ 4.0 CGPA"
@@ -3906,10 +4195,10 @@ function SecondaryDegreesPage({
                     padding:"3px 10px", borderRadius:20,
                     border: form.gpaScale===scale
                       ? "1px solid #f97316"
-                      : "1px solid #2a2a2a",
+                      : "1px solid var(--b2)",
                     background: form.gpaScale===scale
-                      ? "rgba(249,115,22,0.15)" : "#111",
-                    color: form.gpaScale===scale ? "#f97316" : "#6e6e73",
+                      ? "rgba(249,115,22,0.15)" : "var(--s2)",
+                    color: form.gpaScale===scale ? "#f97316" : "var(--tt)",
                     fontSize:11, cursor:"pointer",
                     fontFamily:"inherit"
                   }}>
@@ -3922,7 +4211,7 @@ function SecondaryDegreesPage({
               disabled={!form.degree}
               style={{
                 width:"100%", padding:"12px",
-                background: form.degree ? "#f97316" : "#2a2a2a",
+                background: form.degree ? "#f97316" : "var(--b2)",
                 border:"none", borderRadius:10,
                 color:"white", fontSize:14,
                 fontWeight:700, cursor: form.degree ? "pointer" : "not-allowed",
@@ -3939,7 +4228,7 @@ function SecondaryDegreesPage({
           border:"1px solid rgba(249,115,22,0.15)",
           borderRadius:10
         }}>
-          <div style={{fontSize:12,color:"#6e6e73",lineHeight:1.6}}>
+          <div style={{fontSize:12,color:"var(--tt)",lineHeight:1.6}}>
             IIM-B and IIM-K give extra weightage to candidates with Masters degrees during PI shortlisting. It strengthens your profile score and reduces effective cutoff by about 0.4 percentile.
           </div>
         </div>
@@ -4938,6 +5227,7 @@ export default function App() {
   })
   const [tab, setTab] = useState("today");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [appTheme, setAppTheme] = useState(() => localStorage.getItem("conquer_theme") || "dark");
   const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem("cat_prep_data") || "{}") } catch { return {} } });
   const [backlogVideos, setBacklogVideos] = useState(() => {
     try {
@@ -5073,6 +5363,11 @@ export default function App() {
   };
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
+  useEffect(() => {
+    const theme = appTheme === "light" ? "light" : "dark";
+    localStorage.setItem("conquer_theme", theme);
+    document.documentElement.style.colorScheme = theme;
+  }, [appTheme]);
   useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
   useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
   useEffect(() => { localStorage.setItem("cat_avatar_hair", avatarHair) }, [avatarHair]);
@@ -5541,7 +5836,7 @@ export default function App() {
   const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
 
   return (
-    <div className="app">
+    <div className={`app theme-${appTheme === "light" ? "light" : "dark"}`}>
       <header className="mobile-header">
         <button
           className="mobile-menu-btn"
@@ -5600,7 +5895,7 @@ export default function App() {
           style={{
             display:"flex", alignItems:"center", gap:10,
             padding:"12px 16px", background:"transparent",
-            border:"none", borderTop:"1px solid #1a1a1a",
+            border:"none", borderTop:"1px solid var(--b1)",
             cursor:"pointer", width:"100%", fontFamily:"inherit"
           }}
         >
@@ -5612,13 +5907,13 @@ export default function App() {
           />
           <div style={{flex:1,textAlign:"left"}}>
             <div style={{fontSize:14,fontWeight:600,
-              color:"#f5f5f7"}}>{userName}</div>
-            <div style={{fontSize:11,color:"#6e6e73"}}>
+              color:"var(--tp)"}}>{userName}</div>
+            <div style={{fontSize:11,color:"var(--tt)"}}>
               Profile & IIM Calculator
             </div>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24"
-            fill="none" stroke="#6e6e73" strokeWidth="2"
+            fill="none" stroke="var(--tt)" strokeWidth="2"
             strokeLinecap="round">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
@@ -5652,7 +5947,7 @@ export default function App() {
             padding:"10px 14px", background:"transparent",
             border:"none", cursor:"pointer", width:"100%",
             fontFamily:"inherit",
-            borderBottom:"1px solid #1a1a1a",
+            borderBottom:"1px solid var(--b1)",
             marginBottom:8
           }}
         >
@@ -5664,8 +5959,8 @@ export default function App() {
           />
           <div style={{flex:1,textAlign:"left"}}>
             <div style={{fontSize:12,fontWeight:600,
-              color:"#f5f5f7"}}>{userName}</div>
-            <div style={{fontSize:10,color:"#6e6e73"}}>
+              color:"var(--tp)"}}>{userName}</div>
+            <div style={{fontSize:10,color:"var(--tt)"}}>
               View profile →
             </div>
           </div>
@@ -5689,7 +5984,7 @@ export default function App() {
           }}
           style={{
             background:"transparent", border:"none",
-            color:"#333", fontSize:10, cursor:"pointer",
+            color:"var(--tt)", fontSize:10, cursor:"pointer",
             padding:"8px 14px", fontFamily:"inherit",
             textAlign:"left", width:"100%",
             marginTop:"auto"
@@ -5731,6 +6026,7 @@ export default function App() {
             `Day ${selDayNum} saved. Effort score: ${score}/100.`,
             `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
             `Total study time: ${timeStr}.`,
+            isApplicationWindow(sel) ? `CAT application: ${dayData.ca ? "submitted" : "pending"}.` : "",
             dayData.sk ? `Sudoku: solved ${dayData.skd || "medium"} in ${dayData.skm || 0}m ${dayData.sks || 0}s.` : "",
             dayData.vm ? `Vedic Math: ${dayData.vmt?.trim() || "topic not specified"}.` : "",
             missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
@@ -5797,6 +6093,8 @@ export default function App() {
             dayNumber={dn}
             totalDays={totalDays}
             setTab={setTab}
+            appTheme={appTheme}
+            setAppTheme={setAppTheme}
             targetPercentile={targetPercentile}
             setTargetPercentile={setTargetPercentile}
             setSharedCalcResult={setCalcResult}
