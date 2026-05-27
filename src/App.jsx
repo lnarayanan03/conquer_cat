@@ -6780,23 +6780,27 @@ export default function App() {
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
   useEffect(() => {
     const theme = appTheme === "light" ? "light" : "dark";
+    const isCalendar = tab === "calendar";
+    const bgColor = isCalendar
+      ? (theme === "light" ? "#67d7ff" : "#010c16")
+      : (theme === "light" ? "#f7f4ee" : "#000000");
     localStorage.setItem("conquer_theme", theme);
     document.documentElement.style.colorScheme = theme;
     document.documentElement.dataset.theme = theme;
     document.body.dataset.theme = theme;
-    document.documentElement.style.backgroundColor = theme === "light" ? "#f7f4ee" : "#000000";
-    document.body.style.backgroundColor = theme === "light" ? "#f7f4ee" : "#000000";
+    document.documentElement.style.backgroundColor = bgColor;
+    document.body.style.backgroundColor = bgColor;
     // Dynamic Island / status bar color on iPhone (theme-color meta tag)
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute("content", appTheme === "light" ? "#f7f4ee" : "#000000");
+      metaThemeColor.setAttribute("content", bgColor);
     }
     // Also update apple-mobile-web-app-status-bar-style
     const metaStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (metaStatusBar) {
       metaStatusBar.setAttribute("content", appTheme === "light" ? "default" : "black-translucent");
     }
-  }, [appTheme]);
+  }, [appTheme, tab]);
   useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
   useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
   useEffect(() => { localStorage.setItem("cat_avatar_hair", avatarHair) }, [avatarHair]);

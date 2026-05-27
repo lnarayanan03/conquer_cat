@@ -3186,7 +3186,8 @@ select:focus { border-color: #f97316; }
 
 @media (max-width: 1023px) {
   :root {
-    --mobile-header-h: calc(max(10px, env(safe-area-inset-top)) + 54px);
+    --mobile-safe-top: max(10px, env(safe-area-inset-top));
+    --mobile-header-h: calc(var(--mobile-safe-top) + 54px);
   }
   html,
   body,
@@ -3216,7 +3217,7 @@ select:focus { border-color: #f97316; }
     right: 0;
     box-sizing: border-box;
     height: var(--mobile-header-h);
-    padding: max(10px, env(safe-area-inset-top)) 14px 10px;
+    padding: var(--mobile-safe-top) 14px 10px;
     background: rgba(0,0,0,0.72);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(22px);
@@ -3652,35 +3653,32 @@ select:focus { border-color: #f97316; }
 
 @media (max-width: 560px) {
   :root {
-    --mobile-header-h: calc(max(34px, env(safe-area-inset-top)) + 82px);
+    --mobile-safe-top: max(24px, env(safe-area-inset-top));
+    --mobile-header-h: calc(var(--mobile-safe-top) + 58px);
   }
   .mobile-header {
-    display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) 70px;
-    grid-template-rows: 40px 28px;
+    display: flex;
     align-items: center;
-    gap: 4px 10px;
+    gap: 10px;
     height: var(--mobile-header-h);
-    padding: max(34px, env(safe-area-inset-top)) 14px 10px;
+    padding: var(--mobile-safe-top) 14px 10px;
   }
   .mobile-menu-btn {
-    grid-column: 1;
-    grid-row: 1;
+    flex: 0 0 auto;
   }
   .mobile-days-pill {
-    grid-column: 3;
-    grid-row: 1;
-    justify-self: end;
+    flex: 0 0 auto;
+    margin-left: auto;
   }
   .mobile-brand {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    text-align: center;
-    padding: 0 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    padding: 0;
   }
   .mobile-title,
   .mobile-sub {
-    text-align: center;
+    text-align: left;
   }
   .main {
     padding-top: var(--mobile-header-h) !important;
