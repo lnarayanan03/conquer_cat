@@ -3351,6 +3351,29 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
     return () => window.removeEventListener('resize', h);
   }, [buildPath]);
 
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container || !voyageMode) return undefined;
+    let raf = 0;
+    const rebuild = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(buildPath);
+    };
+    rebuild();
+    const observer = new ResizeObserver(rebuild);
+    observer.observe(container);
+    Object.values(monthRefs.current).forEach(el => el && observer.observe(el));
+    if (startRef.current) observer.observe(startRef.current);
+    if (startXRef.current) observer.observe(startXRef.current);
+    if (ddayRef.current) observer.observe(ddayRef.current);
+    const settledTimer = setTimeout(rebuild, 350);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(settledTimer);
+      observer.disconnect();
+    };
+  }, [buildPath, voyageMode, calendarData.length]);
+
   // Position ship along path
   useEffect(() => {
     if (isCompactPhone) return;
@@ -3542,12 +3565,12 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
                 </filter>
               </defs>
               {/* Wide glow halo */}
-              <path d={svgPathD} fill="none" stroke="rgba(249,115,22,0.1)" strokeWidth="20" filter="url(#pathGlow)"/>
+              <path d={svgPathD} fill="none" stroke={isCompactPhone ? "rgba(249,115,22,0.2)" : "rgba(249,115,22,0.1)"} strokeWidth={isCompactPhone ? "24" : "20"} filter="url(#pathGlow)"/>
               {/* Thick soft outer dots */}
-              <path d={svgPathD} fill="none" stroke="rgba(249,115,22,0.2)" strokeWidth="6" strokeDasharray="14 10" strokeLinecap="round"/>
+              <path d={svgPathD} fill="none" stroke={isCompactPhone ? "rgba(255,193,7,0.42)" : "rgba(249,115,22,0.2)"} strokeWidth={isCompactPhone ? "8" : "6"} strokeDasharray="14 10" strokeLinecap="round"/>
               {/* Main bright dotted line */}
               <path ref={svgPathElemRef} d={svgPathD} fill="none"
-                stroke="rgba(249,115,22,0.9)" strokeWidth="2.8"
+                stroke={isCompactPhone ? "rgba(255,154,31,1)" : "rgba(249,115,22,0.9)"} strokeWidth={isCompactPhone ? "4" : "2.8"}
                 strokeDasharray="10 7" strokeLinecap="round" filter="url(#dotGlow)"/>
             </svg>
           )}
