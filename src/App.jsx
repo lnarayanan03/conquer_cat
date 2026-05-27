@@ -532,10 +532,10 @@ function DdaySymbolIcon({ type, size = 22 }) {
 
 function TodayPage({
   date, d, upd, dl, start, totalDays, mode, setTab,
-  backlogVideos, backlogConcepts, onSave, data, totals, userName,
+  backlogVideos, backlogConcepts, onSave, data, totals, userName, userInitials,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
-  todayLiveLabel, todayAppLabel, isSundayIST
+  todayLiveLabel, todayAppLabel, isSundayIST, theme,
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -1311,6 +1311,8 @@ function TodayPage({
             todayData={d}
             data={data}
             userName={userName}
+            userInitials={userInitials}
+            theme={theme}
             effortScore={effortScore(d, backlogVideos, backlogConcepts)}
             avatarGender={avatarGender}
             avatarSkin={avatarSkin}
@@ -6114,7 +6116,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
           const dayData = data[sel] || defaultDay();
           try {
             await fetch("/api/log/save", {
@@ -6297,6 +6299,8 @@ export default function App() {
             todayData={data[sel] || defaultDay()}
             data={data}
             userName={userName}
+            userInitials={userInitials}
+            theme={appTheme}
             effortScore={effortScore(data[sel] || defaultDay(), backlogVideos, backlogConcepts)}
             avatarGender={avatarGender}
             avatarSkin={avatarSkin}
