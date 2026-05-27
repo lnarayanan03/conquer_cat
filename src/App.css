@@ -153,6 +153,9 @@ body[data-theme="light"]:has(.app.on-calendar) {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
   letter-spacing: normal !important;
 }
+.app.theme-dark .main.calendar-main:has(.cal-plain-mode) {
+  background: #000 !important;
+}
 .app.theme-light .main.calendar-main:has(.cal-plain-mode) {
   background: #f7f4ee !important;
 }
@@ -320,9 +323,12 @@ body[data-theme="light"]:has(.app.on-calendar) {
 .cal-plain-mode.page.calendar-page {
   max-width: 700px;
   padding: 44px 40px 80px;
-  background: #000;
+  background: #000 !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0;
+}
+.app.theme-dark .cal-plain-mode.page.calendar-page {
+  background: #000 !important;
 }
 .app.theme-light .cal-plain-mode.page.calendar-page {
   background: #f7f4ee !important;
