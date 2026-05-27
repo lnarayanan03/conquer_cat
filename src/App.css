@@ -1420,6 +1420,7 @@ body:has(.app.theme-light) {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    margin-right: 2px;
   }
   .mobile-days-pill span {
     color: #f97316;
@@ -1914,13 +1915,34 @@ body:has(.app.theme-light) {
   .mobile-menu-btn {
     display: none !important;
   }
-  /* ── iPhone top safe-area: make header grow with the notch/Dynamic Island
-     and always give a consistent 10px gap below the status bar.
-     The 1023px block hardcodes height:64px + max(10px, env) which leaves only
-     ~10–20px for the brand text on notched iPhones. This override fixes that. ── */
+  /* ── iPhone top safe-area + glass gradient header (phone-only) ──────────
+     Overrides the 1023px solid backgrounds with a translucent gradient so
+     the header blends into the app background like iOS/WhatsApp chrome.
+     These rules come after the global theme overrides so they always win
+     on phones in both dark and light mode. ── */
   .mobile-header {
     height: calc(env(safe-area-inset-top) + 54px);
     padding-top: calc(env(safe-area-inset-top) + 10px);
+    background: linear-gradient(
+      180deg,
+      rgba(0,0,0,0.80) 0%,
+      rgba(0,0,0,0.64) 55%,
+      rgba(0,0,0,0.36) 100%
+    );
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    border-bottom: 1px solid rgba(255,255,255,0.055);
+  }
+  .app.theme-light .mobile-header {
+    background: linear-gradient(
+      180deg,
+      rgba(247,244,238,0.90) 0%,
+      rgba(247,244,238,0.74) 55%,
+      rgba(247,244,238,0.44) 100%
+    );
+    backdrop-filter: blur(28px) saturate(1.4);
+    -webkit-backdrop-filter: blur(28px) saturate(1.4);
+    border-bottom: 1px solid rgba(0,0,0,0.055);
   }
   .main {
     padding-top: calc(env(safe-area-inset-top) + 54px) !important;

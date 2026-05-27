@@ -354,9 +354,8 @@ export default function InstaCard({
             </div>
           </div>
 
-          {/* Avatar: 80px with initials fallback behind SVG */}
+          {/* Avatar: 80px circular SVG illustration */}
           <div style={{
-            position:"relative",
             width:80, height:80,
             borderRadius:"50%",
             border: C.avatarBorder,
@@ -365,18 +364,10 @@ export default function InstaCard({
             overflow:"hidden",
             flexShrink:0,
             marginLeft:10,
+            display:"flex",
+            alignItems:"center",
+            justifyContent:"center",
           }}>
-            {/* Initials fallback — visible only if SVG renders as empty */}
-            <div style={{
-              position:"absolute", inset:0,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:24, fontWeight:800, color:"#f97316",
-              letterSpacing:"-0.02em",
-              userSelect:"none",
-            }}>
-              {initials}
-            </div>
-            {/* SVG avatar — renders on top of initials */}
             <ShareAvatar
               gender={avatarGender} skinTone={avatarSkin}
               hairStyle={avatarHair} hairColor={avatarHairColor}
@@ -390,24 +381,60 @@ export default function InstaCard({
         <div style={S.divider}/>
 
         {/* ── Metrics: Streak · Study · Effort ──────────────────── */}
-        <div style={{display:"flex",justifyContent:"space-between",textAlign:"center",marginBottom:12}}>
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(3, 1fr)",
+          textAlign:"center",
+          marginBottom:12,
+        }}>
           {[
-            { top: streak > 0 ? streak : "—", mid: streak === 1 ? "day" : "days", lbl: "STREAK" },
-            { top: studyDisplay,                mid: "today",                        lbl: "STUDY"  },
-            { top: score,                       mid: "/100",                         lbl: "EFFORT" },
+            {
+              val:  streak > 0 ? streak : "—",
+              unit: streak > 0 ? (streak === 1 ? "day" : "days") : null,
+              lbl:  "STREAK",
+            },
+            {
+              val:  studyDisplay !== "—" ? studyDisplay : "—",
+              unit: studyDisplay !== "—" ? "today" : null,
+              lbl:  "STUDY",
+            },
+            {
+              val:  score,
+              unit: "/100",
+              lbl:  "EFFORT",
+            },
           ].map(m => (
-            <div key={m.lbl} style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:2}}>
+            <div key={m.lbl} style={{display:"flex", flexDirection:"column", alignItems:"center"}}>
+              <div style={{
+                minHeight:34,
+                display:"flex", alignItems:"baseline",
+                justifyContent:"center",
+                gap:3,
+              }}>
                 <span style={{
-                  fontSize: m.lbl==="STUDY" ? 20 : 28,
-                  fontWeight:800, color:"#f97316", lineHeight:1,
-                  letterSpacing:"-0.02em", fontVariantNumeric:"tabular-nums",
+                  fontSize:28, fontWeight:800,
+                  color:"#f97316", lineHeight:1,
+                  letterSpacing:"-0.02em",
+                  fontVariantNumeric:"tabular-nums",
+                  whiteSpace:"nowrap",
                 }}>
-                  {m.top}
+                  {m.val}
                 </span>
-                <span style={{fontSize:11, color:C.textSecondary, fontWeight:600, marginBottom:2}}>{m.mid}</span>
+                {m.unit && (
+                  <span style={{
+                    fontSize:12, color:C.textSecondary,
+                    fontWeight:600, lineHeight:1,
+                    whiteSpace:"nowrap",
+                  }}>
+                    {m.unit}
+                  </span>
+                )}
               </div>
-              <div style={{fontSize:9.5, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginTop:4}}>
+              <div style={{
+                fontSize:9.5, color:C.textTertiary,
+                letterSpacing:"0.10em", fontWeight:700,
+                marginTop:3,
+              }}>
                 {m.lbl}
               </div>
             </div>
