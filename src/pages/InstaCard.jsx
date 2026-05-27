@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import "./InstaCard.css";
+import AvatarPreview from "../AvatarPreview.jsx";
 
 // ── Local helpers (pure, no imports from App to avoid circular deps) ──────
 function toKey(d) {
@@ -49,66 +50,6 @@ function formatHours(todayData) {
   if (mins === 0) return "—";
   const h = Math.floor(mins/60), m = mins%60;
   return h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`;
-}
-
-// ── Avatar (inline — no import from App to avoid circular dep) ────────────
-function ShareAvatar({
-  gender = "male", skinTone = "medium", hairStyle = "wavy",
-  hairColor = "black", shirtColor = "blue",
-  hasGlasses = false, hasBeard = false, hasMustache = false, size = 80,
-}) {
-  const skinColors  = { light:"#f1c27d", medium:"#c68642", dark:"#8d5524" };
-  const hairColors  = { black:"#1a0a00", brown:"#6b3a2a", blonde:"#c8a850", grey:"#888888" };
-  const shirtColors = { orange:"#f97316", blue:"#3b82f6", green:"#22c55e", purple:"#a855f7", red:"#ef4444", white:"#e5e5e5" };
-
-  const skin   = skinColors[skinTone]   || "#c68642";
-  const hair   = hairColors[hairColor]  || "#1a0a00";
-  const shirt  = shirtColors[shirtColor] || "#3b82f6";
-  const shadow = skinTone==="light" ? "#d4956a" : skinTone==="dark" ? "#6b3d1e" : "#b07030";
-
-  const renderHair = () => {
-    if (gender === "female") {
-      if (hairStyle==="bun")   return <><ellipse cx="50" cy="36" rx="20" ry="14" fill={hair}/><circle cx="50" cy="22" r="10" fill={hair}/><circle cx="50" cy="22" r="6" fill={hair} opacity="0.7"/></>;
-      if (hairStyle==="long")  return <><ellipse cx="50" cy="35" rx="22" ry="18" fill={hair}/><path d="M28 42 Q22 60 24 85 Q26 70 30 58 Q27 50 28 42Z" fill={hair}/><path d="M72 42 Q78 60 76 85 Q74 70 70 58 Q73 50 72 42Z" fill={hair}/></>;
-      if (hairStyle==="curly") return <><ellipse cx="50" cy="33" rx="23" ry="19" fill={hair}/><circle cx="27" cy="40" r="7" fill={hair}/><circle cx="73" cy="40" r="7" fill={hair}/><circle cx="24" cy="54" r="6" fill={hair}/><circle cx="76" cy="54" r="6" fill={hair}/></>;
-      if (hairStyle==="short") return <><ellipse cx="50" cy="34" rx="21" ry="15" fill={hair}/><path d="M30 40 Q28 50 30 54Z" fill={hair}/><path d="M70 40 Q72 50 70 54Z" fill={hair}/></>;
-      // female wavy / default
-      return <><ellipse cx="50" cy="34" rx="22" ry="17" fill={hair}/><path d="M28 40 Q24 54 26 68 Q23 58 27 50 Q24 45 28 40Z" fill={hair}/><path d="M72 40 Q76 54 74 68 Q77 58 73 50 Q76 45 72 40Z" fill={hair}/></>;
-    }
-    // Male hair styles
-    if (hairStyle==="curly") return <><ellipse cx="50" cy="33" rx="22" ry="18" fill={hair}/><circle cx="29" cy="38" r="6" fill={hair}/><circle cx="71" cy="38" r="6" fill={hair}/><circle cx="26" cy="50" r="5" fill={hair}/><circle cx="74" cy="50" r="5" fill={hair}/></>;
-    if (hairStyle==="wavy")  return <><ellipse cx="50" cy="35" rx="22" ry="17" fill={hair}/><path d="M28 42 Q24 53 26 64 Q23 56 27 50 Q24 46 28 42Z" fill={hair}/><path d="M72 42 Q76 53 74 64 Q77 56 73 50 Q76 46 72 42Z" fill={hair}/></>;
-    if (hairStyle==="bald")  return null;
-    if (hairStyle==="long")  return <><ellipse cx="50" cy="32" rx="21" ry="16" fill={hair}/><path d="M29 42 Q25 56 27 70 Q24 62 28 54Z" fill={hair}/><path d="M71 42 Q75 56 73 70 Q76 62 72 54Z" fill={hair}/></>;
-    // short / default
-    return <><ellipse cx="50" cy="32" rx="21" ry="14" fill={hair}/><path d="M30 40 Q29 50 31 54Z" fill={hair}/><path d="M70 40 Q71 50 69 54Z" fill={hair}/></>;
-  };
-
-  return (
-    <svg width={size} height={size} viewBox="5 8 90 92" preserveAspectRatio="xMidYMid slice" fill="none">
-      <ellipse cx="50" cy="75" rx="26" ry="12" fill={shadow} opacity="0.4"/>
-      <rect x="24" y="54" width="52" height="46" rx="8" fill={shirt}/>
-      <circle cx="50" cy="42" r="18" fill={skin}/>
-      {renderHair()}
-      {gender==="female" && <path d="M38 46 Q50 54 62 46" stroke={shadow} strokeWidth="1.5" fill="none" opacity="0.4"/>}
-      <ellipse cx="43" cy="42" rx="3.5" ry="4" fill="white"/>
-      <ellipse cx="57" cy="42" rx="3.5" ry="4" fill="white"/>
-      <circle cx="43" cy="43" r="2" fill="#1a1a1a"/>
-      <circle cx="57" cy="43" r="2" fill="#1a1a1a"/>
-      <circle cx="44" cy="42" r="0.7" fill="white"/>
-      <circle cx="58" cy="42" r="0.7" fill="white"/>
-      <path d="M45 50 Q50 54 55 50" stroke={shadow} strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-      {hasMustache && <path d="M43 49 Q50 53 57 49" stroke={shadow} strokeWidth="2" fill="none"/>}
-      {hasBeard && <ellipse cx="50" cy="55" rx="10" ry="6" fill={hair} opacity="0.6"/>}
-      {hasGlasses && (
-        <>
-          <rect x="37" y="38" width="10" height="8" rx="2.5" stroke="#888" strokeWidth="1.5" fill="none"/>
-          <rect x="53" y="38" width="10" height="8" rx="2.5" stroke="#888" strokeWidth="1.5" fill="none"/>
-          <line x1="47" y1="42" x2="53" y2="42" stroke="#888" strokeWidth="1.5"/>
-        </>
-      )}
-    </svg>
-  );
 }
 
 // ── Sparkline SVG ─────────────────────────────────────────────────────────
@@ -368,11 +309,15 @@ export default function InstaCard({
             alignItems:"center",
             justifyContent:"center",
           }}>
-            <ShareAvatar
-              gender={avatarGender} skinTone={avatarSkin}
-              hairStyle={avatarHair} hairColor={avatarHairColor}
-              shirtColor={avatarShirt} hasGlasses={!!avatarGlasses}
-              hasBeard={!!avatarBeard} hasMustache={!!avatarMustache}
+            <AvatarPreview
+              gender={avatarGender}
+              skinTone={avatarSkin}
+              hairStyle={avatarHair}
+              hairColor={avatarHairColor}
+              shirtColor={avatarShirt}
+              hasGlasses={avatarGlasses}
+              hasBeard={avatarBeard}
+              hasMustache={avatarMustache}
               size={80}
             />
           </div>
