@@ -3098,6 +3098,22 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
   const [voyageMode, setVoyageMode] = useState(
     () => localStorage.getItem('op_voyage_mode') !== 'off'
   );
+  useEffect(() => {
+    const syncCalendarBackground = () => {
+      const theme = document.body.dataset.theme === "light" ? "light" : "dark";
+      const bgColor = voyageMode
+        ? (theme === "light" ? "#67d7ff" : "#010c16")
+        : (theme === "light" ? "#f7f4ee" : "#000000");
+      document.documentElement.style.backgroundColor = bgColor;
+      document.body.style.backgroundColor = bgColor;
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      if (metaThemeColor) metaThemeColor.setAttribute("content", bgColor);
+    };
+    syncCalendarBackground();
+    const observer = new MutationObserver(syncCalendarBackground);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, [voyageMode]);
   const toggleVoyageMode = useCallback(() => {
     setVoyageMode(prev => {
       const next = !prev;
@@ -6781,7 +6797,10 @@ export default function App() {
   useEffect(() => {
     const theme = appTheme === "light" ? "light" : "dark";
     const isCalendar = tab === "calendar";
-    const bgColor = isCalendar
+    const isPlainCalendar = isCalendar && localStorage.getItem('op_voyage_mode') === 'off';
+    const bgColor = isPlainCalendar
+      ? (theme === "light" ? "#f7f4ee" : "#000000")
+      : isCalendar
       ? (theme === "light" ? "#67d7ff" : "#010c16")
       : (theme === "light" ? "#f7f4ee" : "#000000");
     localStorage.setItem("conquer_theme", theme);

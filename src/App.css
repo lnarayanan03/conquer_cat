@@ -2,7 +2,9 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
+  background: #000;
 }
 body {
   background: #000;
@@ -45,6 +47,18 @@ body[data-theme="light"]:has(.app.on-calendar) {
   --avatar-bg-highlight: #171717;
 }
 .app { display: flex; height: 100vh; overflow: hidden; background: #000; }
+.app.on-calendar {
+  background: linear-gradient(180deg, #010c16 0%, #020f1e 36%, #010c16 100%);
+}
+.app.theme-light.on-calendar {
+  background: linear-gradient(180deg, #67d7ff 0%, #38c9f7 100%);
+}
+.app.on-calendar:has(.cal-plain-mode) {
+  background: #000;
+}
+.app.theme-light.on-calendar:has(.cal-plain-mode) {
+  background: #f7f4ee;
+}
 .mobile-header,
 .mobile-drawer,
 .mobile-drawer-backdrop {
@@ -306,8 +320,12 @@ body[data-theme="light"]:has(.app.on-calendar) {
 .cal-plain-mode.page.calendar-page {
   max-width: 700px;
   padding: 44px 40px 80px;
+  background: #000;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0;
+}
+.app.theme-light .cal-plain-mode.page.calendar-page {
+  background: #f7f4ee !important;
 }
 /* Remove ocean-specific side margins (page padding now covers it) */
 .cal-plain-mode.page.calendar-page .page-header,
@@ -3204,10 +3222,11 @@ select:focus { border-color: #f97316; }
   .sidebar { display: none; }
   .app {
     display: block;
-    height: 100svh;
-    height: 100dvh;
-    min-height: 100svh;
-    min-height: 100dvh;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: auto;
+    min-height: 0;
     overflow: hidden;
   }
   .mobile-header {
@@ -3498,7 +3517,7 @@ select:focus { border-color: #f97316; }
     padding-bottom: 0 !important;
   }
   .calendar-months {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-bottom: 0;
   }
   .main::-webkit-scrollbar { display: none; }
   .main.mentor-main {
@@ -3684,7 +3703,7 @@ select:focus { border-color: #f97316; }
     padding-top: var(--mobile-header-h) !important;
   }
   .calendar-months {
-    padding: 20px 0 calc(10px + env(safe-area-inset-bottom));
+    padding: 20px 0 0;
     gap: 32px;
     /* Prevent horizontal overflow causing infinite zoom */
     overflow-x: hidden;
