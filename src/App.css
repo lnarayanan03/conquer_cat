@@ -1980,7 +1980,7 @@ body:has(.app.theme-light) {
     border-bottom-color: transparent !important;
   }
   .main {
-    padding-top: calc(env(safe-area-inset-top) + 54px) !important;
+    padding-top: calc(env(safe-area-inset-top) + 96px) !important;
   }
   /* Mentor page: shorten shell on phone so bottom nav doesn't overlap the composer.
      Formula mirrors the dynamic header height above. */

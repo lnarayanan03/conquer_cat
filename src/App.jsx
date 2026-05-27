@@ -2435,12 +2435,11 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
   const scrollToMonth = useCallback((monthKey) => {
     const el = monthRefs.current[monthKey];
     if (!el) return;
-    const scroller = el.closest(".main") || document.scrollingElement || document.documentElement;
-    const scrollerRect = scroller.getBoundingClientRect?.() || { top: 0, height: window.innerHeight };
-    const elRect = el.getBoundingClientRect();
-    const currentTop = "scrollTop" in scroller ? scroller.scrollTop : window.scrollY;
-    const targetTop = currentTop + elRect.top - scrollerRect.top - (scrollerRect.height / 2) + (elRect.height / 2);
-    scroller.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    el.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest"
+    });
   }, []);
 
   return (
