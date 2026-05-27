@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
@@ -505,10 +505,30 @@ function NavIcon({ id }) {
     calendar: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
     chat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
     profile: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    insta: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17" cy="7" r="1"/></svg>,
   };
   return icons[id] || null;
 }
 
+// Clean inline SVG icons for D-Day anime cards — replaces emoji symbols
+function DdaySymbolIcon({ type, size = 22 }) {
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" };
+  const shapes = {
+    lightning: <path d="M13 2L4.5 13.5h5.5L8 22l11.5-13h-5.5L13 2z" fill="currentColor" stroke="none"/>,
+    sword:     <><line x1="6" y1="18" x2="18" y2="6"/><polyline points="8,6 18,6 18,16"/></>,
+    star4:     <polygon points="12,2 14.9,9.1 22,9.1 16.5,13.9 18.5,21 12,17 5.5,21 7.5,13.9 2,9.1 9.1,9.1" fill="currentColor" stroke="none"/>,
+    fist:      <><rect x="6" y="9" width="12" height="8" rx="3"/><path d="M9 9V7a3 3 0 0 1 6 0v2"/></>,
+    flame:     <path d="M12 22c4 0 7-3 7-7 0-2-1-3.5-2.5-4.5.5 1.2 0 2.8-1.5 3.5 0-1.5-1-4.5-4-6 .5 2 0 4.5-2.5 6.5C7.5 15.5 7 17 7 18c0 2.5 2.5 4 5 4z" fill="currentColor" stroke="none"/>,
+    spiral:    <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></>,
+    burst:     <><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="5.6" y1="5.6" x2="7.8" y2="7.8"/><line x1="16.2" y1="16.2" x2="18.4" y2="18.4"/><line x1="5.6" y1="18.4" x2="7.8" y2="16.2"/><line x1="16.2" y1="7.8" x2="18.4" y2="5.6"/></>,
+    target:    <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></>,
+    compass:   <><circle cx="12" cy="12" r="9"/><polygon points="16.24,7.76 14.12,14.12 7.76,16.24 9.88,9.88" fill="currentColor" stroke="none"/></>,
+    shield:    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="currentColor" stroke="none"/>,
+    wave:      <><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 7c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 17c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/></>,
+    arrow:     <><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></>,
+  };
+  return <svg {...p}>{shapes[type] || shapes.star4}</svg>;
+}
 
 function TodayPage({
   date, d, upd, dl, start, totalDays, mode, setTab,
@@ -592,100 +612,26 @@ function TodayPage({
   const isExamDay = date === EXAM_DATE_KEY;
   const showApplicationToggle = isApplicationWindow(date);
   const showFinalPush = isFinalPushDate(date);
+  const todayScore = effortScore(d, backlogVideos, backlogConcepts);
 
   if (isExamDay) {
     const reveal = isDdayRevealDay();
     const ddayMotifs = [
-      {
-        symbol: "👒",
-        title: "Straw Hat Resolve",
-        copy: "Put the dream on your head. Walk in like the sea already made space for you.",
-        source: "One Piece spirit",
-      },
-      {
-        symbol: "⚡",
-        title: "Saiyan Calm",
-        copy: "Power is not noise today. It is quiet pressure, clean breathing, and one more sharp decision.",
-        source: "Dragon Ball spirit",
-      },
-      {
-        symbol: "⚔",
-        title: "Soul Blade",
-        copy: "Cut only what matters. Skip the traps. Slice through the paper with discipline.",
-        source: "Bleach spirit",
-      },
-      {
-        symbol: "✦",
-        title: "Five-Leaf Will",
-        copy: "When the section gets loud, your months of practice get louder. You earned that voice.",
-        source: "Black Clover spirit",
-      },
-      {
-        symbol: "🥊",
-        title: "Final Round",
-        copy: "Guard up. Feet steady. Question by question. No panic gets to sit in your corner.",
-        source: "Boxing anime spirit",
-      },
-      {
-        symbol: "🔥",
-        title: "Break Point",
-        copy: "The exam is not bigger than your preparation. Let it meet the version of you that stayed.",
-        source: "Shonen fire spirit",
-      },
-      {
-        symbol: "🍥",
-        title: "Hidden Leaf Grit",
-        copy: "No shortcut built you. Repetition did. Walk in with the stubborn courage that kept returning.",
-        source: "Naruto spirit",
-      },
-      {
-        symbol: "💥",
-        title: "Hero Academia",
-        copy: "A real hero moves while afraid. Today your quirk is preparation, patience, and clean execution.",
-        source: "My Hero Academia spirit",
-      },
-      {
-        symbol: "🥊",
-        title: "Ippo Steps",
-        copy: "Small steps made the fighter. Small choices will make the score. Keep your rhythm.",
-        source: "Hajime no Ippo spirit",
-      },
-      {
-        symbol: "🏐",
-        title: "Court Momentum",
-        copy: "Jump for the next point only. The last miss cannot touch the next serve.",
-        source: "Haikyuu spirit",
-      },
-      {
-        symbol: "🏀",
-        title: "Zone Focus",
-        copy: "The crowd disappears. The clock disappears. Only the next question and your hand remain.",
-        source: "Kuroko's Basketball spirit",
-      },
-      {
-        symbol: "🧭",
-        title: "Scout Discipline",
-        copy: "Look straight at the giant. Break it into parts. Attack the weak point without drama.",
-        source: "Attack on Titan spirit",
-      },
-      {
-        symbol: "🛡",
-        title: "Shield Rise",
-        copy: "Every hard day became armor. Today, pressure hits you and turns into structure.",
-        source: "Shield Hero spirit",
-      },
-      {
-        symbol: "🌊",
-        title: "Water Breathing",
-        copy: "Inhale, read, eliminate, choose. Let calm become your technique.",
-        source: "Demon Slayer spirit",
-      },
-      {
-        symbol: "🏃",
-        title: "Long Run",
-        copy: "This was never one sprint. It was the road you kept taking when nobody clapped.",
-        source: "Run with the Wind spirit",
-      },
+      { symbol: "star4",    title: "Straw Hat Resolve",  copy: "Put the dream on your head. Walk in like the sea already made space for you.",                  source: "One Piece spirit" },
+      { symbol: "lightning",title: "Saiyan Calm",        copy: "Power is not noise today. It is quiet pressure, clean breathing, and one more sharp decision.",  source: "Dragon Ball spirit" },
+      { symbol: "sword",    title: "Soul Blade",         copy: "Cut only what matters. Skip the traps. Slice through the paper with discipline.",                source: "Bleach spirit" },
+      { symbol: "burst",    title: "Five-Leaf Will",     copy: "When the section gets loud, your months of practice get louder. You earned that voice.",          source: "Black Clover spirit" },
+      { symbol: "fist",     title: "Final Round",        copy: "Guard up. Feet steady. Question by question. No panic gets to sit in your corner.",               source: "Boxing anime spirit" },
+      { symbol: "flame",    title: "Break Point",        copy: "The exam is not bigger than your preparation. Let it meet the version of you that stayed.",       source: "Shonen fire spirit" },
+      { symbol: "spiral",   title: "Hidden Leaf Grit",   copy: "No shortcut built you. Repetition did. Walk in with the stubborn courage that kept returning.",   source: "Naruto spirit" },
+      { symbol: "burst",    title: "Hero Academia",      copy: "A real hero moves while afraid. Today your quirk is preparation, patience, and clean execution.", source: "My Hero Academia spirit" },
+      { symbol: "fist",     title: "Ippo Steps",         copy: "Small steps made the fighter. Small choices will make the score. Keep your rhythm.",              source: "Hajime no Ippo spirit" },
+      { symbol: "target",   title: "Court Momentum",     copy: "Jump for the next point only. The last miss cannot touch the next serve.",                        source: "Haikyuu spirit" },
+      { symbol: "target",   title: "Zone Focus",         copy: "The crowd disappears. The clock disappears. Only the next question and your hand remain.",        source: "Kuroko's Basketball spirit" },
+      { symbol: "compass",  title: "Scout Discipline",   copy: "Look straight at the giant. Break it into parts. Attack the weak point without drama.",           source: "Attack on Titan spirit" },
+      { symbol: "shield",   title: "Shield Rise",        copy: "Every hard day became armor. Today, pressure hits you and turns into structure.",                 source: "Shield Hero spirit" },
+      { symbol: "wave",     title: "Water Breathing",    copy: "Inhale, read, eliminate, choose. Let calm become your technique.",                                source: "Demon Slayer spirit" },
+      { symbol: "arrow",    title: "Long Run",           copy: "This was never one sprint. It was the road you kept taking when nobody clapped.",                 source: "Run with the Wind spirit" },
     ];
     return (
       <div className="page">
@@ -725,8 +671,8 @@ function TodayPage({
                     className="dday-anime-card"
                     style={{animationDelay:`${idx * 120}ms`}}
                   >
-                    <div className="dday-card-mark" aria-hidden="true">{item.symbol}</div>
-                    <div className="dday-symbol" aria-hidden="true">{item.symbol}</div>
+                    <div className="dday-card-mark" aria-hidden="true"><DdaySymbolIcon type={item.symbol} size={64}/></div>
+                    <div className="dday-symbol" aria-hidden="true"><DdaySymbolIcon type={item.symbol} size={20}/></div>
                     <div className="dday-card-body">
                       <div className="dday-card-title">{item.title}</div>
                       <div className="dday-card-copy">{item.copy}</div>
@@ -746,9 +692,12 @@ function TodayPage({
               </div>
               <div className="dday-gita-card">
                 <div className="dday-gita-watermark" aria-hidden="true">
-                  <span className="dday-peacock">🪶</span>
-                  <span className="dday-flute">♫</span>
-                  <span className="dday-chariot">☸</span>
+                  {/* feather */}
+                  <span className="dday-peacock" aria-hidden="true"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22V8"/><path d="M12 8C12 8 6 11 6 15a6 6 0 0 0 12 0c0-4-6-7-6-7z"/><path d="M12 8c0 0-3 2-4 5"/><path d="M12 8c0 0 3 2 4 5"/></svg></span>
+                  {/* music note */}
+                  <span className="dday-flute" aria-hidden="true"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+                  {/* dharma wheel */}
+                  <span className="dday-chariot" aria-hidden="true"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><line x1="12" y1="3" x2="12" y2="9.5"/><line x1="12" y1="14.5" x2="12" y2="21"/><line x1="3" y1="12" x2="9.5" y2="12"/><line x1="14.5" y1="12" x2="21" y2="12"/><line x1="5.6" y1="5.6" x2="9.9" y2="9.9"/><line x1="14.1" y1="14.1" x2="18.4" y2="18.4"/><line x1="5.6" y1="18.4" x2="9.9" y2="14.1"/><line x1="14.1" y1="9.9" x2="18.4" y2="5.6"/></svg></span>
                 </div>
                 <div className="dday-gita-content">
                   <div className="dday-gita-label">Gita Upadesam</div>
@@ -789,6 +738,44 @@ function TodayPage({
         </div>
       </div>
       <div className="sections">
+        {/* Today's Effort Score — top of page, visible without scrolling */}
+        <div>
+          <div className="sec-label">Today's Effort</div>
+          <div className="card effort-score-card">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div>
+                <div style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase",fontWeight:700}}>Effort Score</div>
+                <div style={{display:"flex",alignItems:"baseline",gap:4,marginTop:4}}>
+                  <span style={{fontSize:38,fontWeight:900,color:"var(--ac)",fontVariantNumeric:"tabular-nums",lineHeight:1,letterSpacing:"-0.03em"}}>{todayScore}</span>
+                  <span style={{fontSize:15,color:"var(--tt)",fontWeight:600}}>/100</span>
+                </div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}>
+                  {todayScore>=80
+                    ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30d158" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="9,12 11,14 15,10"/></svg>
+                    : todayScore>=50
+                      ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><path d="M8 6l4 6 4-6"/><path d="M6 14h12"/></svg>
+                      : todayScore>=25
+                        ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3,17 8,12 13,14 21,6"/><polyline points="15,6 21,6 21,12"/></svg>
+                        : null
+                  }
+                </div>
+                <div style={{fontSize:11,fontWeight:700,color:todayScore>=80?"#30d158":todayScore>=50?"var(--ac)":todayScore>=25?"#f59e0b":"var(--tt)"}}>
+                  {todayScore>=80?"Excellent day!":todayScore>=50?"Good progress":todayScore>=25?"Keep going":"Let's get started"}
+                </div>
+              </div>
+            </div>
+            <div className="bar-track" style={{height:6,margin:0}}>
+              <div className="bar-fill" style={{width:`${todayScore}%`,background:todayScore>=80?"#30d158":todayScore>=50?"var(--ac)":todayScore>=25?"#f59e0b":"var(--ts)"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10,color:"var(--tt)"}}>
+              <span>0</span>
+              <span>100</span>
+            </div>
+          </div>
+        </div>
+
         <div>
           <div className="sec-label">Vitals</div>
           <div className="card">
@@ -1350,7 +1337,7 @@ function TodayPage({
             }}
             style={{flex:2, maxWidth:200}}
           >
-            {saved ? "Saved ✓" : "Save Day"}
+            {saved ? "Saved" : "Save Day"}
           </button>
 
           <button
@@ -1542,7 +1529,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                       cursor:"pointer", padding:"0 4px",
                       lineHeight:1
                     }}
-                  >×</button>
+                  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
               ))}
             </div>
@@ -1590,7 +1577,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                       color:"var(--tt)", fontSize:18,
                       cursor:"pointer", padding:"0 4px"
                     }}
-                  >×</button>
+                  ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
               ))}
             </div>
@@ -1835,7 +1822,7 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
           className={`save-btn${saved ? " saved" : ""}`}
           onClick={handleSave}
         >
-          {saved ? "Saved ✓" : "Save Timetable"}
+          {saved ? "Saved" : "Save Timetable"}
         </button>
       </div>
     </div>
@@ -2024,7 +2011,9 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
         <div className="page-title">Assessment Done</div>
       </div>
       <div className="card" style={{padding:"24px 20px",textAlign:"center"}}>
-        <div style={{fontSize:48,marginBottom:12}}>✓</div>
+        <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#30d158" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="9,12 11,14 15,10"/></svg>
+        </div>
         <div style={{fontSize:18,fontWeight:700,color:"#30d158",marginBottom:8}}>
           {sessionType === "weekly" ? "Weekly" : "Daily"} assessment complete
         </div>
@@ -2132,7 +2121,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
               fontSize:14,fontWeight:700,marginBottom:8,
               color: result.isCorrect ? "#30d158" : "#ff453a"
             }}>
-              {result.isCorrect ? "✓ Correct" : "✗ Wrong"}
+              {result.isCorrect ? "Correct" : "Wrong"}
             </div>
             <div style={{fontSize:13,color:"var(--ts)",lineHeight:1.6}}>
               {result.explanation}
@@ -2172,7 +2161,22 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
   );
 }
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(query).matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia(query);
+    const handler = (e) => setMatches(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [query]);
+  return matches;
+}
+
 function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, backlogConcepts }) {
+  const isPhone = useMediaQuery("(max-width: 767px)");
   const subj = [
     {id:"quant",lbl:"Quant",tar:2000,act:totals.quant,dailyTarget:10},
     {id:"varc",lbl:"VARC",tar:1000,act:totals.varc,dailyTarget:5},
@@ -2202,6 +2206,51 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
     }
     return points;
   }, [data, dn, start, totalDays, backlogVideos, backlogConcepts]);
+
+  const progressInsights = useMemo(() => {
+    const metTargets = day =>
+      (+day?.q || 0) >= 10 &&
+      (+day?.v || 0) >= 5 &&
+      (+day?.l || 0) >= 5 &&
+      (+day?.vp_count || 0) >= 1;
+    const scoreForDay = day => effortScore(day || defaultDay(), backlogVideos, backlogConcepts);
+    const todayDate = new Date(todayKey() + "T00:00:00");
+    let streak = 0;
+    for (let d = new Date(todayDate); ; d.setDate(d.getDate() - 1)) {
+      const key = toLocalDateKey(d);
+      if (!metTargets(data[key])) break;
+      streak += 1;
+    }
+    const week = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(todayDate);
+      d.setDate(d.getDate() - (6 - i));
+      const key = toLocalDateKey(d);
+      const day = data[key];
+      const label = d.toLocaleDateString("en-IN", { weekday: "short" }).slice(0, 1);
+      return { key, label, date: d.getDate(), score: scoreForDay(day), met: metTargets(day), hasEntry: !!day };
+    });
+    const trend = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(todayDate);
+      d.setDate(d.getDate() - (13 - i));
+      const key = toLocalDateKey(d);
+      return { key, score: scoreForDay(data[key]) };
+    });
+    const last7 = trend.slice(7).reduce((sum, p) => sum + p.score, 0) / 7;
+    const prev7 = trend.slice(0, 7).reduce((sum, p) => sum + p.score, 0) / 7;
+    const maxScore = Math.max(100, ...trend.map(p => p.score));
+    const points = trend.map((p, i) => {
+      const x = trend.length <= 1 ? 0 : (i / (trend.length - 1)) * 100;
+      const y = 44 - (Math.min(p.score, maxScore) / maxScore) * 38;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(" ");
+    return {
+      streak,
+      week,
+      trendLabel: last7 > prev7 ? "Trending up" : "Steady",
+      trendPoints: points,
+      last7Avg: Math.round(last7),
+    };
+  }, [data, backlogVideos, backlogConcepts]);
 
   const totalH = Object.values(data).reduce((a, d) => {
     const mins =
@@ -2260,6 +2309,34 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
         <div>
           <div className="sec-label">Journey Score</div>
           <div className="card" style={{padding:"16px 10px 10px"}}>
+            {isPhone && (
+              <div className="progress-insights">
+                <div className="progress-streak-mini">
+                  <span>{progressInsights.streak}</span>
+                  <div>
+                    <strong>day streak</strong>
+                    <small>daily targets met</small>
+                  </div>
+                </div>
+                <div className="progress-week-mini">
+                  {progressInsights.week.map(day => (
+                    <div key={day.key} className="progress-week-day">
+                      <span className={`progress-week-dot ${day.met ? "met" : day.hasEntry ? "missed" : "empty"}`} />
+                      <small>{day.label}</small>
+                    </div>
+                  ))}
+                </div>
+                <div className="progress-trend-mini">
+                  <div>
+                    <strong>Effort trend</strong>
+                    <span>{progressInsights.trendLabel} · {progressInsights.last7Avg}% avg</span>
+                  </div>
+                  <svg viewBox="0 0 100 48" preserveAspectRatio="none" aria-hidden="true">
+                    <polyline points={progressInsights.trendPoints} />
+                  </svg>
+                </div>
+              </div>
+            )}
             <div style={{display:"flex",gap:16,marginBottom:12,paddingLeft:8,flexWrap:"wrap"}}>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:20,height:2,background:"#f5c518",borderRadius:1}}/><span style={{fontSize:10,color:"var(--tt)"}}>Target</span></div>
               <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/><span style={{fontSize:10,color:"var(--tt)"}}>Actual</span></div>
@@ -2351,6 +2428,17 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
     return months;
   }, [data, start, totalDays, today]);
 
+  const scrollToMonth = useCallback((monthKey) => {
+    const el = monthRefs.current[monthKey];
+    if (!el) return;
+    const scroller = el.closest(".main") || document.scrollingElement || document.documentElement;
+    const scrollerRect = scroller.getBoundingClientRect?.() || { top: 0, height: window.innerHeight };
+    const elRect = el.getBoundingClientRect();
+    const currentTop = "scrollTop" in scroller ? scroller.scrollTop : window.scrollY;
+    const targetTop = currentTop + elRect.top - scrollerRect.top - (scrollerRect.height / 2) + (elRect.height / 2);
+    scroller.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }, []);
+
   return (
     <div className="page">
       <div className="page-header">
@@ -2364,7 +2452,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
               key={m.key}
               type="button"
               className={`month-chip ${m.state}`}
-              onClick={() => monthRefs.current[m.key]?.scrollIntoView({ behavior:"smooth", block:"start" })}
+              onClick={() => scrollToMonth(m.key)}
             >
               {m.label}
             </button>
@@ -2909,7 +2997,7 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
                 <div className="mentor-sub">99.99%ile · IIM-A · 4× CAT</div>
               </div>
             </div>
-            <button className="close-btn" onClick={() => setOpen(false)}>×</button>
+            <button className="close-btn" onClick={() => setOpen(false)} aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div className="messages mentor-messages" ref={ref} style={{padding:"14px",minHeight:0}}>
             {mentorMessages.map((m, i) => (
@@ -3259,7 +3347,10 @@ function ProfilePage({
               aria-label={`Switch to ${appTheme === "light" ? "dark" : "light"} mode`}
             >
               <span className="theme-switch-icon" aria-hidden="true">
-                {appTheme === "light" ? "☀" : "☾"}
+                {appTheme === "light"
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                }
               </span>
               <span>{appTheme === "light" ? "Light" : "Dark"}</span>
             </button>
@@ -3316,11 +3407,11 @@ function ProfilePage({
                 fontWeight:600
               }}>
                 {targetPercentile >= 99.5
-                  ? "✓ Competitive for all IIMs including IIM-A"
+                  ? "Competitive for all IIMs including IIM-A"
                   : targetPercentile >= 97
-                    ? "✓ Competitive for IIM KLIS and New IIMs"
+                    ? "Competitive for IIM KLIS and New IIMs"
                     : targetPercentile >= 93
-                      ? "✓ Competitive for New IIMs and Baby IIMs"
+                      ? "Competitive for New IIMs and Baby IIMs"
                       : "Below competitive range for IIMs"}
               </div>
             )}
@@ -3378,7 +3469,7 @@ function ProfilePage({
                           color: meets ? "#30d158" : close ? "#f97316" : "#ff453a"
                         }}>
                           {meets
-                            ? `✓ Your ${targetPercentile}% meets this`
+                            ? `Your ${targetPercentile}% meets this`
                             : close
                               ? `${(needed-targetPercentile).toFixed(2)}% short`
                               : `Need ${(needed-targetPercentile).toFixed(1)}% more`}
@@ -3459,7 +3550,7 @@ function ProfilePage({
             }).catch(console.error);
           }}
         >
-          {saved ? "Saved ✓" : "Save Profile"}
+          {saved ? "Saved" : "Save Profile"}
         </button>
       </div>
     </div>
@@ -3782,7 +3873,7 @@ function ProfileEditPage({
                 )}
                 {pinForm.success && (
                   <div style={{fontSize:12,color:"#30d158",textAlign:"center",fontWeight:600}}>
-                    ✓ PIN changed successfully
+                    PIN changed successfully
                   </div>
                 )}
                 <button
@@ -4047,7 +4138,7 @@ function AcademicProfilePage({
             }).catch(console.error);
           }}
         >
-          {saved ? "Saved ✓" : "Save Academic Profile"}
+          {saved ? "Saved" : "Save Academic Profile"}
         </button>
       </div>
     </div>
@@ -4144,10 +4235,11 @@ function SecondaryDegreesPage({
                   </div>
                   <button
                     onClick={() => removeDegree(deg.id)}
+                    aria-label="Remove degree"
                     style={{background:"transparent",border:"none",
                       color:"#ff453a",fontSize:20,cursor:"pointer",
                       padding:"0 0 0 12px",lineHeight:1}}>
-                    ×
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
               );
@@ -5367,6 +5459,9 @@ export default function App() {
     const theme = appTheme === "light" ? "light" : "dark";
     localStorage.setItem("conquer_theme", theme);
     document.documentElement.style.colorScheme = theme;
+    // Fix light mode: ensure body/html background matches theme (removes black strip on mobile)
+    document.body.style.background = theme === "light" ? "#f7f4ee" : "#000";
+    document.documentElement.style.background = theme === "light" ? "#f7f4ee" : "#000";
   }, [appTheme]);
   useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
   useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
@@ -5834,6 +5929,14 @@ export default function App() {
   };
 
   const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
+  const mobileTabs = [
+    {id:"today",    lbl:"Today"},
+    {id:"progress", lbl:"Progress"},
+    {id:"calendar", lbl:"Calendar"},
+    {id:"chat",     lbl:"Mentor"},
+    {id:"insta",    lbl:"Insta"},
+    {id:"profile",  lbl:"Profile"},
+  ];
 
   return (
     <div className={`app theme-${appTheme === "light" ? "light" : "dark"}`}>
@@ -5843,12 +5946,23 @@ export default function App() {
           onClick={() => setMobileMenuOpen(true)}
           aria-label="Open navigation menu"
         >
-          ☰
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
         <div className="mobile-brand">
           <div className="mobile-title">CONQUER CAT</div>
           <div className="mobile-sub">{mode === "interview" ? "IIM INTERVIEW" : "CAT 2026 · 99.9%ile"}</div>
         </div>
+        <button
+          type="button"
+          className={`mobile-theme-btn${appTheme === "light" ? " light" : ""}`}
+          onClick={() => setAppTheme(appTheme === "light" ? "dark" : "light")}
+          aria-label={`Switch to ${appTheme === "light" ? "dark" : "light"} mode`}
+        >
+          {appTheme === "light"
+            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          }
+        </button>
         <div className="mobile-days-pill" aria-label={`${dl} days to CAT`}>
           <span>{dl}</span>
           <small>DAYS</small>
@@ -5872,7 +5986,7 @@ export default function App() {
             onClick={() => setMobileMenuOpen(false)}
             aria-label="Close navigation menu"
           >
-            ×
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <nav className="s-nav mobile-drawer-nav" style={{flex:1}}>
@@ -6169,7 +6283,41 @@ export default function App() {
           />
         )}
         {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} calcResult={calcResult} targetPercentile={targetPercentile} />}
+        {tab==="insta" && (
+          <InstaCard
+            dayNumber={dn}
+            totalDays={totalDays}
+            daysLeft={dl}
+            totals={totals}
+            todayData={data[sel] || defaultDay()}
+            userName={userName}
+            effortScore={effortScore(data[sel] || defaultDay(), backlogVideos, backlogConcepts)}
+            avatarGender={avatarGender}
+            avatarSkin={avatarSkin}
+            avatarHair={avatarHair}
+            avatarHairColor={avatarHairColor}
+            avatarShirt={avatarShirt}
+            avatarGlasses={avatarGlasses}
+            avatarBeard={avatarBeard}
+            avatarMustache={avatarMustache}
+            onClose={() => setTab("today")}
+          />
+        )}
       </main>
+
+      <nav className="ios-bottom-nav" aria-label="Mobile primary navigation">
+        {mobileTabs.map(item => (
+          <button
+            key={item.id}
+            type="button"
+            className={tab === item.id ? "active" : ""}
+            onClick={() => setTab(item.id)}
+          >
+            <NavIcon id={item.id} />
+            <span>{item.lbl}</span>
+          </button>
+        ))}
+      </nav>
 
       <FloatingMentor daysLeft={dl} totals={totals} dayNum={dn} todayData={todayData} mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} activeTab={tab === "chat" ? "mentor" : tab} calcResult={calcResult} targetPercentile={targetPercentile} />
 
