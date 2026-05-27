@@ -3104,8 +3104,13 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       const bgColor = voyageMode
         ? (theme === "light" ? "#67d7ff" : "#010c16")
         : (theme === "light" ? "#f7f4ee" : "#000000");
+      const safeFill = voyageMode
+        ? (theme === "light" ? "#38c9f7" : "#010c16")
+        : bgColor;
       document.documentElement.style.backgroundColor = bgColor;
       document.body.style.backgroundColor = bgColor;
+      document.documentElement.style.setProperty("--app-bg", bgColor);
+      document.documentElement.style.setProperty("--app-safe-fill", safeFill);
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) metaThemeColor.setAttribute("content", bgColor);
     };
@@ -6803,12 +6808,19 @@ export default function App() {
       : isCalendar
       ? (theme === "light" ? "#67d7ff" : "#010c16")
       : (theme === "light" ? "#f7f4ee" : "#000000");
+    const safeFill = isPlainCalendar
+      ? bgColor
+      : isCalendar
+      ? (theme === "light" ? "#38c9f7" : "#010c16")
+      : bgColor;
     localStorage.setItem("conquer_theme", theme);
     document.documentElement.style.colorScheme = theme;
     document.documentElement.dataset.theme = theme;
     document.body.dataset.theme = theme;
     document.documentElement.style.backgroundColor = bgColor;
     document.body.style.backgroundColor = bgColor;
+    document.documentElement.style.setProperty("--app-bg", bgColor);
+    document.documentElement.style.setProperty("--app-safe-fill", safeFill);
     // Dynamic Island / status bar color on iPhone (theme-color meta tag)
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
