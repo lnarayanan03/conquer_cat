@@ -1,54 +1,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --app-bg: #000;
-  --app-safe-fill: #000;
-}
 html,
 body,
 #root {
-  height: 100%;
   min-height: 100%;
-  background: var(--app-safe-fill);
 }
 body {
-  background: var(--app-safe-fill);
+  background: #000;
   color: #f5f5f7;
-  padding-bottom: 0;
-  background-clip: border-box;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-body:has(.app.on-calendar) {
-  --app-bg: #010c16;
-  --app-safe-fill: #010c16;
-}
-html[data-theme="light"],
-body[data-theme="light"] {
-  --app-bg: #f7f4ee;
-  --app-safe-fill: #f7f4ee;
-  background: var(--app-bg);
-}
-body[data-theme="light"]:has(.app.on-calendar) {
-  --app-bg: #67d7ff;
-  --app-safe-fill: #38c9f7;
-}
-html:has(body .app.on-calendar) {
-  --app-bg: #010c16;
-  --app-safe-fill: #010c16;
-}
-html[data-theme="light"]:has(body .app.on-calendar) {
-  --app-bg: #67d7ff;
-  --app-safe-fill: #38c9f7;
-}
-html:has(body .app.on-calendar .cal-plain-mode),
-body:has(.app.on-calendar .cal-plain-mode) {
-  --app-bg: #000;
-  --app-safe-fill: #000;
-}
-html[data-theme="light"]:has(body .app.on-calendar .cal-plain-mode),
-body[data-theme="light"]:has(.app.on-calendar .cal-plain-mode) {
-  --app-bg: #f7f4ee;
-  --app-safe-fill: #f7f4ee;
 }
 :root {
   --ac: #f97316;
@@ -63,34 +23,8 @@ body[data-theme="light"]:has(.app.on-calendar .cal-plain-mode) {
   --tt: #6e6e73;
   --green: #30d158;
   --red: #ff453a;
-  --avatar-bg: #050505;
-  --avatar-bg-highlight: #171717;
 }
-.app.theme-light {
-  --avatar-bg: #ffffff;
-  --avatar-bg-highlight: #f4eadf;
-}
-.app.theme-dark {
-  --avatar-bg: #050505;
-  --avatar-bg-highlight: #171717;
-}
-.app { display: flex; height: 100dvh; overflow: hidden; background: var(--app-bg); }
-.app.on-calendar {
-  background: linear-gradient(180deg, #010c16 0%, #020f1e 36%, #010c16 100%);
-}
-.app.theme-light.on-calendar {
-  background: linear-gradient(180deg, #67d7ff 0%, #38c9f7 100%);
-}
-.app.on-calendar:has(.cal-plain-mode) {
-  background: #000;
-}
-.app.theme-light.on-calendar:has(.cal-plain-mode) {
-  background: #f7f4ee;
-}
-.app::after {
-  content: '';
-  display: none;
-}
+.app { display: flex; height: 100vh; overflow: hidden; background: #000; }
 .mobile-header,
 .mobile-drawer,
 .mobile-drawer-backdrop {
@@ -168,525 +102,10 @@ body[data-theme="light"]:has(.app.on-calendar .cal-plain-mode) {
   letter-spacing: -0.04em;
 }
 .dp-lab { font-size: 10px; color: #6e6e73; margin-top: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
-.main { flex: 1; overflow-y: auto; background: transparent; scrollbar-width: none; }
-.main::-webkit-scrollbar { display: none; }
-/* Calendar page — full blue ocean background, no black */
-.main.calendar-main {
-  background: linear-gradient(180deg, #010c16 0%, #020f1e 36%, #010c16 100%);
-  font-family: "Trebuchet MS", "Palatino Linotype", Georgia, serif;
-  letter-spacing: 0.01em;
-}
-.app.theme-light .main.calendar-main {
-  background: linear-gradient(180deg, #67d7ff 0%, #38c9f7 100%);
-}
-/* ── Plain (Grid) mode: strip all One Piece overrides from the main container ── */
-.main.calendar-main:has(.cal-plain-mode) {
-  background: #000 !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  letter-spacing: normal !important;
-}
-.app.theme-dark .main.calendar-main:has(.cal-plain-mode) {
-  background: #000 !important;
-}
-.app.theme-light .main.calendar-main:has(.cal-plain-mode) {
-  background: #f7f4ee !important;
-}
-.app.theme-light .page.calendar-page {
-  background: transparent;
-}
-.app.theme-light .main.calendar-main .page::before {
-  color: #ffffff;
-  border-bottom-color: rgba(255,255,255,0.55);
-  text-shadow: 0 1px 6px rgba(0,40,90,0.95), 0 2px 12px rgba(0,0,0,0.55);
-}
-.app.theme-light .main.calendar-main .page-title {
-  color: #fff;
-  text-shadow: 0 1px 8px rgba(0,60,120,0.8), 0 3px 14px rgba(0,0,0,0.4);
-}
-.app.theme-light .main.calendar-main .page-sub {
-  color: rgba(255,255,255,0.9);
-  text-shadow: 0 1px 6px rgba(0,60,120,0.7);
-}
-.app.theme-light .main.calendar-main .month-chip {
-  background: rgba(255,255,255,0.3);
-  border-color: rgba(255,255,255,0.52);
-  color: #003d6b;
-  font-weight: 900;
-}
-.app.theme-light .main.calendar-main .month-chip.current {
-  background: #f97316;
-  border-color: #ffb267;
-  color: #fff;
-}
-.app.theme-light .calendar-legend-item {
-  background: rgba(0,40,90,0.30);
-  border-color: rgba(255,255,255,0.28);
-}
-.app.theme-light .calendar-legend-item span {
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0,40,90,0.9);
-}
-.main.calendar-main .page::before {
-  color: #ffe66d;
-  border-bottom-color: rgba(255,230,109,0.34);
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.24em;
-  padding-bottom: 12px;
-  text-shadow: 0 0 22px rgba(255,198,56,0.56), 0 3px 9px rgba(0,0,0,0.82);
-}
-.main.calendar-main .page-title {
-  color: #fff6cf;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 44px;
-  text-shadow: 0 0 24px rgba(255,198,56,0.34), 0 3px 10px rgba(0,0,0,0.78);
-}
-.main.calendar-main .page-sub {
-  color: rgba(255,246,207,0.9);
-  font-size: 15px;
-  font-weight: 700;
-  text-shadow: 0 2px 7px rgba(0,0,0,0.65);
-}
-/* Month chips on blue ocean */
-.main.calendar-main .month-chip {
-  background: rgba(0,0,0,0.32);
-  border-color: rgba(255,255,255,0.22);
-  color: rgba(255,255,255,0.88);
-}
-.main.calendar-main .month-chip.past {
-  background: rgba(249,115,22,0.22);
-  border-color: rgba(249,115,22,0.45);
-  color: #f97316;
-}
-.main.calendar-main .month-chip.current {
-  background: #f97316;
-  border-color: #f97316;
-  color: #fff;
-}
-.main.calendar-main .month-chip.future {
-  background: rgba(0,0,0,0.2);
-  border-color: rgba(255,255,255,0.12);
-  color: rgba(255,255,255,0.6);
-}
+.main { flex: 1; overflow-y: auto; background: #000; }
+.main::-webkit-scrollbar { width: 3px; }
+.main::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
 .page { max-width: 700px; margin: 0 auto; padding: 44px 40px 80px; }
-/* Calendar page gets full available width; pb=24 so scroll ends at Laughtale */
-.page.calendar-page {
-  max-width: 100%;
-  padding: 32px 0 0;
-  min-height: 100%;
-  background: linear-gradient(180deg, #010c16 0%, #020f1e 36%, #010c16 100%);
-}
-.app.theme-light .page.calendar-page {
-  background: linear-gradient(180deg, #67d7ff 0%, #38c9f7 100%);
-}
-.page.calendar-page .page-header,
-.page.calendar-page .month-strip,
-.page.calendar-page .calendar-legend {
-  margin-left: 28px;
-  margin-right: 28px;
-}
-.page.calendar-page::before {
-  margin-left: 28px;
-  margin-right: 28px;
-}
-.page.calendar-page .page-header {
-  margin-bottom: 34px;
-}
-
-/* ── Calendar page header: title left, toggle right ── */
-.cal-pg-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-/* ── One Piece / Grid toggle button ── */
-.op-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--b1);
-  border: 1.5px solid var(--b2);
-  border-radius: 22px;
-  padding: 6px 12px 6px 10px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ts);
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-top: 4px;
-  transition: background 0.18s, border-color 0.18s, color 0.18s;
-  user-select: none;
-}
-.op-mode-toggle.opm-on {
-  background: rgba(249,115,22,0.1);
-  border-color: rgba(249,115,22,0.35);
-  color: #f97316;
-}
-.op-mode-toggle .opm-icon { font-size: 13px; line-height: 1; }
-.opm-track {
-  width: 28px; height: 16px;
-  background: var(--b2);
-  border-radius: 8px;
-  position: relative;
-  flex-shrink: 0;
-  transition: background 0.18s;
-}
-.opm-on .opm-track { background: rgba(249,115,22,0.5); }
-.opm-knob {
-  position: absolute;
-  top: 2px; left: 2px;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: var(--ts);
-  transition: transform 0.18s, background 0.18s;
-}
-.opm-on .opm-knob { transform: translateX(12px); background: #f97316; }
-.opm-label { font-size: 11px; }
-
-/* ─────────────────────────────────────────────────────────
-   PLAIN / GRID CALENDAR MODE  — matches old live-site layout
-   ───────────────────────────────────────────────────────── */
-/* Plain mode restores the old .page geometry — 700px centered with 40px side padding */
-.cal-plain-mode.page.calendar-page {
-  max-width: 700px;
-  padding: 44px 40px 80px;
-  background: #000 !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  letter-spacing: 0;
-}
-.app.theme-dark .cal-plain-mode.page.calendar-page {
-  background: #000 !important;
-}
-.app.theme-light .cal-plain-mode.page.calendar-page {
-  background: #f7f4ee !important;
-}
-/* Remove ocean-specific side margins (page padding now covers it) */
-.cal-plain-mode.page.calendar-page .page-header,
-.cal-plain-mode.page.calendar-page .month-strip,
-.cal-plain-mode.page.calendar-page .calendar-legend {
-  margin-left: 0;
-  margin-right: 0;
-}
-.cal-plain-mode.page.calendar-page::before {
-  margin-left: 0;
-  margin-right: 0;
-}
-.cal-plain-mode .page::before {
-  color: #f97316;
-  font-family: inherit;
-  font-size: 10px;
-  letter-spacing: 0.12em;
-}
-/* Wrap: centred, max-width matches old .page layout */
-.plain-cal-wrap {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 4px 0 80px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  width: 100%;
-}
-/* Month card */
-.plain-month-card {
-  background: var(--s2);
-  border: 1px solid var(--b1);
-  border-radius: 12px;
-  overflow: hidden;
-  scroll-margin-block: 45vh;
-}
-.app.theme-light .plain-month-card {
-  background: #fff;
-  border-color: rgba(0,0,0,0.09);
-  box-shadow: 0 1px 8px rgba(0,0,0,0.07);
-}
-/* Month label header */
-.plain-month-hdr {
-  padding: 8px 12px 7px;
-  font-size: 12px;
-  font-weight: 800;
-  color: var(--tp);
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--b1);
-}
-.app.theme-light .plain-month-hdr { color: #111; border-bottom-color: rgba(0,0,0,0.07); }
-
-/* Override One Piece week-head colors inside plain cards */
-.plain-month-card .calendar-week-head {
-  padding: 6px 12px 2px;
-  gap: 5px;
-}
-.plain-month-card .calendar-week-head span {
-  color: var(--tt);
-  font-size: 9px;
-  font-weight: 800;
-  text-align: center;
-  text-shadow: none;
-}
-.app.theme-light .plain-month-card .calendar-week-head span { color: #888; }
-
-/* Grid — matches old site 5px gap */
-.plain-month-card .calendar-month-grid {
-  padding: 3px 12px 12px;
-  gap: 5px;
-}
-
-/* ── Cell resets — strip ALL One Piece gradients / glows / fonts ── */
-.plain-month-card .cal-cell {
-  background: var(--s2);
-  border: 1px solid var(--b1);
-  border-radius: 6px;
-  color: #444;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 9px;
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  text-shadow: none;
-  transition: background 0.12s, border-color 0.12s;
-}
-.plain-month-card .cal-cell::before { display: none; }
-.plain-month-card .cal-cell:hover {
-  background: var(--s3);
-  border-color: var(--b2);
-  box-shadow: none;
-  transform: none;
-}
-/* Done — orange (app accent, matches old site exactly) */
-.plain-month-card .cal-cell.done {
-  background: rgba(249,115,22,0.14);
-  border-color: rgba(249,115,22,0.3);
-  color: rgba(249,115,22,0.8);
-  box-shadow: none;
-}
-/* Partial — very subtle orange (old site: 5% opacity) */
-.plain-month-card .cal-cell.partial {
-  background: rgba(249,115,22,0.05);
-  border-color: rgba(249,115,22,0.15);
-  color: var(--tt);
-  box-shadow: none;
-}
-/* CAT application window — blue */
-.plain-month-card .cal-cell.app-due {
-  background: rgba(59,130,246,0.12);
-  border-color: rgba(59,130,246,0.45);
-  color: #3b82f6;
-  box-shadow: none;
-}
-/* Final push — green (matches old site) */
-.plain-month-card .cal-cell.final-push {
-  background: rgba(48,209,88,0.12);
-  border-color: rgba(48,209,88,0.5);
-  color: #30d158;
-  box-shadow: none;
-}
-/* Today — orange ring like the rest of the app */
-.plain-month-card .cal-cell.today {
-  background: rgba(249,115,22,0.16) !important;
-  border-color: #f97316 !important;
-  color: #f97316 !important;
-  box-shadow: 0 0 0 1px rgba(249,115,22,0.35) !important;
-}
-/* Selected */
-.plain-month-card .cal-cell.selected {
-  box-shadow: 0 0 0 2px rgba(249,115,22,0.6) !important;
-}
-/* Locked */
-.plain-month-card .cal-cell.locked {
-  background: var(--s1);
-  border-color: var(--b1);
-  opacity: 0.38;
-}
-/* Day / date numbers — clean (old site: 10px 700w) */
-.plain-month-card .cal-day-num {
-  font-size: 10px;
-  text-shadow: none;
-  font-weight: 700;
-}
-.plain-month-card .cal-date-num {
-  color: var(--tt);
-  text-shadow: none;
-  font-size: 8px;
-}
-.plain-month-card .cal-cell.done .cal-date-num,
-.plain-month-card .cal-cell.partial .cal-date-num,
-.plain-month-card .cal-cell.app-due .cal-date-num,
-.plain-month-card .cal-cell.final-push .cal-date-num,
-.plain-month-card .cal-cell.today .cal-date-num { color: currentColor; }
-
-/* Light mode overrides for plain cells */
-.app.theme-light .plain-month-card .cal-cell {
-  background: #fff;
-  border-color: rgba(0,0,0,0.08);
-  color: #555;
-}
-.app.theme-light .plain-month-card .cal-cell.done {
-  background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.28); color: #c2410c;
-}
-.app.theme-light .plain-month-card .cal-cell.partial {
-  background: rgba(249,115,22,0.05); border-color: rgba(249,115,22,0.14); color: #9a7060;
-}
-.app.theme-light .plain-month-card .cal-cell.app-due {
-  background: rgba(59,130,246,0.10); border-color: rgba(59,130,246,0.32); color: #1d4ed8;
-}
-.app.theme-light .plain-month-card .cal-cell.final-push {
-  background: rgba(48,209,88,0.12); border-color: rgba(48,209,88,0.38); color: #1a8040;
-}
-.app.theme-light .plain-month-card .cal-cell.today {
-  background: rgba(249,115,22,0.14) !important; border-color: #f97316 !important; color: #c2410c !important;
-}
-
-/* D-Day card — plain mode */
-.plain-dday {
-  background: linear-gradient(120deg, rgba(249,115,22,0.08), rgba(0,80,40,0.10));
-  border: 1.5px solid rgba(249,115,22,0.28);
-  border-radius: 12px;
-  padding: 18px 22px 20px;
-  cursor: pointer;
-  transition: border-color 0.18s, box-shadow 0.18s;
-  margin-bottom: 16px;
-}
-.plain-dday:hover { border-color: rgba(249,115,22,0.55); box-shadow: 0 0 20px rgba(249,115,22,0.12); }
-.plain-dday.selected { border-color: rgba(249,115,22,0.7); box-shadow: 0 0 0 2px rgba(249,115,22,0.3); }
-.app.theme-light .plain-dday { background: linear-gradient(120deg, rgba(249,115,22,0.07), rgba(0,100,50,0.06)); border-color: rgba(249,115,22,0.36); }
-.plain-dday-tag {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.22em;
-  color: #f97316; margin-bottom: 4px; text-transform: uppercase;
-}
-.plain-dday-date {
-  font-size: 36px; font-weight: 900; color: var(--tp);
-  letter-spacing: -0.03em; line-height: 1.1;
-}
-.app.theme-light .plain-dday-date { color: #111; }
-.plain-dday-copy { font-size: 13px; color: var(--ts); margin-top: 4px; }
-
-/* ── Plain mode: override One Piece legend to match plain cell colors ── */
-.cal-plain-mode .calendar-legend-item {
-  background: transparent;
-  border-color: var(--b1);
-}
-.cal-plain-mode .calendar-legend-item span {
-  color: var(--ts);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 500;
-  text-shadow: none;
-}
-.cal-plain-mode .calendar-legend-swatch {
-  border-color: rgba(255,255,255,0.1);
-  box-shadow: none;
-}
-.cal-plain-mode .calendar-legend-swatch.done {
-  background: rgba(249,115,22,0.55);
-  border-color: rgba(249,115,22,0.4);
-}
-.cal-plain-mode .calendar-legend-swatch.partial {
-  background: rgba(249,115,22,0.15);
-  border-color: rgba(249,115,22,0.2);
-}
-.cal-plain-mode .calendar-legend-swatch.cat-app {
-  background: rgba(59,130,246,0.55);
-  border-color: rgba(59,130,246,0.5);
-}
-.cal-plain-mode .calendar-legend-swatch.push {
-  background: rgba(48,209,88,0.55);
-  border-color: rgba(48,209,88,0.5);
-}
-.cal-plain-mode .calendar-legend-swatch.empty {
-  background: var(--s1);
-  border-color: var(--b2);
-}
-.app.theme-light .cal-plain-mode .calendar-legend-item { background: transparent; border-color: var(--b1); }
-.app.theme-light .cal-plain-mode .calendar-legend-item span { color: var(--ts); }
-
-/* ── Plain mode: reset ALL One Piece page-level overrides ── */
-/* Banner text: back to orange on black */
-.main.calendar-main .cal-plain-mode::before {
-  color: #f97316 !important;
-  border-bottom-color: rgba(249,115,22,0.25) !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.16em !important;
-  padding-bottom: 8px !important;
-  text-shadow: none !important;
-}
-/* Page title: back to normal color + font */
-.main.calendar-main .cal-plain-mode .page-title {
-  color: var(--tp) !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  font-size: 32px !important;
-  text-shadow: none !important;
-}
-/* Page sub: back to normal */
-.main.calendar-main .cal-plain-mode .page-sub {
-  color: var(--tt) !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  text-shadow: none !important;
-}
-/* Month chips: back to app defaults */
-.main.calendar-main .cal-plain-mode .month-chip {
-  background: var(--s2) !important;
-  border-color: var(--b1) !important;
-  color: var(--tt) !important;
-  font-weight: 700;
-}
-.main.calendar-main .cal-plain-mode .month-chip.past {
-  color: #f97316 !important;
-  background: rgba(249,115,22,0.1) !important;
-  border-color: rgba(249,115,22,0.28) !important;
-}
-.main.calendar-main .cal-plain-mode .month-chip.current {
-  color: #fff !important;
-  background: #f97316 !important;
-  border-color: #f97316 !important;
-  box-shadow: 0 0 18px rgba(249,115,22,0.3) !important;
-}
-.main.calendar-main .cal-plain-mode .month-chip.future {
-  opacity: 0.65 !important;
-}
-/* Light mode: banner stays orange-on-light */
-.app.theme-light .main.calendar-main .cal-plain-mode::before {
-  color: #f97316 !important;
-  border-bottom-color: rgba(249,115,22,0.3) !important;
-  text-shadow: none !important;
-}
-.app.theme-light .main.calendar-main .cal-plain-mode .page-title {
-  color: var(--tp) !important;
-  text-shadow: none !important;
-}
-.app.theme-light .main.calendar-main .cal-plain-mode .page-sub {
-  color: var(--tt) !important;
-  text-shadow: none !important;
-}
-.app.theme-light .main.calendar-main .cal-plain-mode .month-chip {
-  background: #fff !important;
-  border-color: var(--b1) !important;
-  color: var(--tt) !important;
-}
-.app.theme-light .main.calendar-main .cal-plain-mode .month-chip.current {
-  background: #f97316 !important;
-  border-color: #f97316 !important;
-  color: #fff !important;
-}
-
-/* ── Laughtale desktop: cap width, prevent text/asset overlap ── */
-/* ── Performance: GPU-promote sea map for smooth scroll ── */
-.calendar-months {
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  contain: paint layout;
-  will-change: scroll-position;
-}
-.calendar-months::before {
-  will-change: background-position;
-}
 .page::before {
   content: "CAT 2026 · 99.9%ILE • CONQUER";
   display: block;
@@ -748,7 +167,7 @@ button.card-row {
   gap: 14px;
 }
 .theme-switch {
-  width: 102px;
+  width: 118px;
   height: 40px;
   border-radius: 999px;
   border: 1px solid var(--b2);
@@ -791,13 +210,13 @@ button.card-row {
   transition: transform 260ms cubic-bezier(0.4,0,0.2,1);
 }
 .theme-switch.light .theme-switch-icon {
-  transform: translateX(48px) rotate(120deg);
+  transform: translateX(64px) rotate(120deg);
 }
 .theme-switch.dark .theme-switch-icon {
   transform: translateX(0) rotate(-12deg);
 }
 .theme-switch.light > span:last-child {
-  transform: translateX(-20px);
+  transform: translateX(-26px);
 }
 .theme-switch.dark > span:last-child {
   transform: translateX(0);
@@ -1033,28 +452,27 @@ select:focus { border-color: #f97316; }
 .cal-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; }
 .month-strip {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 .month-chip {
   appearance: none;
   -webkit-appearance: none;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 11px;
+  font-weight: 700;
   color: var(--tt);
   background: var(--s2);
   border: 1px solid var(--b1);
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 5px 11px;
   cursor: pointer;
   font-family: inherit;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .month-chip:hover {
   transform: translateY(-1px);
   border-color: rgba(249,115,22,0.45);
-  box-shadow: 0 0 16px rgba(249,115,22,0.18);
 }
 .month-chip.past {
   color: #f97316;
@@ -1070,1259 +488,82 @@ select:focus { border-color: #f97316; }
 .month-chip.future {
   opacity: 0.65;
 }
-.calendar-legend {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 6px 0;
-  border-radius: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-.calendar-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 22px;
-  padding: 4px 9px;
-  border-radius: 999px;
-  background: rgba(0,0,0,0.28);
-  border: 1px solid rgba(255,230,109,0.22);
-}
-.calendar-legend-item span {
-  color: #fff6cf;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1.15;
-  text-shadow: 0 1px 5px rgba(0,0,0,0.85);
-}
-.calendar-legend-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.42);
-  flex-shrink: 0;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 8px rgba(0,0,0,0.22);
-}
-.calendar-legend-swatch.done {
-  background: linear-gradient(145deg, rgba(249,115,22,0.9), rgba(126,50,11,0.95));
-  border-color: rgba(255,190,90,0.9);
-}
-.calendar-legend-swatch.partial {
-  background: linear-gradient(145deg, rgba(175,112,18,0.82), rgba(76,49,15,0.92));
-  border-color: rgba(245,190,70,0.75);
-}
-.calendar-legend-swatch.cat-app {
-  background: linear-gradient(145deg, rgba(37,99,235,0.86), rgba(24,48,112,0.96));
-  border-color: rgba(147,197,253,0.9);
-}
-.calendar-legend-swatch.push {
-  background: linear-gradient(145deg, rgba(202,138,4,0.9), rgba(92,64,8,0.96));
-  border-color: rgba(253,224,71,0.95);
-}
-.calendar-legend-swatch.empty {
-  background: linear-gradient(145deg, rgba(35,96,36,0.9), rgba(11,48,24,0.92));
-  border-color: rgba(180,230,145,0.52);
-}
-/* ===== VOYAGE SEA ===== */
 .calendar-months {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  position: relative;
-  padding: 32px 0 0;
-  background: linear-gradient(180deg,
-    #010c16 0%,
-    #020f1e 16%,
-    #010a12 42%,
-    #01080f 68%,
-    #010c16 100%
-  );
-  border-radius: 0;
-  overflow: hidden;
+  gap: 18px;
 }
-.app.theme-light .calendar-months {
-  background: linear-gradient(180deg,
-    #67d7ff 0%,
-    #38c9f7 20%,
-    #18b5e9 48%,
-    #0ea5d8 76%,
-    #38c9f7 100%
-  );
-}
-.sea-celestial {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-/* Sun & Moon — SVG replaces old CSS circles; these are just positioning */
-/* Moon element is 92px so the crescent visually matches the 70px compass rose */
-.sea-sun {
-  position: absolute;
-  right: 80px;
-  top: 22px;
-  width: 70px;
-  height: 70px;
-  display: block;
-  pointer-events: none;
-}
-.sea-moon {
-  position: absolute;
-  right: 78px;
-  top: 14px;
-  width: 92px;
-  height: 92px;
-  display: block;
-  pointer-events: none;
-}
-.sea-sun {
-  opacity: 0;
-  filter: drop-shadow(0 0 24px rgba(250,204,21,0.55)) drop-shadow(0 0 60px rgba(250,204,21,0.22));
-  transition: opacity 0.4s ease;
-}
-.sea-moon {
-  opacity: 1;
-  filter: drop-shadow(0 0 20px rgba(148,163,184,0.5)) drop-shadow(0 0 50px rgba(125,211,252,0.18));
-  transition: opacity 0.4s ease;
-}
-.app.theme-light .sea-sun { opacity: 1; }
-.app.theme-light .sea-moon { opacity: 0; }
-
-/* Compass — SVG element, right of sun/moon, same size */
-.sea-compass {
-  position: absolute;
-  right: 6px;
-  top: 18px;
-  width: 70px;
-  height: 70px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.94;
-  filter: drop-shadow(0 0 14px rgba(255,215,0,0.28)) drop-shadow(0 4px 10px rgba(0,0,0,0.6));
-}
-/* SVG fill overrides — compass background adapts to theme */
-.compass-bg-fill { fill: rgba(1,9,18,0.92); }
-.app.theme-light .compass-bg-fill { fill: rgba(2,50,120,0.78); }
-/* Compass lighter gold filter in light mode */
-.app.theme-light .sea-compass {
-  filter: drop-shadow(0 0 14px rgba(0,80,200,0.3)) drop-shadow(0 4px 12px rgba(0,0,0,0.3));
-}
-/* Laughtale light mode — not pitch black */
-.app.theme-light .dday-island {
-  background:
-    radial-gradient(ellipse at 85% 50%, rgba(255,215,0,0.12), transparent 30%),
-    radial-gradient(ellipse at 15% 30%, rgba(56,189,248,0.08), transparent 28%),
-    linear-gradient(150deg, rgba(6,72,44,0.96) 0%, rgba(4,52,34,0.97) 56%, rgba(8,42,26,0.97) 100%);
-  border-color: rgba(255,215,0,0.52);
-  box-shadow:
-    0 0 0 4px rgba(3,80,30,0.4),
-    0 0 80px rgba(255,198,56,0.16),
-    0 14px 42px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.12);
-}
-.app.theme-light .dday-date { color: #fff7d4; text-shadow: 0 0 30px rgba(255,215,0,0.4), 0 2px 8px rgba(0,0,0,0.7); }
-.app.theme-light .dday-label { color: rgba(255,215,0,0.72); }
-.app.theme-light .dday-copy { color: rgba(255,235,190,0.72); }
-/* Animated SVG wave lines — horizontal cartoon waves, not cross-hatch */
-.calendar-months::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='64'%3E%3Cpath d='M0 32 C40 16 80 48 120 32 C160 16 200 48 240 32 C280 16 320 48 320 32' fill='none' stroke='%23ffffff' stroke-opacity='0.18' stroke-width='3'/%3E%3Cpath d='M0 52 C40 36 80 68 120 52 C160 36 200 68 240 52 C280 36 320 68 320 52' fill='none' stroke='%23bae6fd' stroke-opacity='0.13' stroke-width='2'/%3E%3Cpath d='M0 14 C40 -2 80 30 120 14 C160 -2 200 30 240 14 C280 -2 320 30 320 14' fill='none' stroke='%23e0f2fe' stroke-opacity='0.10' stroke-width='1.5'/%3E%3C/svg%3E");
-  background-size: 320px 64px;
-  background-repeat: repeat;
-  animation: waveScroll 10s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-  /* Fade waves into darkness at the very bottom */
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 85%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 85%, transparent 100%);
-}
-@keyframes waveScroll {
-  0%   { background-position: 0 0; }
-  100% { background-position: -320px 0; }
-}
-/* Bright white sea sparkles — clearly visible on blue */
-.calendar-months::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle 3px   at  8%  8%, rgba(255,255,255,0.90) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 22%  4%, rgba(255,255,255,0.75) 0%, transparent 100%),
-    radial-gradient(circle 3.5px at 68%  7%, rgba(255,255,255,0.80) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 88% 14%, rgba(255,255,255,0.70) 0%, transparent 100%),
-    radial-gradient(circle 2.5px at 35% 19%, rgba(255,255,255,0.65) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 54% 27%, rgba(255,255,255,0.75) 0%, transparent 100%),
-    radial-gradient(circle 3px   at  5% 34%, rgba(255,255,255,0.70) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 78% 38%, rgba(255,255,255,0.65) 0%, transparent 100%),
-    radial-gradient(circle 3px   at 92% 48%, rgba(255,255,255,0.75) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 18% 56%, rgba(255,255,255,0.65) 0%, transparent 100%),
-    radial-gradient(circle 3.5px at 45% 62%, rgba(255,255,255,0.70) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 72% 72%, rgba(255,255,255,0.65) 0%, transparent 100%),
-    radial-gradient(circle 2.5px at 30% 82%, rgba(255,255,255,0.70) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 85% 88%, rgba(255,255,255,0.75) 0%, transparent 100%),
-    radial-gradient(circle 3px   at 55% 94%, rgba(255,255,255,0.68) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 12% 97%, rgba(255,255,255,0.60) 0%, transparent 100%),
-    radial-gradient(circle 2px   at 62% 44%, rgba(255,255,255,0.65) 0%, transparent 100%),
-    radial-gradient(circle 2.5px at 96% 68%, rgba(255,255,255,0.70) 0%, transparent 100%);
-  animation: sparkleShift 5s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: 0;
-  /* Fade sparkles into darkness at the very bottom */
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
-  mask-image: linear-gradient(to bottom, black 0%, black 80%, transparent 100%);
-}
-@keyframes sparkleShift {
-  0%   { opacity: 0.6; transform: translateY(0); }
-  50%  { opacity: 1; }
-  100% { opacity: 0.75; transform: translateY(-6px); }
-}
-/* SVG Voyage Path */
-.voyage-path-svg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 5;
-  overflow: visible;
-}
-/* Start island */
-.map-start-island {
-  align-self: flex-start;
-  margin-left: 14px;
-  min-width: 154px;
-  min-height: 92px;
-  padding: 18px 18px 14px;
-  border-radius: 50% 44% 48% 52% / 48% 56% 44% 52%;
-  background:
-    radial-gradient(ellipse at 25% 18%, rgba(80,180,70,0.26), transparent 34%),
-    linear-gradient(155deg, rgba(18,74,28,0.94), rgba(9,42,22,0.9));
-  border: 2px solid rgba(92,210,72,0.4);
-  box-shadow:
-    0 0 0 4px rgba(10,50,120,0.35),
-    0 8px 28px rgba(0,0,0,0.55);
-  z-index: 4;
-  position: relative;
-  overflow: visible;
-}
-.map-start-island::before {
-  content: '';
-  position: absolute;
-  left: 20px;
-  top: 18px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,224,102,0.55), rgba(249,115,22,0.08) 70%);
-  box-shadow: 0 0 24px rgba(249,115,22,0.46);
-  pointer-events: none;
-}
-.map-start-island::after {
-  content: '';
-  position: absolute;
-  left: 58px;
-  bottom: 15px;
-  width: 28px;
-  height: 18px;
-  border-radius: 50% 50% 42% 42%;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255,255,255,0.86), transparent 18%),
-    rgba(202,54,44,0.72);
-  box-shadow: 0 2px 0 rgba(120,30,20,0.5);
-  transform: rotate(-8deg);
-  pointer-events: none;
-}
-.map-start-island .island-decor {
-  top: 4px;
-  right: 0;
-  opacity: 0.34;
-}
-.map-start-x {
-  color: #f97316;
-  font-size: 32px;
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 0 22px rgba(249,115,22,0.6), 0 0 8px rgba(249,115,22,0.4);
-  position: relative;
-  z-index: 6;
-  transform: rotate(-8deg);
-  width: max-content;
-}
-.map-start-name {
-  position: relative;
-  z-index: 3;
-  margin-top: 8px;
-  color: rgba(255,244,200,0.94);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 8px rgba(0,0,0,0.8);
-}
-/* Ship marker wrapper */
-.voyage-ship-marker {
-  pointer-events: none;
-  width: 88px;
-  height: 112px;
-  transform-origin: center center;
-}
-.voyage-ship-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transform: translate(-2px, -20px);
-  animation: sunnyBob 4.8s ease-in-out infinite;
-  will-change: transform;
-}
-.ship-label {
-  color: var(--ac);
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-shadow: 0 0 10px rgba(249,115,22,0.5);
-  background: rgba(0,0,0,0.55);
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(249,115,22,0.3);
-}
-/* Ship bob animation */
-@keyframes sunnyBob {
-  0%, 100% { transform: translate(-2px, -20px) translateY(0px); }
-  50% { transform: translate(-2px, -20px) translateY(-5px); }
-}
-.voyage-ship-marker {
-  filter:
-    drop-shadow(0 0 14px rgba(255,230,109,0.62))
-    drop-shadow(0 0 34px rgba(249,115,22,0.34))
-    drop-shadow(0 8px 18px rgba(0,0,0,0.5));
-  animation: shipAuraPulse 2.1s ease-in-out infinite;
-}
-.voyage-ship-marker::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 18px;
-  width: 44px;
-  height: 44px;
-  transform: translateX(-50%) rotate(45deg);
-  background:
-    linear-gradient(90deg, transparent 44%, rgba(255,246,207,0.88) 50%, transparent 56%),
-    linear-gradient(0deg, transparent 44%, rgba(255,246,207,0.88) 50%, transparent 56%);
-  opacity: 0;
-  pointer-events: none;
-  animation: shipFlash 2.8s ease-in-out infinite;
-}
-@keyframes shipAuraPulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(255,230,109,0.42)) drop-shadow(0 8px 18px rgba(0,0,0,0.5));
-  }
-  50% {
-    filter: drop-shadow(0 0 22px rgba(255,230,109,0.8)) drop-shadow(0 0 42px rgba(249,115,22,0.45)) drop-shadow(0 8px 18px rgba(0,0,0,0.5));
-  }
-}
-@keyframes shipFlash {
-  0%, 64%, 100% { opacity: 0; transform: translateX(-50%) rotate(45deg) scale(0.65); }
-  70% { opacity: 0.95; transform: translateX(-50%) rotate(45deg) scale(1); }
-  78% { opacity: 0; transform: translateX(-50%) rotate(45deg) scale(1.24); }
-}
-/* Wind streaks */
-.wind-wrap {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  z-index: 1;
-}
-.wind-wrap.wind-left {
-  right: calc(100% - 10px);
-}
-.wind-wrap.wind-right {
-  left: calc(100% - 10px);
-  transform: translateY(-50%) scaleX(-1);
-}
-.wind-streak {
-  display: block;
-  position: absolute;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(180,220,255,0.9), transparent);
-}
-.ws-1 { width: 28px; top: -14px; left: -5px; animation: windBlast 0.85s ease-in-out infinite 0s; }
-.ws-2 { width: 40px; top: -6px; left: -14px; animation: windBlast 0.85s ease-in-out infinite 0.15s; }
-.ws-3 { width: 22px; top: 2px; left: -3px; animation: windBlast 0.85s ease-in-out infinite 0.3s; }
-.ws-4 { width: 34px; top: 10px; left: -10px; animation: windBlast 0.85s ease-in-out infinite 0.45s; }
-.ws-5 { width: 18px; top: 18px; left: -4px; animation: windBlast 0.85s ease-in-out infinite 0.6s; }
-.ws-6 { width: 26px; top: -22px; left: -8px; animation: windBlast 0.85s ease-in-out infinite 0.75s; }
-@keyframes windBlast {
-  0%   { transform: translateX(0); opacity: 0; }
-  15%  { opacity: 0.85; }
-  100% { transform: translateX(-55px); opacity: 0; }
-}
-/* Sea passage islands — inline flex children, no absolute overlap */
-.sea-isle {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  z-index: 8;
-  transition: transform 0.2s;
-  flex-shrink: 0;
-  transform-origin: center bottom;
-}
-.sea-isle:hover { transform: scale(1.1) translateY(-4px); }
-.story-isle-right {
-  margin-top: 8px;
-  transform: translateX(-18%);
-}
-.story-isle-right:hover {
-  transform: translateX(-18%) scale(1.1) translateY(-4px);
-}
-.story-isle {
-  max-width: 122px;
-  min-width: 96px;
-  padding: 7px 6px;
-  border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 100%, rgba(255,255,255,0.07), transparent 62%);
-}
-.story-isle-1 { margin-top: 18px; }
-.story-isle-2 { margin-top: -6px; }
-.story-isle-3 { margin-top: 10px; }
-.sea-east .sea-isle-svg {
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.55)) drop-shadow(0 0 14px rgba(80,210,80,0.28));
-}
-.sea-paradise .sea-isle-svg {
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6)) drop-shadow(0 0 16px rgba(125,211,252,0.34));
-}
-.sea-new-world .sea-isle-svg {
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.65)) drop-shadow(0 0 18px rgba(249,115,22,0.25));
-}
-/* SVG island illustration */
-.sea-isle-svg {
-  display: block;
-  overflow: visible;
-  width: 78px;
-  height: 62px;
-  filter:
-    drop-shadow(0 5px 10px rgba(0,0,0,0.6))
-    drop-shadow(0 0 14px rgba(40,180,40,0.32));
-}
-.sea-isle-name {
-  color: #fff6cf;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.15;
-  max-width: 96px;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(60,200,60,0.3);
-  background: rgba(20,28,18,0.86);
-  border: 1px solid rgba(255,230,109,0.26);
-  padding: 2px 5px;
-  border-radius: 999px;
-}
-.sea-rock-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  overflow: hidden;
-}
-.sea-rock {
-  position: absolute;
-  width: 66px;
-  height: 38px;
-  border-radius: 58% 42% 48% 52% / 52% 44% 56% 48%;
-  background:
-    radial-gradient(ellipse at 28% 22%, rgba(255,255,255,0.22), transparent 24%),
-    linear-gradient(145deg, rgba(128,116,98,0.94), rgba(42,38,36,0.96));
-  box-shadow: 0 12px 22px rgba(0,0,0,0.42), 0 0 0 4px rgba(186,230,253,0.13);
-  opacity: 1;
-}
-.sea-rock::before,
-.sea-rock::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(70,62,55,0.82);
-}
-.sea-rock::before {
-  width: 22px;
-  height: 18px;
-  left: 6px;
-  top: -4px;
-}
-.sea-rock::after {
-  width: 18px;
-  height: 14px;
-  right: 5px;
-  top: 2px;
-}
-.sea-rock-1 {
-  width: 56px;
-  height: 34px;
-  opacity: 0.92;
-}
-.sea-rock-2 {
-  width: 96px;
-  height: 52px;
-  opacity: 0.86;
-}
-.sea-cyclone-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  overflow: hidden;
-}
-.sea-cyclone {
-  position: absolute;
-  width: 132px;
-  height: 132px;
-  border-radius: 50%;
-  opacity: 0.42;
-  background:
-    conic-gradient(from 30deg, transparent 0 42deg, rgba(255,255,255,0.46) 42deg 58deg, transparent 58deg 120deg, rgba(186,230,253,0.34) 120deg 142deg, transparent 142deg 360deg);
-  filter: blur(0.4px) drop-shadow(0 0 12px rgba(186,230,253,0.2));
-  animation: seaCycloneSpin 14s linear infinite;
-}
-.sea-cyclone::after {
-  content: '';
-  position: absolute;
-  inset: 26px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255,255,255,0.34);
-}
-.sea-cyclone-1 {
-  width: 96px;
-  height: 96px;
-  opacity: 0.34;
-  animation-duration: 18s;
-}
-@keyframes seaCycloneSpin {
-  to { transform: rotate(360deg); }
-}
-.sea-mountain-layer,
-.sea-reef-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  overflow: hidden;
-}
-.sea-rain-layer {
-  display: none;
-}
-.sea-mountain {
-  position: absolute;
-  width: 108px;
-  height: 72px;
-  opacity: 0.36;
-  z-index: 1;
-  border-radius: 0 0 44% 44% / 0 0 18% 18%;
-  background:
-    radial-gradient(ellipse at 48% 96%, rgba(43,118,47,0.98) 0 28%, rgba(26,91,43,0.92) 29% 44%, transparent 45%),
-    radial-gradient(ellipse at 48% 104%, rgba(6,50,48,0.72) 0 46%, transparent 47%);
-  filter: drop-shadow(0 18px 24px rgba(0,0,0,0.5));
-}
-.sea-mountain::before,
-.sea-mountain::after {
-  content: '';
-  position: absolute;
-  pointer-events: none;
-}
-.sea-mountain::before {
-  left: 8px;
-  right: 8px;
-  bottom: 16px;
-  height: 72px;
-  clip-path: polygon(1% 100%, 10% 68%, 21% 76%, 34% 24%, 45% 56%, 58% 4%, 72% 52%, 83% 31%, 99% 100%);
-  background:
-    linear-gradient(114deg, rgba(255,255,255,0.24) 0 18%, transparent 18% 100%),
-    linear-gradient(245deg, rgba(0,0,0,0.42) 0 36%, transparent 36% 100%),
-    linear-gradient(160deg, rgba(142,130,112,0.98) 0%, rgba(82,82,74,0.98) 48%, rgba(34,42,42,0.98) 100%);
-  box-shadow: inset -22px -10px 30px rgba(0,0,0,0.34), inset 18px 10px 18px rgba(255,255,255,0.08);
-}
-.sea-mountain::after {
-  left: 18px;
-  right: 18px;
-  bottom: 20px;
-  height: 30px;
-  clip-path: polygon(0 100%, 8% 54%, 18% 70%, 31% 34%, 43% 64%, 56% 18%, 69% 62%, 80% 38%, 100% 100%);
-  background:
-    radial-gradient(circle at 28% 60%, rgba(118,190,70,0.95), transparent 18%),
-    radial-gradient(circle at 58% 48%, rgba(72,158,58,0.98), transparent 22%),
-    linear-gradient(180deg, rgba(92,165,56,0.98), rgba(24,100,44,0.98));
-  filter: drop-shadow(0 -1px 0 rgba(187,247,208,0.22));
-}
-.sea-mountain-1 { opacity: 0.28; }
-.sea-reef {
-  position: absolute;
-  width: 116px;
-  height: 54px;
-  border-radius: 50%;
-  opacity: 0.96;
-  background:
-    radial-gradient(circle at 20% 55%, rgba(244,114,182,0.6), transparent 16%),
-    radial-gradient(circle at 45% 38%, rgba(52,211,153,0.48), transparent 20%),
-    radial-gradient(circle at 68% 58%, rgba(251,191,36,0.46), transparent 18%),
-    rgba(15,118,110,0.14);
-  box-shadow: 0 0 26px rgba(45,212,191,0.34), 0 8px 18px rgba(0,0,0,0.24);
-}
-.sea-reef-1 {
-  width: 86px;
-  height: 42px;
-  opacity: 0.82;
-}
-.sea-rain-layer {
-  z-index: 1;
-  opacity: 0.22;
-  background-image:
-    repeating-linear-gradient(105deg, transparent 0 22px, rgba(186,230,253,0.44) 22px 24px, transparent 24px 48px);
-  background-size: 180px 180px;
-  animation: rainDrift 1.6s linear infinite;
-}
-@keyframes rainDrift {
-  to { background-position: -90px 180px; }
-}
-/* Sea isle scatter — marginLeft is set inline per island for natural scatter */
-/* Map motivation popup */
-.map-note {
-  position: absolute;
-  z-index: 20;
-  background: rgba(10,10,14,0.96);
-  border: 1px solid rgba(249,115,22,0.35);
-  border-radius: 14px;
-  padding: 14px 16px;
-  max-width: 360px;
-  width: calc(100% - 40px);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 28px rgba(249,115,22,0.15);
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  animation: notePopIn 0.25s cubic-bezier(0.2,0.8,0.2,1) both;
-}
-.map-note-chat {
-  transform: translateY(-100%);
-}
-.map-note-chat::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -9px;
-  width: 18px;
-  height: 18px;
-  background: rgba(10,10,14,0.96);
-  border-right: 1px solid rgba(249,115,22,0.35);
-  border-bottom: 1px solid rgba(249,115,22,0.35);
-  transform: translateX(-50%) rotate(45deg);
-}
-@keyframes notePopIn {
-  from { transform: translateY(-100%) scale(0.92); opacity: 0; }
-  to { transform: translateY(-100%) scale(1); opacity: 1; }
-}
-.map-note span {
-  color: #fff6cf;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 12px;
-  line-height: 1.55;
-  flex: 1;
-}
-.map-note strong,
-.map-note em,
-.map-note b {
-  display: block;
-}
-.map-note strong {
-  color: #ffe66d;
-  font-size: 12px;
-  font-style: normal;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.map-note em {
-  color: rgba(255,246,207,0.92);
-  font-style: normal;
-  margin-bottom: 8px;
-}
-.map-note b {
-  color: #d9f99d;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-weight: 800;
-}
-.map-note button {
-  color: var(--tt);
-  font-size: 16px;
-  cursor: pointer;
-  padding: 0 2px;
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  font-family: inherit;
-  line-height: 1;
-}
-/* ===== ISLAND MONTH CARDS — floating in sea ===== */
 .calendar-month {
-  background:
-    radial-gradient(ellipse at 17% 12%, rgba(164,230,90,0.28) 0%, transparent 33%),
-    radial-gradient(ellipse at 78% 78%, rgba(74,222,128,0.2) 0%, transparent 34%),
-    radial-gradient(ellipse at 50% 56%, rgba(22,163,74,0.26) 0%, transparent 56%),
-    linear-gradient(160deg, rgba(27,106,52,0.88) 0%, rgba(16,82,54,0.86) 48%, rgba(8,58,52,0.84) 100%);
-  /* Green shore border — island edge touching cartoon sea */
-  border: 2px solid rgba(125,211,252,0.5);
-  /* Cap absolute size — same as original 700px layout so they don't grow with sea */
-  max-width: 580px;
-  padding: 16px 14px 14px;
-  position: relative;
-  z-index: 4;
-  scroll-margin-block: 45vh;
-  /* Water ring around island + elevation shadow */
-  box-shadow:
-    0 0 0 4px rgba(14,165,233,0.22),
-    0 0 0 8px rgba(56,189,248,0.1),
-    0 0 26px rgba(56,189,248,0.16),
-    0 0 42px rgba(134,239,172,0.12),
-    0 8px 32px rgba(0,0,0,0.7),
-    inset 0 1px 0 rgba(255,255,255,0.04);
-  transition: box-shadow 0.22s, border-color 0.22s;
+  background: var(--s2);
+  border: 1px solid var(--b1);
+  border-radius: 14px;
+  padding: 12px;
 }
-.calendar-month.island-theme-arlong-park {
-  background:
-    radial-gradient(ellipse at 85% 18%, rgba(90,160,220,0.24), transparent 26%),
-    linear-gradient(160deg, rgba(35,126,58,0.96), rgba(12,78,39,0.94));
-  border-color: rgba(90,170,220,0.5);
-}
-.calendar-month.island-theme-skypiea {
-  background:
-    radial-gradient(ellipse at 78% 16%, rgba(255,255,255,0.24), transparent 28%),
-    linear-gradient(160deg, rgba(57,132,64,0.95), rgba(20,88,52,0.94));
-  border-color: rgba(210,245,255,0.55);
-}
-.calendar-month.island-theme-enies-lobby {
-  background:
-    radial-gradient(circle at 82% 14%, rgba(255,226,92,0.18), transparent 26%),
-    linear-gradient(160deg, rgba(74,120,48,0.95), rgba(28,76,34,0.94));
-  border-color: rgba(255,210,90,0.48);
-}
-.calendar-month.island-theme-marineford {
-  background:
-    radial-gradient(ellipse at 84% 18%, rgba(180,210,245,0.16), transparent 26%),
-    linear-gradient(160deg, rgba(42,122,70,0.95), rgba(18,78,48,0.94));
-  border-color: rgba(150,190,245,0.5);
-}
-.calendar-month.island-theme-wano {
-  background:
-    radial-gradient(circle at 82% 14%, rgba(255,180,210,0.24), transparent 24%),
-    linear-gradient(160deg, rgba(58,128,52,0.95), rgba(24,82,44,0.94));
-  border-color: rgba(255,160,185,0.52);
-}
-.calendar-month.island-theme-egghead {
-  background:
-    radial-gradient(circle at 82% 20%, rgba(125,230,255,0.2), transparent 26%),
-    linear-gradient(160deg, rgba(35,132,78,0.95), rgba(10,82,62,0.94));
-  border-color: rgba(125,211,252,0.6);
-}
-.calendar-month.island-theme-elbaf {
-  background:
-    radial-gradient(ellipse at 82% 10%, rgba(255,222,120,0.16), transparent 28%),
-    linear-gradient(160deg, rgba(80,126,42,0.95), rgba(36,82,34,0.94));
-  border-color: rgba(210,145,72,0.56);
-}
-.calendar-month.island-theme-gecko-islands,
-.calendar-month.island-theme-shells-town,
-.calendar-month.island-theme-loguetown,
-.calendar-month.island-theme-baratie {
-  background:
-    radial-gradient(ellipse at 20% 12%, rgba(255,210,120,0.18), transparent 28%),
-    linear-gradient(160deg, rgba(64,122,44,0.95), rgba(28,76,34,0.94));
-}
-.calendar-month:hover {
-  border-color: rgba(186,230,253,0.72);
-  box-shadow:
-    0 0 0 4px rgba(14,165,233,0.34),
-    0 0 0 8px rgba(56,189,248,0.18),
-    0 0 36px rgba(56,189,248,0.24),
-    0 0 58px rgba(134,239,172,0.16),
-    0 8px 40px rgba(0,0,0,0.8),
-    0 0 40px rgba(60,180,60,0.12),
-    inset 0 1px 0 rgba(255,255,255,0.06);
-}
-/* Gold checkpoint dot at top */
-.calendar-month::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -10px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, #ffe066 30%, #f97316 100%);
-  box-shadow: 0 0 18px rgba(249,115,22,0.6), 0 0 8px rgba(255,215,0,0.5);
-  z-index: 4;
-  border: 2px solid rgba(0,0,0,0.4);
-}
-/* Dashed inner shore line */
-.calendar-month::after {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border: 1px dashed rgba(80,180,60,0.1);
-  pointer-events: none;
-  border-radius: inherit;
-}
-/* Island zigzag positions — organic shapes */
-.calendar-month.route-0 {
-  width: 90%;
-  align-self: flex-start;
-  border-radius: 48% 52% 42% 58% / 52% 42% 58% 48%;
-  margin-left: 2px;
-}
-.calendar-month.route-0::after { border-radius: 44% 56% 38% 62% / 48% 38% 62% 52%; }
-.calendar-month.route-1 {
-  width: 90%;
-  align-self: flex-end;
-  border-radius: 58% 42% 52% 48% / 42% 58% 48% 52%;
-  margin-right: 2px;
-}
-.calendar-month.route-1::after { border-radius: 54% 46% 48% 52% / 38% 62% 44% 56%; }
-.calendar-month.route-2 {
-  width: 86%;
-  align-self: center;
-  border-radius: 42% 58% 56% 44% / 58% 44% 56% 42%;
-}
-.calendar-month.route-2::after { border-radius: 38% 62% 52% 48% / 54% 40% 60% 46%; }
-
-/* ===== SEA PASSAGE (route-hint) ===== */
-.map-route-hint {
-  min-height: 138px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 8px 0;
-  z-index: 6;
-  overflow: visible;
-}
-.map-route-hint::before {
-  content: '';
-  position: absolute;
-  right: clamp(4px, 2vw, 28px);
-  bottom: 6px;
-  width: 88px;
-  height: 58px;
-  clip-path: polygon(2% 100%, 10% 72%, 20% 79%, 34% 27%, 44% 58%, 58% 5%, 70% 54%, 82% 31%, 98% 100%);
-  background:
-    radial-gradient(ellipse at 50% 96%, rgba(54,136,52,0.82) 0 20%, transparent 21%),
-    linear-gradient(108deg, rgba(255,255,255,0.18) 0 16%, transparent 16% 100%),
-    linear-gradient(244deg, rgba(0,0,0,0.5) 0 38%, transparent 38% 100%),
-    linear-gradient(160deg, rgba(146,132,108,0.92), rgba(78,78,70,0.92) 48%, rgba(24,32,34,0.92));
-  box-shadow: 0 14px 20px rgba(0,0,0,0.5);
-  opacity: 0.35;
-  pointer-events: none;
-  z-index: 1;
-}
-.map-route-hint::after {
-  content: '';
-  position: absolute;
-  left: clamp(18px, 9vw, 130px);
-  top: 28px;
-  width: 118px;
-  height: 118px;
-  border-radius: 50%;
-  background:
-    conic-gradient(from 18deg, rgba(255,255,255,0) 0 42deg, rgba(229,246,255,0.68) 42deg 62deg, rgba(255,255,255,0) 62deg 132deg, rgba(125,211,252,0.54) 132deg 156deg, rgba(255,255,255,0) 156deg 360deg);
-  border: 3px dashed rgba(224,242,254,0.42);
-  filter: drop-shadow(0 0 20px rgba(186,230,253,0.3));
-  opacity: 0.72;
-  pointer-events: none;
-  z-index: 1;
-  animation: seaCycloneSpin 16s linear infinite;
-}
-.map-route-hint.bend-1::before {
-  left: clamp(4px, 2vw, 28px);
-  right: auto;
-  transform: scaleX(-1);
-}
-.map-route-hint.bend-1::after {
-  left: auto;
-  right: clamp(24px, 13vw, 170px);
-}
-.map-route-hint.dday-approach::before {
-  width: 132px;
-  height: 86px;
-  right: 2%;
-  opacity: 0.7;
-}
-.map-route-hint.dday-approach::after {
-  width: 150px;
-  height: 150px;
-  left: 14%;
-  opacity: 0.86;
-}
-.pre-grand-passage {
-  min-height: 126px;
-}
-/* The open-sea label text — hidden, sea passages are clean */
-.route-hint-text {
-  display: none;
-}
-
-/* ===== ISLAND DECOR WATERMARK ===== */
-.island-decor {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  opacity: 0.82;
-  pointer-events: none;
-  z-index: 1;
-  filter: grayscale(0.25) contrast(1.45) brightness(0.95) drop-shadow(0 7px 14px rgba(0,0,0,0.82));
-  transform: rotate(4deg);
-  transition: opacity 0.25s;
-}
-.calendar-month:hover .island-decor {
-  opacity: 0.94;
-}
-.island-decor svg {
-  width: 128px;
-  height: 128px;
-}
-.month-lore-scene {
-  position: absolute;
-  inset: 8px;
-  display: block;
-  z-index: 1;
-  opacity: 0.74;
-  pointer-events: none;
-  overflow: hidden;
-  border-radius: inherit;
-  mix-blend-mode: normal;
-  filter: grayscale(0.45) contrast(2.1) brightness(0.58) drop-shadow(0 8px 16px rgba(0,0,0,0.7));
-}
-.month-lore-scene svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* ===== ISLAND TITLE ===== */
 .calendar-month-title {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-  row-gap: 2px;
-}
-.island-name {
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 12.5px;
-  font-weight: 900;
-  color: #fff6cf;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  text-shadow: 0 0 16px rgba(255,198,56,0.36), 0 2px 8px rgba(0,0,0,0.82);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 0;
-}
-.island-month {
-  color: #ffe66d;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 12px rgba(255,198,56,0.32), 0 2px 6px rgba(0,0,0,0.75);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-/* Laughtale approach passage */
-.map-route-hint.dday-approach {
-  min-height: 120px;
-}
-/* ===== REVERSE MOUNTAIN — dramatic full-width wall ===== */
-.grand-line-wall {
-  position: relative;
-  align-self: stretch;
-  width: 100%;
-  margin: 4px 0 0;
-  z-index: 2;
-  filter: drop-shadow(0 -12px 28px rgba(14,165,233,0.48)) drop-shadow(0 6px 14px rgba(0,0,0,0.7));
-  animation: glPulse 3.2s ease-in-out infinite;
-}
-@keyframes glPulse {
-  0%, 100% { filter: drop-shadow(0 -12px 28px rgba(14,165,233,0.48)) drop-shadow(0 6px 14px rgba(0,0,0,0.7)); }
-  50% { filter: drop-shadow(0 -18px 42px rgba(125,211,252,0.68)) drop-shadow(0 6px 18px rgba(0,0,0,0.75)); }
-}
-.gl-mountain-svg {
-  display: block;
-  width: 100%;
-  height: 148px;
-}
-/* Animated upward currents */
-.gl-current-l, .gl-current-r, .gl-current-c {
-  animation: glCurrentFlow 2.4s ease-in-out infinite;
-}
-.gl-current-r { animation-delay: 0.8s; }
-.gl-current-c { animation-delay: 0.4s; }
-@keyframes glCurrentFlow {
-  0%, 100% { opacity: 0.55; transform: translateY(0); }
-  50% { opacity: 0.85; transform: translateY(-6px); }
-}
-/* Text badge overlay */
-.gl-text-layer {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.gl-badge {
-  background: rgba(2,28,62,0.88);
-  border: 2.5px solid rgba(56,189,248,0.85);
-  border-radius: 12px;
-  padding: 10px 28px;
-  box-shadow: 0 0 40px rgba(14,165,233,0.5), 0 0 80px rgba(56,189,248,0.22),
-    inset 0 0 18px rgba(14,165,233,0.1);
-  text-align: center;
-  animation: glBadge 3.5s ease-in-out infinite;
-}
-@keyframes glBadge {
-  0%, 100% { box-shadow: 0 0 40px rgba(14,165,233,0.5), 0 0 80px rgba(56,189,248,0.22), inset 0 0 18px rgba(14,165,233,0.1); }
-  50% { box-shadow: 0 0 60px rgba(14,165,233,0.7), 0 0 120px rgba(56,189,248,0.35), inset 0 0 28px rgba(14,165,233,0.2); }
-}
-.gl-badge-title {
-  display: block;
-  color: #7dd3fc;
-  font-size: 21px;
-  font-weight: 900;
-  letter-spacing: 0.22em;
-  text-shadow: 0 0 28px rgba(56,189,248,0.95), 0 0 10px rgba(14,165,233,0.7);
-}
-.gl-badge-sub {
-  display: block;
-  color: rgba(186,230,253,0.88);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  margin-top: 5px;
-  text-transform: uppercase;
-}
-
-/* ===== RED LINE — massive continental wall ===== */
-.red-line-wall {
-  position: relative;
-  align-self: stretch;
-  width: 100%;
-  margin: 4px 0 0;
-  z-index: 2;
-  filter: drop-shadow(0 -12px 28px rgba(255,50,0,0.45)) drop-shadow(0 6px 14px rgba(0,0,0,0.7));
-  animation: rlPulse 3.2s ease-in-out infinite;
-}
-@keyframes rlPulse {
-  0%, 100% { filter: drop-shadow(0 -12px 28px rgba(255,50,0,0.45)) drop-shadow(0 6px 14px rgba(0,0,0,0.7)); }
-  50% { filter: drop-shadow(0 -18px 40px rgba(255,70,0,0.65)) drop-shadow(0 6px 18px rgba(0,0,0,0.75)); }
-}
-.rl-mountain-svg {
-  display: block;
-  width: 100%;
-  height: 148px;
-}
-/* Text overlay centered on the wall */
-.rl-text-layer {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.rl-badge {
-  background: rgba(45,2,2,0.88);
-  border: 2.5px solid rgba(255,69,58,0.85);
-  border-radius: 12px;
-  padding: 10px 28px;
-  box-shadow: 0 0 40px rgba(255,60,20,0.5), 0 0 80px rgba(255,40,0,0.22),
-    inset 0 0 18px rgba(255,30,0,0.1);
-  text-align: center;
-  animation: rlBadge 3.2s ease-in-out infinite;
-}
-@keyframes rlBadge {
-  0%, 100% { box-shadow: 0 0 40px rgba(255,60,20,0.5), 0 0 80px rgba(255,40,0,0.22), inset 0 0 18px rgba(255,30,0,0.1); }
-  50% { box-shadow: 0 0 60px rgba(255,60,20,0.7), 0 0 120px rgba(255,40,0,0.35), inset 0 0 28px rgba(255,30,0,0.2); }
-}
-.rl-name {
-  display: block;
-  color: #ff453a;
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.32em;
-  text-shadow: 0 0 28px rgba(255,69,58,0.95), 0 0 12px rgba(255,50,20,0.7);
-}
-.rl-sub-text {
-  display: block;
-  color: rgba(255,155,145,0.88);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  margin-top: 5px;
+  color: var(--tp);
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
 }
 .calendar-week-head,
 .calendar-month-grid {
-  position: relative;
-  z-index: 2;
-}
-.calendar-week-head {
-  position: relative;
-  z-index: 2;
-}
-.calendar-month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 5px;
 }
 .calendar-week-head {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
   margin-bottom: 5px;
 }
 .calendar-week-head span {
-  display: block;
-  color: rgba(235,255,220,0.82);
+  color: var(--tt);
   font-size: 9px;
   font-weight: 800;
   text-align: center;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.75);
 }
 .cal-cell {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  border: 1px solid rgba(186,230,253,0.42);
-  background:
-    radial-gradient(circle at 30% 18%, rgba(224,242,254,0.2), transparent 30%),
-    linear-gradient(145deg, rgba(15,83,105,0.62), rgba(5,54,73,0.68));
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  color: #f7ffe8;
-  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  aspect-ratio: 1; border-radius: 6px;
+  border: 1px solid var(--b1); background: var(--s2);
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 9px; color: #444;
+  transition: all 0.12s;
   font-family: inherit;
   position: relative;
   padding: 0;
-  backdrop-filter: blur(1.5px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 7px rgba(0,0,0,0.2);
-  overflow: hidden;
-}
-.cal-cell::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border: 1px dashed rgba(255,255,210,0.08);
-  border-radius: 6px;
-  pointer-events: none;
 }
 .cal-cell.blank {
   visibility: hidden;
   pointer-events: none;
 }
-.cal-cell:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255,230,130,0.72);
-  background:
-    radial-gradient(circle at 30% 18%, rgba(224,242,254,0.3), transparent 30%),
-    linear-gradient(145deg, rgba(18,110,132,0.78), rgba(7,70,92,0.84));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 5px 14px rgba(0,0,0,0.34), 0 0 18px rgba(255,230,130,0.15);
-}
-/* Done — warm orange */
-.cal-cell.done {
-  background:
-    radial-gradient(circle at 28% 18%, rgba(255,240,170,0.24), transparent 32%),
-    linear-gradient(145deg, rgba(249,115,22,0.68), rgba(126,50,11,0.82));
-  border-color: rgba(255,190,90,0.78);
-  color: #fff8dc;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 0 16px rgba(249,115,22,0.25);
-}
-/* Partial — warm amber */
-.cal-cell.partial {
-  background:
-    radial-gradient(circle at 28% 18%, rgba(255,244,180,0.2), transparent 32%),
-    linear-gradient(145deg, rgba(175,112,18,0.58), rgba(76,49,15,0.78));
-  border-color: rgba(245,190,70,0.58);
-  color: #fff0a8;
-}
-/* Application window — blue */
+.cal-cell:hover { border-color: #444; }
+.cal-cell.done { background: rgba(249,115,22,0.14); border-color: rgba(249,115,22,0.3); color: rgba(249,115,22,0.7); }
+.cal-cell.partial { background: rgba(249,115,22,0.05); border-color: rgba(249,115,22,0.15); color: #555; }
 .cal-cell.app-due {
-  background:
-    radial-gradient(circle at 28% 18%, rgba(219,234,254,0.24), transparent 32%),
-    linear-gradient(145deg, rgba(37,99,235,0.58), rgba(24,48,112,0.78));
-  border-color: rgba(147,197,253,0.82);
-  color: #eaf4ff;
-  box-shadow: 0 0 16px rgba(59,130,246,0.3);
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.45);
+  color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59,130,246,0.18);
 }
-/* Final push — warm gold (not green) */
 .cal-cell.final-push {
-  background:
-    radial-gradient(circle at 28% 18%, rgba(255,251,210,0.32), transparent 32%),
-    linear-gradient(145deg, rgba(202,138,4,0.68), rgba(92,64,8,0.82));
-  border-color: rgba(253,224,71,0.86);
-  color: #fff9bf;
-  box-shadow: 0 0 18px rgba(234,179,8,0.35);
+  background: rgba(48,209,88,0.12);
+  border-color: rgba(48,209,88,0.5);
+  color: #30d158;
+  box-shadow: 0 0 16px rgba(48,209,88,0.28);
 }
-.cal-cell.today {
-  border-color: #fff176 !important;
-  color: #fffbd2 !important;
-  background:
-    radial-gradient(circle at 28% 18%, rgba(255,255,220,0.34), transparent 32%),
-    linear-gradient(145deg, rgba(249,115,22,0.82), rgba(119,47,10,0.94)) !important;
-  box-shadow: 0 0 0 2px rgba(255,241,118,0.55), 0 0 22px rgba(249,115,22,0.4) !important;
-}
-.cal-cell.selected { box-shadow: 0 0 0 2px rgba(255,241,118,0.7), 0 0 24px rgba(249,115,22,0.38); }
+.cal-cell.today { border-color: var(--ac) !important; color: var(--ac) !important; }
+.cal-cell.selected { box-shadow: 0 0 0 2px rgba(249,115,22,0.4); }
 .cal-day-num {
-  position: relative;
-  z-index: 1;
   font-size: 10px;
-  font-weight: 900;
-  color: currentColor;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.82);
+  font-weight: 700;
 }
 .cal-date-num {
   position: absolute;
   right: 4px;
   bottom: 3px;
-  color: rgba(255,255,235,0.92);
+  color: var(--tt);
   font-size: 8px;
-  font-weight: 900;
-  opacity: 1;
-  z-index: 1;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.86);
+  font-weight: 700;
+  opacity: 0.78;
 }
 .cal-cell.app-due .cal-date-num,
 .cal-cell.final-push .cal-date-num,
@@ -2330,212 +571,36 @@ select:focus { border-color: #f97316; }
   color: currentColor;
   opacity: 0.95;
 }
-/* Locked cells — outside prep range */
-.cal-cell.locked {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.05);
-  cursor: default;
-  pointer-events: none;
-  opacity: 0.3;
-}
-.cal-cell.locked .cal-date-num { color: rgba(255,255,255,0.42); }
 .dday-island {
   cursor: pointer;
-  max-width: 780px;
-  align-self: center;
-  width: calc(100% - 48px);
   background:
-    radial-gradient(ellipse at 85% 50%, rgba(255,215,0,0.07), transparent 30%),
-    radial-gradient(ellipse at 15% 30%, rgba(56,189,248,0.05), transparent 28%),
-    linear-gradient(150deg, rgba(3,42,26,0.99) 0%, rgba(2,26,20,0.99) 56%, rgba(5,20,14,0.99) 100%);
-  border: 1.5px solid rgba(255,215,0,0.38);
-  border-radius: 18px;
-  padding: 34px 214px 34px 34px;
-  min-height: 164px;
-  box-shadow:
-    0 0 0 4px rgba(2,16,8,0.6),
-    0 0 80px rgba(255,198,56,0.1),
-    0 0 160px rgba(255,198,56,0.04),
-    0 14px 42px rgba(0,0,0,0.8),
-    inset 0 1px 0 rgba(255,255,255,0.08);
-  position: relative;
-  overflow: visible;
-  z-index: 4;
-  animation: laughtaleGlow 4s ease-in-out infinite;
-}
-@keyframes laughtaleGlow {
-  0%, 100% {
-    box-shadow:
-      0 0 0 4px rgba(2,16,8,0.62),
-      0 0 0 9px rgba(255,215,0,0.08),
-      0 0 78px rgba(255,198,56,0.18),
-      0 0 150px rgba(249,115,22,0.08),
-      0 14px 42px rgba(0,0,0,0.8),
-      inset 0 1px 0 rgba(255,255,255,0.08);
-  }
-  50% {
-    box-shadow:
-      0 0 0 4px rgba(2,16,8,0.62),
-      0 0 0 11px rgba(255,215,0,0.12),
-      0 0 120px rgba(255,198,56,0.28),
-      0 0 220px rgba(249,115,22,0.12),
-      0 14px 42px rgba(0,0,0,0.8),
-      inset 0 1px 0 rgba(255,255,255,0.12);
-  }
-}
-.dday-island::before {
-  content: '';
-  position: absolute;
-  inset: 11px;
-  border: 1px solid rgba(255,231,132,0.18);
-  border-radius: 13px;
-  pointer-events: none;
-}
-.dday-checkpoint {
-  position: absolute;
-  left: 50%;
-  top: -10px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle, #ffe066 30%, #f97316 100%);
-  box-shadow:
-    0 0 0 3px rgba(0,0,0,0.42),
-    0 0 18px rgba(249,115,22,0.78),
-    0 0 10px rgba(255,215,0,0.68);
-  z-index: 12;
-  border: 2px solid rgba(0,0,0,0.55);
-  pointer-events: none;
-}
-.dday-island::after {
-  content: 'FINAL ISLAND';
-  position: absolute;
-  right: 22px;
-  top: 18px;
-  color: rgba(255,215,0,0.38);
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: 0.22em;
-  line-height: 1;
-  pointer-events: none;
-}
-.dday-compass {
-  position: absolute;
-  left: 28px;
-  bottom: 20px;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,231,132,0.42);
-  box-shadow: inset 0 0 14px rgba(255,215,0,0.12);
-  opacity: 0.72;
-}
-.dday-compass::before,
-.dday-compass::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  background: rgba(255,231,132,0.72);
-  transform: translate(-50%,-50%);
-}
-.dday-compass::before { width: 2px; height: 28px; }
-.dday-compass::after { width: 28px; height: 2px; }
-.dday-compass span {
-  position: absolute;
-  left: 50%;
-  top: 3px;
-  transform: translateX(-50%);
-  color: #ffe66d;
-  font-size: 7px;
-  font-weight: 900;
-}
-.one-piece-watermark {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  color: rgba(255,215,0,0.04);
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 62px;
-  font-weight: 900;
-  letter-spacing: 0.3em;
-  line-height: 1;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 0;
-  user-select: none;
-}
-/* Treasure pile watermark */
-.dday-treasure-pile {
-  position: absolute;
-  bottom: 18px;
-  right: 38px;
-  width: 166px;
-  height: 108px;
-  line-height: 1.3;
-  text-align: right;
-  pointer-events: none;
-  opacity: 0.82;
-  transform-origin: center bottom;
-  filter: drop-shadow(0 0 18px rgba(255,215,0,0.56)) drop-shadow(0 8px 18px rgba(0,0,0,0.7));
-  animation: treasureGlow 3.8s ease-in-out infinite;
-  z-index: 2;
-}
-.dday-treasure-pile svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-@keyframes treasureGlow {
-  0%, 100% { filter: drop-shadow(0 0 10px rgba(255,215,0,0.34)) drop-shadow(0 2px 8px rgba(0,0,0,0.5)); transform: scale(1); }
-  50% { filter: drop-shadow(0 0 18px rgba(255,215,0,0.62)) drop-shadow(0 0 10px rgba(249,115,22,0.32)); transform: scale(1.02); }
+    radial-gradient(circle at 15% 20%, rgba(255,255,255,0.22), transparent 18%),
+    linear-gradient(135deg, rgba(249,115,22,0.22), rgba(48,209,88,0.1));
+  border: 1px solid rgba(249,115,22,0.5);
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: 0 0 34px rgba(249,115,22,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .dday-island.selected {
-  box-shadow:
-    0 0 0 3px rgba(255,231,132,0.72),
-    0 0 70px rgba(255,215,0,0.38),
-    0 16px 50px rgba(0,0,0,0.5),
-    inset 0 1px 0 rgba(255,255,255,0.16);
+  box-shadow: 0 0 0 2px rgba(249,115,22,0.45), 0 0 32px rgba(249,115,22,0.24);
 }
 .dday-label {
-  position: relative;
-  z-index: 3;
-  color: rgba(255,215,0,0.55);
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 10px;
+  color: #f97316;
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.38em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  text-shadow: none;
-  max-width: calc(100% - 180px);
 }
 .dday-date {
-  position: relative;
-  z-index: 3;
-  color: #fff7d1;
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 42px;
+  color: var(--tp);
+  font-size: 28px;
   font-weight: 900;
-  margin-top: 6px;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  text-shadow: 0 0 40px rgba(255,215,0,0.32), 0 3px 12px rgba(0,0,0,0.95);
-  max-width: calc(100% - 180px);
+  margin-top: 4px;
 }
 .dday-copy {
-  position: relative;
-  z-index: 3;
-  color: rgba(255,230,180,0.55);
-  font-family: "Trebuchet MS", Georgia, serif;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  margin-top: 10px;
-  max-width: calc(100% - 180px);
-  text-shadow: 0 1px 6px rgba(0,0,0,0.95);
+  color: var(--tt);
+  font-size: 12px;
+  margin-top: 4px;
 }
 .final-push-note,
 .application-card {
@@ -2551,7 +616,6 @@ select:focus { border-color: #f97316; }
   background: rgba(48,209,88,0.08);
   font-size: 12px;
   line-height: 1.5;
-  text-align: center;
 }
 .application-card {
   border-color: rgba(59,130,246,0.4);
@@ -2580,15 +644,10 @@ select:focus { border-color: #f97316; }
   position: relative;
   overflow: hidden;
 }
-.dday-today-card.reveal > *:not(.dday-confetti) {
-  position: relative;
-  z-index: 1;
-}
 .dday-confetti {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
   background:
     radial-gradient(circle at 12% 20%, rgba(249,115,22,0.85) 0 2px, transparent 3px),
     radial-gradient(circle at 82% 16%, rgba(48,209,88,0.75) 0 2px, transparent 3px),
@@ -2683,7 +742,6 @@ select:focus { border-color: #f97316; }
   position: relative;
   z-index: 2;
   min-width: 0;
-  max-width: 100%;
 }
 .dday-card-title {
   color: var(--tp);
@@ -2691,13 +749,11 @@ select:focus { border-color: #f97316; }
   font-weight: 900;
   line-height: 1.25;
   margin-bottom: 6px;
-  overflow-wrap: anywhere;
 }
 .dday-card-copy {
   color: var(--tt);
   font-size: 12px;
   line-height: 1.65;
-  overflow-wrap: anywhere;
 }
 .dday-card-source {
   color: var(--ac);
@@ -2707,7 +763,6 @@ select:focus { border-color: #f97316; }
   text-transform: uppercase;
   margin-top: 10px;
   opacity: 0.88;
-  overflow-wrap: anywhere;
 }
 .dday-mentor-message {
   display: flex;
@@ -2817,7 +872,6 @@ select:focus { border-color: #f97316; }
   font-weight: 900;
   line-height: 1.35;
   margin-bottom: 8px;
-  overflow-wrap: anywhere;
 }
 .dday-final-line {
   color: var(--tp);
@@ -2825,7 +879,6 @@ select:focus { border-color: #f97316; }
   font-weight: 800;
   line-height: 1.6;
   margin-top: 12px;
-  overflow-wrap: anywhere;
 }
 @keyframes ddayPop {
   from { opacity: 0; scale: 0.96; }
@@ -2936,7 +989,7 @@ select:focus { border-color: #f97316; }
 .floating-btn {
   position: fixed;
   right: 20px;
-  bottom: 84px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -3136,14 +1189,6 @@ select:focus { border-color: #f97316; }
     radial-gradient(circle at 92% 20%, rgba(56,189,248,0.12), transparent 24%),
     #ffffff !important;
 }
-.app.theme-light .mentor-avatar,
-.app.theme-light .mentor-avatar-circle,
-.app.theme-light .user-avatar-circle {
-  background-color: #ffffff !important;
-}
-.app.theme-light .mentor-unread-dot {
-  border-color: #ffffff;
-}
 
 .mentor-panel {
   position: fixed;
@@ -3186,9 +1231,6 @@ select:focus { border-color: #f97316; }
   justify-content: center;
   box-shadow: 0 0 22px rgba(249,115,22,0.35);
   flex-shrink: 0;
-}
-.app.theme-light .mentor-avatar {
-  background: #ffffff !important;
 }
 .mentor-avatar > div,
 .mentor-avatar img,
@@ -3241,47 +1283,31 @@ select:focus { border-color: #f97316; }
 }
 
 @media (max-width: 1023px) {
-  :root {
-    --mobile-safe-top: max(10px, env(safe-area-inset-top));
-    --mobile-header-h: calc(var(--mobile-safe-top) + 54px);
-  }
   html,
   body,
   #root {
-    height: 100%;
+    height: auto;
     min-height: 100%;
     overflow-x: hidden;
-    overflow-y: hidden;
-    background: var(--app-bg);
+    overflow-y: auto;
   }
   body {
     position: static;
-    padding-bottom: 0;
-    background: var(--app-bg);
-    overscroll-behavior-y: none;
   }
   .sidebar { display: none; }
   .app {
     display: block;
-    position: fixed;
-    inset: 0;
-    width: 100%;
     height: auto;
-    min-height: 0;
-    overflow: hidden;
-    background: var(--app-bg);
-  }
-  .app::after {
-    display: none;
+    min-height: 100dvh;
+    overflow: visible;
   }
   .mobile-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    box-sizing: border-box;
-    height: var(--mobile-header-h);
-    padding: var(--mobile-safe-top) 14px 10px;
+    height: 64px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 10px;
     background: rgba(0,0,0,0.72);
     border-bottom: 1px solid rgba(255,255,255,0.08);
     backdrop-filter: blur(22px);
@@ -3290,51 +1316,6 @@ select:focus { border-color: #f97316; }
     align-items: center;
     gap: 12px;
     z-index: 210;
-  }
-  .app.theme-light .mobile-header {
-    background: rgba(247,244,238,0.84) !important;
-    border-bottom-color: rgba(222,217,207,0.9) !important;
-  }
-  /* ===== CALENDAR PAGE: seamless header (no bezel) ===== */
-  /* The app root background shows behind the fixed header — match it to the sea */
-  .app.on-calendar {
-    background: #010c16 !important;
-  }
-  .app.theme-light.on-calendar {
-    background: #67d7ff !important;
-  }
-  .app.on-calendar .mobile-header {
-    background: rgba(1,10,24,0.55) !important;
-    border-bottom: none !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-  }
-  .app.theme-light.on-calendar .mobile-header {
-    background: rgba(0,100,220,0.42) !important;
-    border-bottom: none !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-  }
-  .app.on-calendar:has(.cal-plain-mode) .mobile-header {
-    background: rgba(0,0,0,0.72) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-    backdrop-filter: blur(22px) !important;
-    -webkit-backdrop-filter: blur(22px) !important;
-  }
-  .app.theme-light.on-calendar:has(.cal-plain-mode) .mobile-header {
-    background: #f7f4ee !important;
-    border-bottom: 1px solid rgba(222,217,207,0.9) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  /* Calendar page — no bottom padding so Laughtale is last thing visible */
-  .main.calendar-main {
-    padding-bottom: 0 !important;
-  }
-  .app.theme-light .mobile-menu-btn {
-    color: var(--tp) !important;
-    background: rgba(0,0,0,0.04) !important;
-    border-color: var(--b1) !important;
   }
   .mobile-menu-btn {
     width: 40px;
@@ -3435,7 +1416,7 @@ select:focus { border-color: #f97316; }
     z-index: 260;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 24px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
     min-height: 0;
   }
   .mobile-drawer.open {
@@ -3505,26 +1486,7 @@ select:focus { border-color: #f97316; }
   .page {
     width: 100%;
     max-width: 100%;
-    padding: 24px 16px 24px !important;
-  }
-  /* Calendar page overrides the generic .page !important — sea must be edge-to-edge */
-  .page.calendar-page {
-    padding: 22px 0 0 !important;
-  }
-  /* Plain mode on mobile: restore side padding; override ocean full-width */
-  .cal-plain-mode.page.calendar-page {
-    max-width: 100% !important;
-    padding: 22px 16px 24px !important;
-  }
-  .cal-plain-mode.page.calendar-page .page-header,
-  .cal-plain-mode.page.calendar-page .month-strip,
-  .cal-plain-mode.page.calendar-page .calendar-legend {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-  .cal-plain-mode.page.calendar-page::before {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    padding: 24px 16px calc(96px + env(safe-area-inset-bottom)) !important;
   }
   .card-row {
     padding: 16px 14px !important;
@@ -3559,25 +1521,11 @@ select:focus { border-color: #f97316; }
   }
   .main {
     width: 100%;
-    height: 100%;
-    min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-top: var(--mobile-header-h) !important;
-    padding-bottom: 0 !important;
-    background: var(--app-bg);
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
+    min-height: 100dvh;
+    overflow: visible;
+    padding-top: 64px !important;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
   }
-  /* Calendar page: sea covers the nav clearance — no dark gap after Laughtale */
-  .main.calendar-main {
-    padding-bottom: 0 !important;
-  }
-  .calendar-months {
-    padding-bottom: 0;
-  }
-  .main::-webkit-scrollbar { display: none; }
   .main.mentor-main {
     min-height: 100dvh;
     padding-bottom: 0 !important;
@@ -3625,7 +1573,7 @@ select:focus { border-color: #f97316; }
   }
   .mentor-page-composer {
     flex-shrink: 0;
-    padding: 10px 16px 10px !important;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
     position: sticky;
     bottom: 0;
   }
@@ -3676,16 +1624,16 @@ select:focus { border-color: #f97316; }
     margin-top: 0 !important;
     background: #0a0a0a;
     border-top: 1px solid #1f1f1f;
-    padding: 10px 12px 10px !important;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
   }
   .mentor-actions {
     flex-shrink: 0;
-    padding-bottom: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
     background: #0a0a0a;
   }
   .floating-btn {
     right: 20px;
-    bottom: 20px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
     width: 58px;
     height: 58px;
   }
@@ -3705,332 +1653,7 @@ select:focus { border-color: #f97316; }
 @media (max-width: 400px) {
   .mentor-panel { width: calc(100vw - 24px); right: 12px; }
 }
-/* ===== TABLET (561–900px): moon slightly bigger so crescent matches compass ===== */
-@media (min-width: 561px) and (max-width: 900px) {
-  .sea-sun {
-    width: 52px;
-    height: 52px;
-    right: 62px;
-    top: 18px;
-  }
-  .sea-moon {
-    width: 68px;
-    height: 68px;
-    right: 58px;
-    top: 13px;
-  }
-  .sea-compass {
-    width: 52px;
-    height: 52px;
-    right: 4px;
-    top: 18px;
-  }
-  .calendar-month { max-width: 95%; }
-}
-
 @media (max-width: 560px) {
-  :root {
-    --mobile-safe-top: max(24px, env(safe-area-inset-top));
-    --mobile-header-h: calc(var(--mobile-safe-top) + 58px);
-  }
-  .mobile-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: var(--mobile-header-h);
-    padding: var(--mobile-safe-top) 14px 10px;
-  }
-  .mobile-menu-btn {
-    flex: 0 0 auto;
-  }
-  .mobile-days-pill {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-  .mobile-brand {
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: left;
-    padding: 0;
-  }
-  .mobile-title,
-  .mobile-sub {
-    text-align: left;
-  }
-  .main {
-    padding-top: var(--mobile-header-h) !important;
-  }
-  .calendar-months {
-    padding: 20px 0 0;
-    gap: 32px;
-    /* Prevent horizontal overflow causing infinite zoom */
-    overflow-x: hidden;
-    width: 100%;
-    max-width: 100%;
-  }
-  .calendar-months::before,
-  .calendar-months::after,
-  .voyage-ship-inner,
-  .voyage-ship-marker,
-  .grand-line-wall,
-  .red-line-wall,
-  .dday-island,
-  .dday-treasure-pile {
-    animation: none !important;
-  }
-  .calendar-month,
-  .calendar-month:hover,
-  .sea-isle,
-  .sea-isle:hover,
-  .month-chip:hover,
-  .save-btn:hover,
-  .floating-btn:hover {
-    transform: none !important;
-  }
-  .calendar-months::after {
-    opacity: 0.45;
-  }
-  .voyage-path-svg {
-    opacity: 1;
-    z-index: 7;
-  }
-  /* Tighter header on mobile */
-  .page.calendar-page {
-    padding-top: 22px !important;
-  }
-  .page.calendar-page .page-header {
-    margin-bottom: 18px !important;
-  }
-  .page.calendar-page .page-header,
-  .page.calendar-page .month-strip,
-  .page.calendar-page .calendar-legend {
-    margin-left: 14px;
-    margin-right: 14px;
-  }
-  .page.calendar-page::before {
-    margin-left: 14px;
-    margin-right: 14px;
-    font-size: 8px !important;
-    letter-spacing: 0.10em !important;
-  }
-  /* Month chips — smaller & scrollable */
-  .month-strip {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 6px;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-  }
-  .month-strip::-webkit-scrollbar { display: none; }
-  .month-chip {
-    flex-shrink: 0;
-    font-size: 10px !important;
-    padding: 6px 12px !important;
-  }
-  /* Legend compact on mobile — flex-wrap so all 5 items show in 2 rows */
-  .calendar-legend {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 3px 4px !important;
-    padding: 4px 0 !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-  }
-  .calendar-legend-item {
-    flex: 0 0 auto !important;
-    padding: 2px 5px !important;
-    gap: 3px !important;
-    min-height: unset !important;
-  }
-  .calendar-legend-item span {
-    font-size: 7.5px !important;
-    white-space: nowrap !important;
-    line-height: 1.3 !important;
-  }
-  .calendar-legend-swatch {
-    width: 8px !important;
-    height: 8px !important;
-  }
-  /* Mobile zigzag — alternate left/center/right like desktop */
-  .calendar-month.route-0 {
-    width: 92%;
-    align-self: flex-start;
-    border-radius: 48% 52% 42% 58% / 52% 42% 58% 48%;
-    margin-left: 2px;
-    margin-right: 0;
-  }
-  .calendar-month.route-1 {
-    width: 92%;
-    align-self: flex-end;
-    border-radius: 52% 48% 58% 42% / 42% 58% 48% 52%;
-    margin-right: 2px;
-    margin-left: 0;
-  }
-  .calendar-month.route-2 {
-    width: 88%;
-    align-self: center;
-    border-radius: 42% 58% 56% 44% / 58% 44% 56% 42%;
-  }
-  /* Smaller island decor watermark on mobile */
-  .island-decor svg { width: 72px !important; height: 72px !important; }
-  /* Tighter island padding */
-  .calendar-month { padding: 12px 10px 10px; }
-  .calendar-month-title { margin-bottom: 6px; }
-  .island-name { font-size: 10.5px !important; }
-  .island-month { font-size: 9px !important; }
-  .calendar-month-grid { gap: 3px; }
-  .calendar-week-head { gap: 3px; }
-  .cal-cell { border-radius: 6px; }
-  .cal-day-num { font-size: 8.5px; }
-  .cal-date-num { font-size: 7px; right: 2px; bottom: 2px; }
-  .voyage-ship-marker {
-    width: 58px;
-    height: 76px;
-  }
-  .voyage-ship-inner {
-    transform: translate(-1px, -12px) scale(0.72);
-  }
-  @keyframes sunnyBob {
-    0%, 100% { transform: translate(-1px, -12px) scale(0.72) translateY(0px); }
-    50% { transform: translate(-1px, -12px) scale(0.72) translateY(-4px); }
-  }
-  .ship-label { display: none; }
-  .mini-island { font-size: 7px; padding: 5px 6px; }
-  .mini-island-label { font-size: 6.5px; }
-  .map-route-hint {
-    font-size: 9px;
-    min-height: 110px;
-    gap: 6px;
-    padding: 8px 0;
-  }
-  .story-isle {
-    margin-left: 0 !important;
-    transform: scale(0.78);
-    transform-origin: center bottom;
-  }
-  .story-isle-zou {
-    margin-left: auto !important;
-    margin-right: 18px !important;
-  }
-  .map-route-hint.dday-approach::before {
-    left: auto;
-    right: 4px;
-    bottom: 16px;
-    width: 76px;
-    height: 50px;
-    opacity: 0.4;
-    transform: none;
-  }
-  .map-route-hint.dday-approach::after {
-    left: auto;
-    right: 36px;
-    top: 0;
-    width: 72px;
-    height: 72px;
-    opacity: 0.34;
-  }
-  .sea-isle-svg { width: 58px; height: 46px; }
-  .sea-isle-name { font-size: 6.5px; max-width: 68px; }
-  .sea-isle:hover { transform: scale(0.82) translateY(-2px); }
-  .map-route-hint.bend-0,
-  .map-route-hint.bend-2 {
-    padding-left: 10px;
-    padding-right: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-  .grand-line-wall,
-  .red-line-wall {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-  }
-  .rl-mountain-svg { height: 90px; }
-  .rl-name { font-size: 14px; letter-spacing: 0.18em; }
-  .rl-badge { padding: 7px 14px; }
-  .gl-mountain-svg { height: 90px; }
-  .gl-badge-title { font-size: 12px; letter-spacing: 0.10em; }
-  .gl-badge { padding: 7px 14px; }
-  /* Sun/Moon — moon is 52px so crescent visually matches 40px compass */
-  .sea-celestial { display: block; }
-  .sea-sun {
-    width: 40px !important;
-    height: 40px !important;
-    right: 50px !important;
-    top: 14px !important;
-  }
-  .sea-moon {
-    width: 52px !important;
-    height: 52px !important;
-    right: 46px !important;
-    top: 9px !important;
-  }
-  /* Compass — directly right of sun/moon */
-  .sea-compass {
-    display: block !important;
-    width: 40px !important;
-    height: 40px !important;
-    right: 4px !important;
-    top: 14px !important;
-  }
-  /* Sea decorative layers — hide on mobile to unclutter */
-  .sea-cyclone-layer { display: none; }
-  .sea-mountain-layer { display: none; }
-  .sea-reef-layer { display: none; }
-  .sea-rock { display: none; }
-  .one-piece-watermark {
-    font-size: 28px;
-    opacity: 0.04;
-  }
-  .dday-treasure-pile {
-    width: 90px;
-    height: 60px;
-    bottom: 10px;
-    right: 10px;
-  }
-  .dday-island {
-    padding: 18px 104px 18px 16px;
-    min-height: 100px;
-    border-radius: 12px;
-    width: calc(100% - 32px);
-  }
-  .dday-label {
-    font-size: 8px;
-    letter-spacing: 0.22em;
-    max-width: calc(100% - 96px);
-  }
-  .dday-date {
-    font-size: 28px;
-    margin-top: 4px;
-    max-width: calc(100% - 96px);
-  }
-  .dday-copy {
-    font-size: 10px;
-    margin-top: 5px;
-    max-width: calc(100% - 96px);
-  }
-  .dday-compass { display: none; }
-  .map-route-hint::before {
-    width: 60px;
-    height: 40px;
-    right: 6px;
-    opacity: 0.15;
-  }
-  .map-route-hint::after {
-    width: 52px;
-    height: 52px;
-    left: 6px;
-    opacity: 0.45;
-  }
-  /* Windmill start island — smaller on mobile */
-  .map-start-island {
-    min-width: 120px !important;
-    min-height: 72px !important;
-    padding: 12px 14px 10px !important;
-    margin-left: 8px !important;
-  }
-  .map-start-x { font-size: 24px !important; }
-  .map-start-name { font-size: 9px !important; }
   .dday-today-card {
     padding: 22px 14px;
   }
@@ -4083,7 +1706,6 @@ select:focus { border-color: #f97316; }
     grid-template-columns: 1fr;
   }
 }
-
 .bottom-nav { display: none !important; }
 .mobile-only { display: none; }
 
@@ -4099,9 +1721,6 @@ select:focus { border-color: #f97316; }
   background-color: #111111 !important;
   border: 2px solid #f97316 !important;
 }
-.app.theme-light .mentor-avatar-circle {
-  background-color: #ffffff !important;
-}
 
 .user-avatar-circle {
   border-radius: 50% !important;
@@ -4113,9 +1732,6 @@ select:focus { border-color: #f97316; }
   overflow: hidden !important;
   background-color: #111111 !important;
   border: 2px solid #3b82f6 !important;
-}
-.app.theme-light .user-avatar-circle {
-  background-color: #ffffff !important;
 }
 
 input[type="time"] {
@@ -4166,17 +1782,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     gap: 10px;
   }
   .theme-card {
-    align-items: center;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .theme-card > div:first-child {
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  .theme-card .theme-switch {
-    flex: 0 0 auto;
+    align-items: flex-start;
+    flex-direction: column;
   }
   .card-row > div:first-child {
     min-width: 0;
@@ -4192,149 +1799,4 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-/* ===== DARK MODE NIGHT SEA GLOWS ===== */
-.app.theme-dark .calendar-month {
-  box-shadow:
-    0 0 0 5px rgba(14,165,233,0.18),
-    0 0 0 10px rgba(56,189,248,0.07),
-    0 0 40px rgba(56,189,248,0.16),
-    0 0 70px rgba(134,239,172,0.10),
-    0 0 28px rgba(60,200,60,0.22),
-    0 8px 36px rgba(0,0,0,0.92),
-    inset 0 1px 0 rgba(255,255,255,0.05);
-}
-.app.theme-dark .calendar-month:hover {
-  box-shadow:
-    0 0 0 5px rgba(14,165,233,0.28),
-    0 0 0 10px rgba(56,189,248,0.12),
-    0 0 56px rgba(56,189,248,0.26),
-    0 0 90px rgba(134,239,172,0.16),
-    0 0 36px rgba(60,200,60,0.28),
-    0 8px 44px rgba(0,0,0,0.95),
-    inset 0 1px 0 rgba(255,255,255,0.07);
-}
-.app.theme-dark .island-name {
-  text-shadow: 0 0 22px rgba(255,198,56,0.72), 0 0 10px rgba(255,198,56,0.38), 0 2px 8px rgba(0,0,0,0.95);
-}
-.app.theme-dark .island-month {
-  text-shadow: 0 0 16px rgba(255,198,56,0.55), 0 2px 6px rgba(0,0,0,0.9);
-}
-.app.theme-dark .sea-isle-name {
-  background: rgba(4,10,5,0.96);
-  text-shadow: 0 0 16px rgba(60,220,60,0.8), 0 1px 4px rgba(0,0,0,0.98);
-  border-color: rgba(255,230,109,0.35);
-}
-.app.theme-dark .sea-isle-svg {
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.8)) drop-shadow(0 0 20px rgba(80,230,80,0.45));
-}
-.app.theme-dark .cal-cell {
-  border-color: rgba(56,189,248,0.30);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 8px rgba(0,0,0,0.5), 0 0 8px rgba(56,189,248,0.08);
-}
-.app.theme-dark .map-start-island {
-  box-shadow:
-    0 0 0 5px rgba(10,50,120,0.5),
-    0 0 30px rgba(249,115,22,0.25),
-    0 8px 28px rgba(0,0,0,0.8);
-}
-.app.theme-dark .calendar-week-head span {
-  text-shadow: 0 0 8px rgba(200,255,180,0.4);
-}
-
-/* ── Plain mode: beat theme-dark overrides (0-3-0 specificity) ── */
-.app .plain-month-card .cal-cell {
-  border-color: var(--b1) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  text-shadow: none !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-  background: var(--s2) !important;
-}
-.app .plain-month-card .cal-cell.done {
-  background: rgba(249,115,22,0.14) !important;
-  border-color: rgba(249,115,22,0.3) !important;
-}
-.app .plain-month-card .cal-cell.partial {
-  background: rgba(249,115,22,0.05) !important;
-  border-color: rgba(249,115,22,0.15) !important;
-}
-.app .plain-month-card .cal-cell.app-due {
-  background: rgba(59,130,246,0.12) !important;
-  border-color: rgba(59,130,246,0.45) !important;
-  box-shadow: none !important;
-}
-.app .plain-month-card .cal-cell.final-push {
-  background: rgba(48,209,88,0.12) !important;
-  border-color: rgba(48,209,88,0.5) !important;
-  box-shadow: none !important;
-}
-.app .plain-month-card .cal-cell.today {
-  background: rgba(249,115,22,0.16) !important;
-  border-color: #f97316 !important;
-  box-shadow: 0 0 0 1px rgba(249,115,22,0.35) !important;
-}
-.app .plain-month-card .cal-cell.locked {
-  background: var(--s1) !important;
-  border-color: var(--b1) !important;
-  box-shadow: none !important;
-}
-.app .plain-month-card .calendar-week-head span {
-  text-shadow: none !important;
-}
-
-/* ── Plain mode mobile overrides ── */
-@media (max-width: 560px) {
-  .plain-cal-wrap {
-    padding: 0 10px 8px;
-    gap: 14px;
-  }
-  .plain-month-card .calendar-month-grid { gap: 3px; }
-  .plain-month-card .calendar-week-head  { gap: 3px; padding: 5px 8px 2px; }
-  .plain-month-card .calendar-month-grid { padding: 3px 8px 8px; }
-  .plain-dday-date { font-size: 30px; }
-  /* Toggle compact on mobile */
-  .op-mode-toggle .opm-label { display: none; }
-  .op-mode-toggle { padding: 6px 8px; gap: 5px; }
-  /* page-header: keep title+toggle side by side */
-  .cal-pg-header { align-items: center; }
-  /* Plain mode on small mobile */
-  .cal-plain-mode.page.calendar-page {
-    padding: 18px 12px 8px !important;
-  }
-}
-
-
-/* ── Patch P4 + P8 — iOS input zoom guard ────────────────────────── */
-/* Every input/textarea/select must be ≥16px to prevent iOS auto-zoom */
-.num-input,
-.chat-input,
-.profile-input,
-.config-input,
-.onboarding-input,
-.dropdown-select,
-input,
-textarea,
-select {
-  font-size: 16px;
-}
-@media (min-width: 768px) {
-  .num-input        { font-size: 13px; }
-  .chat-input       { font-size: 13px; }
-  .profile-input    { font-size: 13px; }
-  .config-input     { font-size: 12px; }
-  .onboarding-input { font-size: 14px; }
-  .dropdown-select  { font-size: 15px; }
-}
-
-/* ── Patch P9 — overscroll-behavior on scroll containers ─────────── */
-.main {
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
-}
-.mentor-chat,
-.messages {
-  overscroll-behavior: contain;
 }
