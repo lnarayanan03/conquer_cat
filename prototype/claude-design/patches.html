@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CONQUER CAT — Code patches</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0e;
+      --fg: #f5f5f7;
+      --muted: rgba(245,245,247,0.6);
+      --line: rgba(255,255,255,0.08);
+      --ac: #f97316;
+      --green: #30d158;
+      --red: #ff453a;
+      --code-bg: #0f0f12;
+      --add: rgba(48,209,88,0.14);
+      --add-line: rgba(48,209,88,0.35);
+      --del: rgba(255,69,58,0.14);
+      --del-line: rgba(255,69,58,0.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.55; }
+    .container { max-width: 920px; margin: 0 auto; padding: 48px 24px 120px; }
+    .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ac); margin: 0 0 8px; }
+    h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 14px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 56px 0 12px; padding-top: 28px; border-top: 1px solid var(--line); }
+    h3 { font-size: 15px; font-weight: 600; margin: 28px 0 10px; color: var(--fg); }
+    p { color: var(--muted); margin: 0 0 14px; }
+    p.lead { font-size: 17px; color: var(--fg); max-width: 640px; }
+    code { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--fg); }
+    .file-path { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ac); background: rgba(249,115,22,0.08); padding: 6px 12px; border-radius: 6px; display: inline-block; margin-bottom: 8px; border: 1px solid rgba(249,115,22,0.2); }
+    .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.04em; }
+    .pill--p1 { background: rgba(255,69,58,0.18); color: #ff7a73; border: 1px solid rgba(255,69,58,0.3); }
+    .pill--p2 { background: rgba(249,115,22,0.15); color: #ffa15f; border: 1px solid rgba(249,115,22,0.3); }
+    .pill--p3 { background: rgba(48,209,88,0.14); color: #5fda85; border: 1px solid rgba(48,209,88,0.3); }
+    .diff {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      overflow-x: auto;
+      margin: 10px 0 18px;
+    }
+    .diff pre { margin: 0; padding: 12px 0; min-width: 100%; }
+    .diff .line { padding: 0 16px; white-space: pre; display: block; }
+    .diff .line.add { background: var(--add); border-left: 2px solid var(--add-line); }
+    .diff .line.del { background: var(--del); border-left: 2px solid var(--del-line); }
+    .diff .line.ctx { color: var(--muted); }
+    .diff .line.hunk { color: rgba(245,245,247,0.4); font-size: 11.5px; padding-top: 6px; padding-bottom: 6px; background: rgba(255,255,255,0.02); }
+    .callout {
+      background: rgba(249,115,22,0.06);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-left: 3px solid var(--ac);
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    .callout strong { color: var(--ac); }
+    .grid-bugs { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin: 18px 0 8px; }
+    .bug-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .bug-card h4 { margin: 8px 0 6px; font-size: 14.5px; }
+    .bug-card p { font-size: 13px; margin: 0; line-height: 1.5; }
+    .toc {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 22px 0 36px;
+    }
+    .toc ol { margin: 6px 0 0; padding-left: 22px; }
+    .toc li { font-size: 14px; margin: 4px 0; }
+    .toc a { color: var(--fg); text-decoration: none; }
+    .toc a:hover { color: var(--ac); }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); text-decoration: none; font-size: 13px; margin-bottom: 28px; }
+    .back-link:hover { color: var(--ac); }
+    .meta { font-size: 12px; color: var(--muted); margin-bottom: 0; }
+    .summary {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin: 24px 0 12px;
+    }
+    .summary-stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 18px;
+      flex: 1;
+      min-width: 160px;
+    }
+    .summary-stat-val { font-size: 24px; font-weight: 700; line-height: 1; }
+    .summary-stat-label { font-size: 11.5px; color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="index.html">← Back to prototype</a>
+    <p class="eyebrow">CONQUER CAT · Patch set v1</p>
+    <h1>Mobile bottom-bezel fix &amp; cross-device cleanup</h1>
+    <p class="lead">
+      A focused patch on <code>src/App.css</code> and <code>index.html</code> that kills the colored
+      strip showing through under the bottom nav on iOS, and makes the layout reliable on iPhone,
+      Android, iPad, and desktop.
+    </p>
+
+    <div class="summary">
+      <div class="summary-stat">
+        <div class="summary-stat-val" style="color: var(--red);">10</div>
+        <div class="summary-stat-label">Bugs identified</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-val" style="color: var(--ac);">4</div>
+        <div class="summary-stat-label">Files touched</div>
+      </div>
+      <div class="summary-stat">
+        <div class="summary-stat-val" style="color: var(--green);">~80</div>
+        <div class="summary-stat-label">Lines changed</div>
+      </div>
+    </div>
+
+    <div class="toc">
+      <h3 style="margin-top:0">In this patch</h3>
+      <ol>
+        <li><a href="#bug-rundown">Bug rundown — what's actually breaking</a></li>
+        <li><a href="#patch-1">Patch 1 · <code>src/App.css</code> — main background + safe-area fill <span class="pill pill--p1">P1</span></a></li>
+        <li><a href="#patch-2">Patch 2 · <code>src/App.css</code> — viewport height (dvh) <span class="pill pill--p1">P1</span></a></li>
+        <li><a href="#patch-3">Patch 3 · <code>src/App.css</code> — bottom-nav safe-area inset <span class="pill pill--p1">P1</span></a></li>
+        <li><a href="#patch-4">Patch 4 · <code>src/App.css</code> — text-input zoom on iOS <span class="pill pill--p2">P2</span></a></li>
+        <li><a href="#patch-5">Patch 5 · responsive breakpoints (tablet/iPad) <span class="pill pill--p2">P2</span></a></li>
+        <li><a href="#patch-6">Patch 6 · <code>index.html</code> — theme-color follow page <span class="pill pill--p3">P3</span></a></li>
+        <li><a href="#patch-7">Patch 7 · <code>src/pages/Progress.css</code> — <code>100vh</code> → <code>100dvh</code> <span class="pill pill--p1">P1</span></a></li>
+        <li><a href="#patch-8">Patch 8 · <code>src/App.css</code> — all input/textarea font-size ≥ 16px <span class="pill pill--p2">P2</span></a></li>
+        <li><a href="#patch-9">Patch 9 · <code>src/App.css</code> — <code>overscroll-behavior</code> on scroll containers <span class="pill pill--p2">P2</span></a></li>
+        <li><a href="#patch-10">Patch 10 · <code>CalendarPage</code> — stop imperative <code>--app-bg</code>, use CSS only <span class="pill pill--p3">P3</span></a></li>
+        <li><a href="#how-to-apply">How to apply</a></li>
+      </ol>
+    </div>
+
+    <!-- ─────────────────────────── BUGS ─────────────────────────── -->
+    <h2 id="bug-rundown">Bug rundown — what's actually breaking</h2>
+    <p>
+      The "bezel coming up at the bottom that changes color with the page/mode" is the iOS
+      <strong>safe-area-inset-bottom</strong> strip. On iPhones with no home button, iOS reserves
+      ~34&nbsp;px at the bottom of the viewport for the home indicator. Web pages must paint that
+      area themselves or the browser shows whatever's underneath — which in your app is a flat
+      <code>--app-bg</code> color that doesn't match the gradient/content above it.
+    </p>
+
+    <div class="grid-bugs">
+      <div class="bug-card">
+        <span class="pill pill--p1">P1</span>
+        <h4>Hardcoded black on <code>.main</code></h4>
+        <p>Line 169 of <code>App.css</code>: <code>.main { background: #000; }</code>. Overrides the per-page bg on desktop &amp; tablet — Calendar's ocean gradient and light theme cream both die.</p>
+      </div>
+      <div class="bug-card">
+        <span class="pill pill--p1">P1</span>
+        <h4>Safe-area uses wrong variable</h4>
+        <p><code>--app-safe-fill</code> is defined per-page but nothing actually paints with it. <code>body</code> uses <code>--app-bg</code>, so the home-indicator strip shows the gradient's <em>top</em> color, not the visible bottom color → seam.</p>
+      </div>
+      <div class="bug-card">
+        <span class="pill pill--p1">P1</span>
+        <h4><code>100vh</code> on <code>.app</code></h4>
+        <p>iOS Safari counts <code>100vh</code> with the URL bar collapsed. With <code>overflow: hidden</code> on <code>.app</code>, content clips past the visible viewport and the last row goes under the home indicator.</p>
+      </div>
+      <div class="bug-card">
+        <span class="pill pill--p2">P2</span>
+        <h4>iOS auto-zoom on inputs</h4>
+        <p>Your <code>.time-input</code> and <code>.num-input</code> are 16&nbsp;px. iOS zooms when an input is below 16&nbsp;px — but you've also got a couple of 14–15&nbsp;px inputs in the assessment page. Anything below 16&nbsp;px triggers the zoom.</p>
+      </div>
+    </div>
+
+    <!-- ─────────────────────────── PATCH 1 ─────────────────────────── -->
+    <h2 id="patch-1">Patch 1 · main background + safe-area fill <span class="pill pill--p1">P1</span></h2>
+    <p>Stop hardcoding black on <code>.main</code>. Use <code>--app-safe-fill</code> on <code>body</code> so the home-indicator strip inherits the page's <em>visible bottom</em> color, not the gradient top.</p>
+    <span class="file-path">src/App.css · lines 6–16, 169</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ -6,16 +6,17 @@</span>
+<span class="line ctx"> html,</span>
+<span class="line ctx"> body,</span>
+<span class="line ctx"> #root {</span>
+<span class="line ctx">   height: 100%;</span>
+<span class="line ctx">   min-height: 100%;</span>
+<span class="line del">-  background: var(--app-bg);</span>
+<span class="line add">+  background: var(--app-safe-fill);</span>
+<span class="line ctx"> }</span>
+<span class="line ctx"> body {</span>
+<span class="line del">-  background: var(--app-bg);</span>
+<span class="line add">+  background: var(--app-safe-fill);</span>
+<span class="line ctx">   color: #f5f5f7;</span>
+<span class="line ctx">   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;</span>
+<span class="line ctx">   -webkit-font-smoothing: antialiased;</span>
+<span class="line add">+  /* Paint into the safe area so the home-indicator strip is the right color */</span>
+<span class="line add">+  padding-bottom: env(safe-area-inset-bottom);</span>
+<span class="line add">+  background-clip: border-box;</span>
+<span class="line ctx"> }</span>
+<span class="line hunk">@@ -167,3 +168,5 @@</span>
+<span class="line ctx"> .dp-lab { ... }</span>
+<span class="line del">-.main { flex: 1; overflow-y: auto; background: #000; scrollbar-width: none; }</span>
+<span class="line add">+.main { flex: 1; overflow-y: auto; background: transparent; scrollbar-width: none; }</span>
+<span class="line ctx"> .main::-webkit-scrollbar { display: none; }</span></pre></div>
+    <div class="callout">
+      <strong>Why this works:</strong> <code>--app-safe-fill</code> is already keyed per-page
+      (cyan for Calendar light mode, deep ocean for Calendar dark, cream for light, etc.). It just
+      wasn't being used. Once <code>body</code> uses it, the home-indicator strip becomes invisible
+      because it matches whatever your content settles to at the bottom.
+    </div>
+
+    <!-- ─────────────────────────── PATCH 2 ─────────────────────────── -->
+    <h2 id="patch-2">Patch 2 · viewport height (dvh) <span class="pill pill--p1">P1</span></h2>
+    <p>Swap <code>100vh</code> for <code>100dvh</code> on the app shell. <code>dvh</code> is the
+    <em>dynamic</em> viewport that excludes iOS's URL bar — the value web devs always wanted.</p>
+    <span class="file-path">src/App.css · line 75</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ -75,1 +75,1 @@</span>
+<span class="line del">-.app { display: flex; height: 100vh; overflow: hidden; background: var(--app-bg); }</span>
+<span class="line add">+.app { display: flex; height: 100dvh; overflow: hidden; background: var(--app-bg); }</span></pre></div>
+    <div class="callout">
+      Pair with <code>min-height: 100dvh</code> on <code>.onboarding</code> (line 2900) and
+      <code>.main.mentor-main</code> (line 3577) — they already use <code>100dvh</code>, just verify nothing else still uses <code>100vh</code>.
+    </div>
+
+    <!-- ─────────────────────────── PATCH 3 ─────────────────────────── -->
+    <h2 id="patch-3">Patch 3 · bottom-nav safe-area inset <span class="pill pill--p1">P1</span></h2>
+    <p>
+      The bottom nav lives at line 4082 (<code>.bottom-nav { display: none !important; }</code>) on
+      desktop. The mobile breakpoint should re-enable it, but it doesn't pad into the safe area.
+      Result: the nav sits flush against the home indicator and any active state's color leaks
+      into the strip. Move the bottom inset into the nav's padding.
+    </p>
+    <span class="file-path">src/App.css · inside @media (max-width: 1023px)</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ ~3500 (bottom-nav block, mobile) @@</span>
+<span class="line ctx"> .bottom-nav {</span>
+<span class="line ctx">   display: flex !important;</span>
+<span class="line ctx">   position: fixed;</span>
+<span class="line ctx">   left: 0; right: 0; bottom: 0;</span>
+<span class="line ctx">   background: rgba(10,10,10,0.82);</span>
+<span class="line ctx">   backdrop-filter: blur(28px) saturate(180%);</span>
+<span class="line ctx">   border-top: 1px solid var(--b1);</span>
+<span class="line del">-  padding: 8px 8px 8px;</span>
+<span class="line add">+  /* Paint into the safe area; nav stays visually anchored to home indicator */</span>
+<span class="line add">+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));</span>
+<span class="line ctx"> }</span>
+<span class="line ctx"> .main {</span>
+<span class="line del">-  padding-bottom: 72px;</span>
+<span class="line add">+  /* Match the nav height so content doesn't go under it */</span>
+<span class="line add">+  padding-bottom: calc(72px + env(safe-area-inset-bottom));</span>
+<span class="line ctx"> }</span>
+<span class="line ctx"></span>
+<span class="line ctx"> /* Calendar / mentor variants of the bottom dock */</span>
+<span class="line ctx"> .mentor-page-composer,</span>
+<span class="line ctx"> .mentor-actions {</span>
+<span class="line ctx">   /* Already correct — just verify these aren't overridden elsewhere */</span>
+<span class="line ctx">   padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;</span>
+<span class="line ctx"> }</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 4 ─────────────────────────── -->
+    <h2 id="patch-4">Patch 4 · iOS input zoom <span class="pill pill--p2">P2</span></h2>
+    <p>iOS auto-zooms when an input's font-size is &lt;&nbsp;16&nbsp;px on focus. Make every input
+    explicitly 16&nbsp;px so this never happens.</p>
+    <span class="file-path">src/App.css · global rule</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ append near the top, after :root blocks @@</span>
+<span class="line add">+/* Never let iOS auto-zoom on focus */</span>
+<span class="line add">+input, textarea, select {</span>
+<span class="line add">+  font-size: 16px;</span>
+<span class="line add">+}</span>
+<span class="line add">+@media (min-width: 768px) {</span>
+<span class="line add">+  input, textarea, select { font-size: inherit; }</span>
+<span class="line add">+}</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 5 ─────────────────────────── -->
+    <h2 id="patch-5">Patch 5 · responsive breakpoints <span class="pill pill--p2">P2</span></h2>
+    <p>You only have two breakpoints: <code>@media (max-width: 1023px)</code> and
+    <code>@media (max-width: 560px)</code>. Tablets (iPad portrait = 820&nbsp;px) fall into the
+    "mobile" bucket but have plenty of room. Add a middle breakpoint and let the sidebar return
+    on iPad landscape.</p>
+    <span class="file-path">src/App.css · add new breakpoints</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ add after @media (max-width: 1023px) block @@</span>
+<span class="line add">+/* iPad landscape and small desktops — bring the sidebar back */</span>
+<span class="line add">+@media (min-width: 768px) and (max-width: 1023px) and (orientation: landscape) {</span>
+<span class="line add">+  .sidebar { display: flex; width: 180px; min-width: 180px; }</span>
+<span class="line add">+  .bottom-nav, .mobile-header { display: none !important; }</span>
+<span class="line add">+  .main { padding-top: 0 !important; padding-bottom: 0 !important; }</span>
+<span class="line add">+}</span>
+<span class="line add"></span>
+<span class="line add">+/* Tablet portrait — wider gutters, larger cards */</span>
+<span class="line add">+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {</span>
+<span class="line add">+  .page-content { max-width: 640px; margin: 0 auto; }</span>
+<span class="line add">+  .header-inner { max-width: 640px; }</span>
+<span class="line add">+}</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 6 ─────────────────────────── -->
+    <h2 id="patch-6">Patch 6 · theme-color follows page <span class="pill pill--p3">P3</span></h2>
+    <p>
+      Your <code>index.html</code> declares <code>&lt;meta name="theme-color" content="#000000"&gt;</code>
+      — fine for the dark Today page, wrong for Calendar's ocean and light mode. iOS Safari and
+      Chrome on Android paint the status-bar area with this color. Update it dynamically when
+      the page changes.
+    </p>
+    <span class="file-path">index.html + src/App.jsx</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ index.html @@</span>
+<span class="line ctx"> &lt;meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"&gt;</span>
+<span class="line del">-&lt;meta name="theme-color" content="#000000"&gt;</span>
+<span class="line add">+&lt;meta name="theme-color" id="theme-color-meta" content="#000000"&gt;</span>
+
+<span class="line hunk">@@ wherever you handle page change in App.jsx @@</span>
+<span class="line add">+const THEME_BY_PAGE = {</span>
+<span class="line add">+  calendar:      { dark: '#010c16', light: '#67d7ff' },</span>
+<span class="line add">+  calendarPlain: { dark: '#000000', light: '#f7f4ee' },</span>
+<span class="line add">+  default:       { dark: '#000000', light: '#f7f4ee' },</span>
+<span class="line add">+};</span>
+<span class="line add">+useEffect(() =&gt; {</span>
+<span class="line add">+  const meta = document.getElementById('theme-color-meta');</span>
+<span class="line add">+  const map = THEME_BY_PAGE[currentPage] ?? THEME_BY_PAGE.default;</span>
+<span class="line add">+  meta.setAttribute('content', map[theme]);</span>
+<span class="line add">+}, [currentPage, theme]);</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 7 ─────────────────────────── -->
+    <h2 id="patch-7">Patch 7 · Progress page <code>100vh</code> bug <span class="pill pill--p1">P1</span></h2>
+    <p>
+      <code>src/pages/Progress.css</code> line 6 sets <code>min-height: 100vh</code> on
+      <code>.progress-page</code>. On iOS Safari this overshoots the visible viewport by the
+      collapsed URL-bar height — meaning the last stats card slides under the home-indicator
+      strip whenever you hit the bottom of the page.
+    </p>
+    <span class="file-path">src/pages/Progress.css · line 6</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ -1,7 +1,8 @@</span>
+<span class="line ctx"> .progress-page {</span>
+<span class="line ctx">   max-width: 480px;</span>
+<span class="line ctx">   margin: 0 auto;</span>
+<span class="line del">-  padding: 16px 16px 48px;</span>
+<span class="line del">-  min-height: 100vh;</span>
+<span class="line add">+  padding: 16px 16px calc(48px + env(safe-area-inset-bottom));</span>
+<span class="line add">+  min-height: 100dvh;</span>
+<span class="line ctx"> }</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 8 ─────────────────────────── -->
+    <h2 id="patch-8">Patch 8 · iOS input zoom — all inputs <span class="pill pill--p2">P2</span></h2>
+    <p>
+      Patch 4 was a global rule. Some inputs override it with smaller fonts, which still triggers
+      iOS zoom on focus. The grep found these offenders in <code>src/App.css</code>:
+    </p>
+    <ul style="color: var(--muted); font-size:13.5px; line-height:1.8; margin: 8px 0 16px; padding-left: 22px;">
+      <li><code>.profile-input</code> — line 909 — <code>font-size: 13px</code></li>
+      <li><code>.dropdown-select</code> — line 925 — <code>font-size: 15px</code> (still &lt; 16!)</li>
+      <li><code>.chat-input</code> — line 2870 — <code>font-size: 13px</code></li>
+      <li><code>.config-input</code> — line 2885 — <code>font-size: 12px</code></li>
+      <li><code>.num-input</code> — line 2891 — <code>font-size: 13px</code> <em>(used on Today counters)</em></li>
+      <li><code>.onboarding-input</code> — line 2928 — <code>font-size: 14px</code></li>
+    </ul>
+    <span class="file-path">src/App.css · multiple lines</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ pattern @@</span>
+<span class="line del">- .num-input { ...; font-size: 13px; ... }</span>
+<span class="line del">- .chat-input { ...; font-size: 13px; ... }</span>
+<span class="line del">- .profile-input { ...; font-size: 13px; ... }</span>
+<span class="line del">- .config-input { ...; font-size: 12px; ... }</span>
+<span class="line del">- .onboarding-input { ...; font-size: 14px; ... }</span>
+<span class="line del">- .dropdown-select { ...; font-size: 15px; ... }</span>
+<span class="line add">+ .num-input,</span>
+<span class="line add">+ .chat-input,</span>
+<span class="line add">+ .profile-input,</span>
+<span class="line add">+ .config-input,</span>
+<span class="line add">+ .onboarding-input,</span>
+<span class="line add">+ .dropdown-select { font-size: 16px; }   /* mobile-safe */</span>
+<span class="line add">+</span>
+<span class="line add">+ /* Restore the smaller visual size on tablet+ */</span>
+<span class="line add">+ @media (min-width: 768px) {</span>
+<span class="line add">+   .num-input        { font-size: 13px; }</span>
+<span class="line add">+   .chat-input       { font-size: 13px; }</span>
+<span class="line add">+   .profile-input    { font-size: 13px; }</span>
+<span class="line add">+   .config-input     { font-size: 12px; }</span>
+<span class="line add">+   .onboarding-input { font-size: 14px; }</span>
+<span class="line add">+   .dropdown-select  { font-size: 15px; }</span>
+<span class="line add">+ }</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 9 ─────────────────────────── -->
+    <h2 id="patch-9">Patch 9 · Rubber-band scroll exposing body bg <span class="pill pill--p2">P2</span></h2>
+    <p>
+      When the user overscrolls the <code>.main</code> column on iOS, the page rubber-bands and
+      shows the <code>body</code> background underneath the content. Combined with the bezel bug,
+      this looked like a brief "color flash" at the top during pull-to-refresh-style gestures.
+      <code>overscroll-behavior</code> stops the chain so the rubber-band stays inside the scroller.
+    </p>
+    <span class="file-path">src/App.css · .main + mentor-chat areas</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ ~3556 (mobile .main) @@</span>
+<span class="line ctx"> .main {</span>
+<span class="line ctx">   width: 100%;</span>
+<span class="line ctx">   height: 100%;</span>
+<span class="line ctx">   overflow-x: hidden;</span>
+<span class="line ctx">   overflow-y: auto;</span>
+<span class="line add">+  overscroll-behavior-y: contain;</span>
+<span class="line add">+  -webkit-overflow-scrolling: touch;</span>
+<span class="line ctx"> }</span>
+<span class="line ctx"></span>
+<span class="line ctx"> .mentor-chat,</span>
+<span class="line ctx"> .messages {</span>
+<span class="line ctx">   overflow-y: auto;</span>
+<span class="line add">+  overscroll-behavior: contain;</span>
+<span class="line ctx"> }</span></pre></div>
+
+    <!-- ─────────────────────────── PATCH 10 ─────────────────────────── -->
+    <h2 id="patch-10">Patch 10 · Stop imperative <code>--app-bg</code> setter <span class="pill pill--p3">P3</span></h2>
+    <p>
+      <code>CalendarPage</code> (App.jsx line ~3097) runs a <code>useEffect</code> that sets
+      <code>document.documentElement.style.backgroundColor</code> and overrides <code>--app-bg</code>
+      and <code>--app-safe-fill</code> on every voyage-mode / theme change. It also attaches a
+      <code>MutationObserver</code> on <code>document.body</code> to watch <code>data-theme</code>.
+      This works, but is fragile:
+    </p>
+    <ul style="color: var(--muted); font-size:13.5px; line-height:1.8; margin: 8px 0 16px; padding-left: 22px;">
+      <li>It bypasses the CSS cascade — once any rule loses, JS has to re-patch.</li>
+      <li>It races other components that read <code>--app-bg</code> on mount.</li>
+      <li>The mutation observer fires on every body-attribute change, not just <code>data-theme</code>.</li>
+      <li>Leaving Calendar doesn't restore the variables — they linger as inline styles on <code>html</code>.</li>
+    </ul>
+    <p>Replace it with a single body class and pure-CSS rules — which the App.css already has at lines 19–49.</p>
+    <span class="file-path">src/App.jsx · CalendarPage</span>
+    <div class="diff"><pre>
+<span class="line hunk">@@ inside CalendarPage @@</span>
+<span class="line del">-useEffect(() =&gt; {</span>
+<span class="line del">-  const syncCalendarBackground = () =&gt; {</span>
+<span class="line del">-    const theme = document.body.dataset.theme === "light" ? "light" : "dark";</span>
+<span class="line del">-    const bgColor = voyageMode ? (theme === "light" ? "#67d7ff" : "#010c16")</span>
+<span class="line del">-                               : (theme === "light" ? "#f7f4ee" : "#000000");</span>
+<span class="line del">-    document.documentElement.style.backgroundColor = bgColor;</span>
+<span class="line del">-    document.body.style.backgroundColor = bgColor;</span>
+<span class="line del">-    document.documentElement.style.setProperty("--app-bg", bgColor);</span>
+<span class="line del">-    ...</span>
+<span class="line del">-  };</span>
+<span class="line del">-  syncCalendarBackground();</span>
+<span class="line del">-  const observer = new MutationObserver(syncCalendarBackground);</span>
+<span class="line del">-  observer.observe(document.body, { ... });</span>
+<span class="line del">-  return () =&gt; observer.disconnect();</span>
+<span class="line del">-}, [voyageMode]);</span>
+<span class="line add">+// One body class — the rest is CSS</span>
+<span class="line add">+useEffect(() =&gt; {</span>
+<span class="line add">+  document.body.classList.toggle('voyage-plain', !voyageMode);</span>
+<span class="line add">+  return () =&gt; document.body.classList.remove('voyage-plain');</span>
+<span class="line add">+}, [voyageMode]);</span>
+<span class="line add">+</span>
+<span class="line add">+// In App.css, add (or rely on existing on-calendar rules):</span>
+<span class="line add">+// body.voyage-plain { --app-bg: #000; --app-safe-fill: #000; }</span>
+<span class="line add">+// body.voyage-plain[data-theme="light"] { --app-bg: #f7f4ee; --app-safe-fill: #f7f4ee; }</span></pre></div>
+
+    <!-- ─────────────────────────── HOW TO APPLY ─────────────────────────── -->
+    <h2 id="how-to-apply">How to apply</h2>
+    <ol>
+      <li>Pull a fresh branch: <code>git checkout -b fix/mobile-safe-area</code></li>
+      <li>Apply patches 1–3 first (the bezel fixes) — these alone resolve what you're seeing.</li>
+      <li>Run <code>npm run dev</code>, open on an actual iPhone (or iOS Simulator), confirm the strip is gone on every page in both dark/light + calendar mode.</li>
+      <li>Add patches 4–6 once you can ship the urgent fix.</li>
+      <li>Tip for testing: in iOS Simulator, &nbsp;<em>Device → Erase All Content and Settings</em>&nbsp; doesn't update the home-screen icon's <code>theme-color</code>; you have to remove and re-add the PWA.</li>
+    </ol>
+
+    <p style="margin-top:48px"><a class="back-link" href="index.html">← Back to prototype</a></p>
+  </div>
+</body>
+</html>

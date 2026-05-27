@@ -13,7 +13,7 @@ body,
 body {
   background: var(--app-safe-fill);
   color: #f5f5f7;
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: 0;
   background-clip: border-box;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -2936,7 +2936,7 @@ select:focus { border-color: #f97316; }
 .floating-btn {
   position: fixed;
   right: 20px;
-  bottom: calc(84px + env(safe-area-inset-bottom));
+  bottom: 84px;
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -3252,9 +3252,12 @@ select:focus { border-color: #f97316; }
     min-height: 100%;
     overflow-x: hidden;
     overflow-y: hidden;
+    background: var(--app-bg);
   }
   body {
     position: static;
+    padding-bottom: 0;
+    background: var(--app-bg);
     overscroll-behavior-y: none;
   }
   .sidebar { display: none; }
@@ -3432,7 +3435,7 @@ select:focus { border-color: #f97316; }
     z-index: 260;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    padding-bottom: 24px;
     min-height: 0;
   }
   .mobile-drawer.open {
@@ -3502,7 +3505,7 @@ select:focus { border-color: #f97316; }
   .page {
     width: 100%;
     max-width: 100%;
-    padding: 24px 16px calc(24px + env(safe-area-inset-bottom)) !important;
+    padding: 24px 16px 24px !important;
   }
   /* Calendar page overrides the generic .page !important — sea must be edge-to-edge */
   .page.calendar-page {
@@ -3511,7 +3514,7 @@ select:focus { border-color: #f97316; }
   /* Plain mode on mobile: restore side padding; override ocean full-width */
   .cal-plain-mode.page.calendar-page {
     max-width: 100% !important;
-    padding: 22px 16px calc(24px + env(safe-area-inset-bottom)) !important;
+    padding: 22px 16px 24px !important;
   }
   .cal-plain-mode.page.calendar-page .page-header,
   .cal-plain-mode.page.calendar-page .month-strip,
@@ -3561,7 +3564,7 @@ select:focus { border-color: #f97316; }
     overflow-x: hidden;
     overflow-y: auto;
     padding-top: var(--mobile-header-h) !important;
-    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-bottom: 0 !important;
     background: var(--app-bg);
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
@@ -3622,7 +3625,7 @@ select:focus { border-color: #f97316; }
   }
   .mentor-page-composer {
     flex-shrink: 0;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom)) !important;
+    padding: 10px 16px 10px !important;
     position: sticky;
     bottom: 0;
   }
@@ -3673,16 +3676,16 @@ select:focus { border-color: #f97316; }
     margin-top: 0 !important;
     background: #0a0a0a;
     border-top: 1px solid #1f1f1f;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
+    padding: 10px 12px 10px !important;
   }
   .mentor-actions {
     flex-shrink: 0;
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    padding-bottom: 10px;
     background: #0a0a0a;
   }
   .floating-btn {
     right: 20px;
-    bottom: calc(20px + env(safe-area-inset-bottom));
+    bottom: 20px;
     width: 58px;
     height: 58px;
   }
@@ -4285,7 +4288,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* ── Plain mode mobile overrides ── */
 @media (max-width: 560px) {
   .plain-cal-wrap {
-    padding: 0 10px calc(8px + env(safe-area-inset-bottom));
+    padding: 0 10px 8px;
     gap: 14px;
   }
   .plain-month-card .calendar-month-grid { gap: 3px; }
@@ -4299,7 +4302,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .cal-pg-header { align-items: center; }
   /* Plain mode on small mobile */
   .cal-plain-mode.page.calendar-page {
-    padding: 18px 12px calc(8px + env(safe-area-inset-bottom)) !important;
+    padding: 18px 12px 8px !important;
   }
 }
 
