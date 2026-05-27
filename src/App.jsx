@@ -1309,8 +1309,9 @@ function TodayPage({
             daysLeft={dl}
             totals={totals}
             todayData={d}
+            data={data}
             userName={userName}
-            effortScore={effortScore(d)}
+            effortScore={effortScore(d, backlogVideos, backlogConcepts)}
             avatarGender={avatarGender}
             avatarSkin={avatarSkin}
             avatarHair={avatarHair}
@@ -5460,8 +5461,12 @@ export default function App() {
     localStorage.setItem("conquer_theme", theme);
     document.documentElement.style.colorScheme = theme;
     // Fix light mode: ensure body/html background matches theme (removes black strip on mobile)
-    document.body.style.background = theme === "light" ? "#f7f4ee" : "#000";
-    document.documentElement.style.background = theme === "light" ? "#f7f4ee" : "#000";
+    const bg = theme === "light" ? "#f7f4ee" : "#000";
+    document.body.style.background = bg;
+    document.documentElement.style.background = bg;
+    // Update browser/PWA chrome color (status bar on mobile)
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) metaTheme.setAttribute("content", bg);
   }, [appTheme]);
   useEffect(() => { localStorage.setItem("cat_avatar_gender", avatarGender) }, [avatarGender]);
   useEffect(() => { localStorage.setItem("cat_avatar_skin", avatarSkin) }, [avatarSkin]);
@@ -6290,6 +6295,7 @@ export default function App() {
             daysLeft={dl}
             totals={totals}
             todayData={data[sel] || defaultDay()}
+            data={data}
             userName={userName}
             effortScore={effortScore(data[sel] || defaultDay(), backlogVideos, backlogConcepts)}
             avatarGender={avatarGender}
@@ -6305,7 +6311,11 @@ export default function App() {
         )}
       </main>
 
-      <nav className="ios-bottom-nav" aria-label="Mobile primary navigation">
+      <nav
+        className="ios-bottom-nav"
+        style={{"--active-idx": Math.max(0, mobileTabs.findIndex(t => t.id === tab))}}
+        aria-label="Mobile primary navigation"
+      >
         {mobileTabs.map(item => (
           <button
             key={item.id}
