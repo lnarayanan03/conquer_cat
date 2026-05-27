@@ -223,7 +223,7 @@ export default function Today() {
           className={`save-btn${saved ? ' save-btn--saved' : ''}`}
           onClick={handleSave}
         >
-          {saved ? 'Saved ✓' : 'Save Day'}
+          {saved ? 'Saved' : 'Save Day'}
         </button>
 
       </div>
