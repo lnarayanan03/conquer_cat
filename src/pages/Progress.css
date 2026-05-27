@@ -2,8 +2,8 @@
 .progress-page {
   max-width: 480px;
   margin: 0 auto;
-  padding: 16px 16px 48px;
-  min-height: 100vh;
+  padding: 16px 16px calc(48px + env(safe-area-inset-bottom));
+  min-height: 100dvh;
 }
 
 /* ── Heading ─────────────────────────────── */
