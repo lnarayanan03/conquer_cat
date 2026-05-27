@@ -1,4 +1,4 @@
-import { Fragment, useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { Fragment, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
@@ -3231,8 +3231,8 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 
   const [mapNote, setMapNote] = useState("");
   const [mapNotePos, setMapNotePos] = useState({ left: "50%", top: 120 });
-  const [svgDims, setSvgDims] = useState({ w: 600, h: 1200 });
-  const [svgPathD, setSvgPathD] = useState('');
+  const [pathState, setPathState] = useState({ w: 600, h: 1200, d: '' });
+  const lastPathRef = useRef('');
   const [shipPos, setShipPos] = useState({ x: 50, y: 50, flip: false });
 
   const lastPrepDay = useMemo(() => {
@@ -3359,15 +3359,19 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       const cp2x = p2.x - (p3.x - p1.x)*tension/2, cp2y = p2.y - (p3.y - p1.y)*tension/2;
       d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
     }
-    const nextDims = { w: W, h: Math.max(H + 100, 400) };
-    setSvgDims(prev => (prev.w === nextDims.w && prev.h === nextDims.h ? prev : nextDims));
-    setSvgPathD(prev => (prev === d ? prev : d));
+    if (lastPathRef.current === d) return;
+    lastPathRef.current = d;
+    const nextW = W;
+    const nextH = Math.max(H + 100, 400);
+    setPathState(prev =>
+      prev.w === nextW && prev.h === nextH && prev.d === d
+        ? prev
+        : { w: nextW, h: nextH, d }
+    );
   }, [calendarData]);
 
-  useLayoutEffect(() => { buildPath(); }, [buildPath]);
-
   useEffect(() => {
-    const h = () => setTimeout(buildPath, 80);
+    const h = () => setTimeout(buildPath, 180);
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
   }, [buildPath]);
@@ -3397,8 +3401,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 
   // Position ship along path
   useEffect(() => {
-    if (isCompactPhone) return;
-    if (!svgPathElemRef.current || !svgPathD) return;
+    if (!svgPathElemRef.current || !pathState.d) return;
     try {
       const totalLen = svgPathElemRef.current.getTotalLength();
       if (totalLen < 1) return;
@@ -3409,7 +3412,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       const ptF = svgPathElemRef.current.getPointAtLength(Math.min(totalLen, totalLen*pct + delta));
       setShipPos({ x: pt.x, y: pt.y, flip: ptF.x - ptB.x < 0 });
     } catch(e) {}
-  }, [isCompactPhone, svgPathD, voyagePct]);
+  }, [pathState.d, voyagePct]);
 
   return (
     <div className={`page calendar-page${voyageMode ? "" : " cal-plain-mode"}`}>
@@ -3573,8 +3576,8 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
           </svg>
 
           {/* SVG Route Path Overlay */}
-          {svgPathD && (
-            <svg className="voyage-path-svg" width={svgDims.w} height={svgDims.h} aria-hidden="true">
+          {pathState.d && (
+            <svg className="voyage-path-svg" width={pathState.w} height={pathState.h} aria-hidden="true">
               <defs>
                 <filter id="pathGlow" x="-30%" y="-30%" width="160%" height="160%">
                   <feGaussianBlur stdDeviation="5" result="blur"/>
@@ -3586,39 +3589,41 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
                 </filter>
               </defs>
               {/* Wide glow halo */}
-              <path d={svgPathD} fill="none" stroke={isCompactPhone ? "rgba(249,115,22,0.2)" : "rgba(249,115,22,0.1)"} strokeWidth={isCompactPhone ? "24" : "20"} filter="url(#pathGlow)"/>
+              <path d={pathState.d} fill="none" stroke={isCompactPhone ? "rgba(249,115,22,0.2)" : "rgba(249,115,22,0.1)"} strokeWidth={isCompactPhone ? "24" : "20"} filter="url(#pathGlow)"/>
               {/* Thick soft outer dots */}
-              <path d={svgPathD} fill="none" stroke={isCompactPhone ? "rgba(255,193,7,0.42)" : "rgba(249,115,22,0.2)"} strokeWidth={isCompactPhone ? "8" : "6"} strokeDasharray="14 10" strokeLinecap="round"/>
+              <path d={pathState.d} fill="none" stroke={isCompactPhone ? "rgba(255,193,7,0.42)" : "rgba(249,115,22,0.2)"} strokeWidth={isCompactPhone ? "8" : "6"} strokeDasharray="14 10" strokeLinecap="round"/>
               {/* Main bright dotted line */}
-              <path ref={svgPathElemRef} d={svgPathD} fill="none"
+              <path ref={svgPathElemRef} d={pathState.d} fill="none"
                 stroke={isCompactPhone ? "rgba(255,154,31,1)" : "rgba(249,115,22,0.9)"} strokeWidth={isCompactPhone ? "4" : "2.8"}
                 strokeDasharray="10 7" strokeLinecap="round" filter="url(#dotGlow)"/>
             </svg>
           )}
           {/* Invisible measurement path before SVG is built */}
-          {!svgPathD && (
+          {!pathState.d && (
             <svg width="0" height="0" style={{position:'absolute',opacity:0}} aria-hidden="true">
               <path ref={svgPathElemRef} d="M0 0" fill="none"/>
             </svg>
           )}
 
           {/* Thousand Sunny ship marker */}
-          {!isCompactPhone && svgPathD && (
+          {pathState.d && (
             <div className="voyage-ship-marker" style={{
               position:"absolute", left:shipPos.x, top:shipPos.y,
               transform:"translate(-50%,-50%)", zIndex:10, pointerEvents:"none"
             }} aria-label="Thousand Sunny">
               <div className="voyage-ship-inner">
-                <div className={`wind-wrap ${shipPos.flip ? 'wind-right' : 'wind-left'}`} aria-hidden="true">
-                  <span className="wind-streak ws-1"/>
-                  <span className="wind-streak ws-2"/>
-                  <span className="wind-streak ws-3"/>
-                  <span className="wind-streak ws-4"/>
-                  <span className="wind-streak ws-5"/>
-                  <span className="wind-streak ws-6"/>
-                </div>
+                {!isCompactPhone && (
+                  <div className={`wind-wrap ${shipPos.flip ? 'wind-right' : 'wind-left'}`} aria-hidden="true">
+                    <span className="wind-streak ws-1"/>
+                    <span className="wind-streak ws-2"/>
+                    <span className="wind-streak ws-3"/>
+                    <span className="wind-streak ws-4"/>
+                    <span className="wind-streak ws-5"/>
+                    <span className="wind-streak ws-6"/>
+                  </div>
+                )}
                 <ThousandSunny size={72} flipX={shipPos.flip}/>
-                <div className="ship-label">Thousand Sunny</div>
+                {!isCompactPhone && <div className="ship-label">Thousand Sunny</div>}
               </div>
             </div>
           )}
