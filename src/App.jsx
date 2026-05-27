@@ -3099,25 +3099,8 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
     () => localStorage.getItem('op_voyage_mode') !== 'off'
   );
   useEffect(() => {
-    const syncCalendarBackground = () => {
-      const theme = document.body.dataset.theme === "light" ? "light" : "dark";
-      const bgColor = voyageMode
-        ? (theme === "light" ? "#67d7ff" : "#010c16")
-        : (theme === "light" ? "#f7f4ee" : "#000000");
-      const safeFill = voyageMode
-        ? (theme === "light" ? "#38c9f7" : "#010c16")
-        : bgColor;
-      document.documentElement.style.backgroundColor = bgColor;
-      document.body.style.backgroundColor = bgColor;
-      document.documentElement.style.setProperty("--app-bg", bgColor);
-      document.documentElement.style.setProperty("--app-safe-fill", safeFill);
-      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-      if (metaThemeColor) metaThemeColor.setAttribute("content", bgColor);
-    };
-    syncCalendarBackground();
-    const observer = new MutationObserver(syncCalendarBackground);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
+    document.body.classList.toggle('voyage-plain', !voyageMode);
+    return () => document.body.classList.remove('voyage-plain');
   }, [voyageMode]);
   const toggleVoyageMode = useCallback(() => {
     setVoyageMode(prev => {
