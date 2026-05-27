@@ -85,7 +85,7 @@ function ShareAvatar({
   };
 
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+    <svg width={size} height={size} viewBox="5 8 90 92" preserveAspectRatio="xMidYMid slice" fill="none">
       <ellipse cx="50" cy="75" rx="26" ry="12" fill={shadow} opacity="0.4"/>
       <rect x="24" y="54" width="52" height="46" rx="8" fill={shirt}/>
       <circle cx="50" cy="42" r="18" fill={skin}/>
@@ -181,7 +181,7 @@ export default function InstaCard({
     cardShadow:     dark ? "0 32px 80px rgba(0,0,0,0.7)"                   : "0 16px 48px rgba(0,0,0,0.14)",
     textPrimary:    dark ? "#f5f5f7"                                        : "#1a1a1a",
     textSecondary:  dark ? "#8e8e93"                                        : "#5a5550",
-    textTertiary:   dark ? "#6e6e73"                                        : "#8a8279",
+    textTertiary:   dark ? "#6e6e73"                                        : "#7a726a",
     divider:        dark ? "#1a1a1a"                                        : "#e2ddd5",
     metricBg:       dark ? "#0d0d0d"                                        : "#f0ece5",
     metricBorder:   dark ? "#1e1e1e"                                        : "#ddd8cf",
@@ -287,7 +287,7 @@ export default function InstaCard({
       display:"flex", flexDirection:"column",
       alignItems:"center", justifyContent:"flex-start",
       overflowY:"auto",
-      padding:"calc(64px + 12px) 12px calc(80px + env(safe-area-inset-bottom) + 12px)",
+      padding:"calc(env(safe-area-inset-top) + 54px + 12px) 12px calc(80px + env(safe-area-inset-bottom) + 12px)",
       gap:12,
     },
     card: {
@@ -399,15 +399,15 @@ export default function InstaCard({
             <div key={m.lbl} style={{flex:1}}>
               <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:2}}>
                 <span style={{
-                  fontSize: m.lbl==="STUDY" ? 18 : 28,
+                  fontSize: m.lbl==="STUDY" ? 20 : 28,
                   fontWeight:800, color:"#f97316", lineHeight:1,
                   letterSpacing:"-0.02em", fontVariantNumeric:"tabular-nums",
                 }}>
                   {m.top}
                 </span>
-                <span style={{fontSize:12, color:C.textSecondary, fontWeight:600, marginBottom:2}}>{m.mid}</span>
+                <span style={{fontSize:11, color:C.textSecondary, fontWeight:600, marginBottom:2}}>{m.mid}</span>
               </div>
-              <div style={{fontSize:9, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginTop:4}}>
+              <div style={{fontSize:9.5, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginTop:4}}>
                 {m.lbl}
               </div>
             </div>
@@ -436,7 +436,7 @@ export default function InstaCard({
               }}>
                 {s.val}
               </div>
-              <div style={{fontSize:9, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginTop:4}}>
+              <div style={{fontSize:9.5, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginTop:4}}>
                 {s.lbl}
               </div>
             </div>
@@ -458,7 +458,7 @@ export default function InstaCard({
 
         {/* ── 7-day sparkline ───────────────────────────────────── */}
         <div style={{marginBottom:12}}>
-          <div style={{fontSize:9, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginBottom:6}}>
+          <div style={{fontSize:9.5, color:C.textTertiary, letterSpacing:"0.10em", fontWeight:700, marginBottom:6}}>
             7 DAY TREND
           </div>
           <Sparkline scores={last7} dark={dark}/>
@@ -488,15 +488,15 @@ export default function InstaCard({
               borderRadius:"0 6px 6px 0",
             }}>
               <div style={{
-                fontSize:9, color:C.textTertiary, letterSpacing:"0.10em",
+                fontSize:9.5, color:C.textTertiary, letterSpacing:"0.10em",
                 fontWeight:700, marginBottom:6, textTransform:"uppercase",
               }}>
                 Vikram says
               </div>
               <div style={{
-                fontSize:13, fontStyle:"italic",
+                fontSize:14, fontStyle:"italic",
                 color: C.quoteText,
-                lineHeight:1.6, letterSpacing:"0.01em",
+                lineHeight:1.55, letterSpacing:"0.01em",
               }}>
                 "{displayLine}"
               </div>
@@ -515,7 +515,7 @@ export default function InstaCard({
             <div style={{fontSize:22, fontWeight:800, color:"#f97316", lineHeight:1, letterSpacing:"-0.02em"}}>
               {daysLeft}
             </div>
-            <div style={{fontSize:9, color:C.textTertiary, letterSpacing:"0.08em", textTransform:"uppercase", marginTop:2}}>
+            <div style={{fontSize:9.5, color:C.textTertiary, letterSpacing:"0.08em", textTransform:"uppercase", marginTop:2}}>
               DAYS TO CAT
             </div>
             {userName && (

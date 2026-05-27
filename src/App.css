@@ -1914,9 +1914,21 @@ body:has(.app.theme-light) {
   .mobile-menu-btn {
     display: none !important;
   }
-  /* Mentor page: shorten shell on phone so bottom nav doesn't overlap the composer input */
+  /* ── iPhone top safe-area: make header grow with the notch/Dynamic Island
+     and always give a consistent 10px gap below the status bar.
+     The 1023px block hardcodes height:64px + max(10px, env) which leaves only
+     ~10–20px for the brand text on notched iPhones. This override fixes that. ── */
+  .mobile-header {
+    height: calc(env(safe-area-inset-top) + 54px);
+    padding-top: calc(env(safe-area-inset-top) + 10px);
+  }
+  .main {
+    padding-top: calc(env(safe-area-inset-top) + 54px) !important;
+  }
+  /* Mentor page: shorten shell on phone so bottom nav doesn't overlap the composer.
+     Formula mirrors the dynamic header height above. */
   .mentor-page-shell {
-    height: calc(100dvh - 64px - 80px) !important;
+    height: calc(100dvh - env(safe-area-inset-top) - 54px - 80px) !important;
   }
   /* Mentor composer: keep safe-area padding; nav height is handled by shell shortening */
   .mentor-page-composer {
