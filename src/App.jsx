@@ -2,6 +2,8 @@ import { Fragment, useState, useMemo, useRef, useEffect, useCallback, useLayoutE
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
+import { useMediaQuery } from "./hooks/useMediaQuery.js";
+import { useTodayRolloverKey } from "./hooks/useTodayRolloverKey.js";
 
 function MentorAvatar({ size = 40 }) {
   // Vikram Anand — middle-aged, distinguished: grey hair, wrinkles, slick glasses
@@ -3083,7 +3085,8 @@ function SeaIsleSvg({ name = "", variant = 0 }) {
 }
 
 function CalendarPage({ data, sel, onSel, start, totalDays }) {
-  const today = todayKey();
+  const isCompactPhone = useMediaQuery("(max-width: 560px)");
+  const today = useTodayRolloverKey();
   const monthRefs = useRef({});
   const startRef = useRef(null);
   const startXRef = useRef(null);
@@ -3101,6 +3104,17 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       localStorage.setItem('op_voyage_mode', next ? 'on' : 'off');
       return next;
     });
+  }, []);
+  const scrollToMonth = useCallback((monthKey) => {
+    const el = monthRefs.current[monthKey];
+    if (!el) return;
+    const scroller = el.closest(".main") || document.scrollingElement || document.documentElement;
+    const scrollerRect = scroller.getBoundingClientRect?.() || { top: 0 };
+    const elRect = el.getBoundingClientRect();
+    const currentTop = "scrollTop" in scroller ? scroller.scrollTop : window.scrollY;
+    const headerH = document.querySelector(".mobile-header")?.offsetHeight || 64;
+    const targetTop = currentTop + elRect.top - scrollerRect.top - Math.max(headerH + 16, window.innerHeight * 0.12);
+    scroller.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, []);
   // Month islands are fixed by calendar month, not by array index.
   const MONTH_ISLANDS = {
@@ -3142,10 +3156,12 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
   ];
 
   const seaPassageFor = (monthNum) => {
-    if (monthNum === 5) return PARADISE_ISLES.slice(0, 4);
-    if (monthNum === 6) return PARADISE_ISLES.slice(4, 5);
+    if (monthNum === 5) return PARADISE_ISLES.slice(0, 2);
+    if (monthNum === 6) return PARADISE_ISLES.slice(2, 5);
     if (monthNum === 7) return PARADISE_ISLES.slice(5, 7);
-    if (monthNum === 8) return NEW_WORLD_ISLES;
+    if (monthNum === 8) return NEW_WORLD_ISLES.slice(0, 2);
+    if (monthNum === 9) return NEW_WORLD_ISLES.slice(2, 3);
+    if (monthNum === 10) return NEW_WORLD_ISLES.slice(3, 4);
     return [];
   };
 
@@ -3176,13 +3192,13 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
   ]), []);
 
   const seaCyclones = useMemo(() => ([
-    { x: "78%", y: "15%", s: 0.82 },
-    { x: "9%", y: "47%", s: 0.62 },
-    { x: "70%", y: "84%", s: 0.72 },
+    { x: "2%", y: "57%", s: 0.22 },
+    { x: "88%", y: "67%", s: 0.2 },
+    { x: "82%", y: "91%", s: 0.18 },
   ]), []);
   const seaMountains = useMemo(() => ([
-    { x: "0%", y: "34%", s: 0.22 },
-    { x: "0%", y: "72%", s: 0.20 },
+    { x: "4%", y: "72%", s: 0.16 },
+    { x: "90%", y: "42%", s: 0.12 },
   ]), []);
   const seaReefs = useMemo(() => ([
     { x: "52%", y: "9%", s: 0.6 },
@@ -3311,7 +3327,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
     });
     if (ddayRef.current) {
       const r = ddayRef.current.getBoundingClientRect();
-      pts.push({ x: r.left - cRect.left + r.width/2, y: r.top - cRect.top + 20 });
+      pts.push({ x: r.left - cRect.left + r.width/2, y: r.top - cRect.top - DOT_OFFSET });
     }
     if (pts.length < 2) return;
     const tension = 0.42;
@@ -3337,6 +3353,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 
   // Position ship along path
   useEffect(() => {
+    if (isCompactPhone) return;
     if (!svgPathElemRef.current || !svgPathD) return;
     try {
       const totalLen = svgPathElemRef.current.getTotalLength();
@@ -3348,7 +3365,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       const ptF = svgPathElemRef.current.getPointAtLength(Math.min(totalLen, totalLen*pct + delta));
       setShipPos({ x: pt.x, y: pt.y, flip: ptF.x - ptB.x < 0 });
     } catch(e) {}
-  }, [svgPathD, voyagePct]);
+  }, [isCompactPhone, svgPathD, voyagePct]);
 
   return (
     <div className={`page calendar-page${voyageMode ? "" : " cal-plain-mode"}`}>
@@ -3371,7 +3388,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
         <div className="month-strip">
           {calendarData.map(m => (
             <button key={m.key} type="button" className={`month-chip ${m.state}`}
-              onClick={() => monthRefs.current[m.key]?.scrollIntoView({ behavior:"smooth", block:"center" })}>
+              onClick={() => scrollToMonth(m.key)}>
               {m.label}
             </button>
           ))}
@@ -3542,7 +3559,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
           )}
 
           {/* Thousand Sunny ship marker */}
-          {svgPathD && (
+          {!isCompactPhone && svgPathD && (
             <div className="voyage-ship-marker" style={{
               position:"absolute", left:shipPos.x, top:shipPos.y,
               transform:"translate(-50%,-50%)", zIndex:10, pointerEvents:"none"
@@ -3585,30 +3602,30 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
             </div>
           )}
 
-          <div className="sea-rock-layer" aria-hidden="true">
+          {!isCompactPhone && <div className="sea-rock-layer" aria-hidden="true">
             {seaRocks.map((rock, idx) => (
               <span key={idx} className={`sea-rock sea-rock-${idx % 3}`}
                 style={{left: rock.x, top: rock.y, transform: `scale(${rock.s}) rotate(${rock.r}deg)`}} />
             ))}
-          </div>
-          <div className="sea-cyclone-layer" aria-hidden="true">
+          </div>}
+          {!isCompactPhone && <div className="sea-cyclone-layer" aria-hidden="true">
             {seaCyclones.map((cyclone, idx) => (
               <span key={idx} className={`sea-cyclone sea-cyclone-${idx % 2}`}
                 style={{left: cyclone.x, top: cyclone.y, transform: `scale(${cyclone.s})`}} />
             ))}
-          </div>
-          <div className="sea-mountain-layer" aria-hidden="true">
+          </div>}
+          {!isCompactPhone && <div className="sea-mountain-layer" aria-hidden="true">
             {seaMountains.map((mountain, idx) => (
               <span key={idx} className={`sea-mountain sea-mountain-${idx % 2}`}
                 style={{left: mountain.x, top: mountain.y, transform: `scale(${mountain.s})`}} />
             ))}
-          </div>
-          <div className="sea-reef-layer" aria-hidden="true">
+          </div>}
+          {!isCompactPhone && <div className="sea-reef-layer" aria-hidden="true">
             {seaReefs.map((reef, idx) => (
               <span key={idx} className={`sea-reef sea-reef-${idx % 2}`}
                 style={{left: reef.x, top: reef.y, transform: `scale(${reef.s})`}} />
             ))}
-          </div>
+          </div>}
           {calendarData[0]?.monthNum >= 5 && (
             <div className="map-route-hint bend-0 pre-grand-passage" aria-label="East Blue islands before Reverse Mountain">
               {PRE_GRAND_LINE_ISLES.map((isle, isleIdx) => (
@@ -3668,8 +3685,8 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
                   {seaPassageFor(month.monthNum).map((isle, isleIdx) => (
                     <button type="button"
                       key={isle.name}
-                      className={`sea-isle story-isle story-isle-${isleIdx % 4} ${month.monthNum >= 8 ? "sea-new-world" : "sea-paradise"}`}
-                      style={{marginLeft: seaIsleScatter(month.monthNum >= 8 ? "newWorld" : "paradise", isleIdx)}}
+                      className={`sea-isle story-isle ${isle.name === "Zou" ? "story-isle-right story-isle-zou" : ""} story-isle-${isleIdx % 4} ${month.monthNum >= 8 ? "sea-new-world" : "sea-paradise"}`}
+                      style={{marginLeft: isle.name === "Zou" ? "68%" : seaIsleScatter(month.monthNum >= 8 ? "newWorld" : "paradise", isleIdx)}}
                       onClick={(event) => openIslandNote(isle, event)}
                       aria-label={isle.name}>
                       <SeaIsleSvg name={isle.name} variant={isleIdx + month.monthNum} />
@@ -3682,12 +3699,27 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
           ))}
 
           {/* Approach to Laughtale */}
-          <div className="map-route-hint bend-1 dday-approach"/>
+          <div className="map-route-hint bend-1 dday-approach" aria-label="Final islands before Laughtale">
+            {[
+              { name:"Whole Cake Island", incident:"Luffy crashed Big Mom's wedding, saved Sanji, and beat Katakuri with Snakeman.", advice:"CAT move: adapt mid-fight. If a mock pattern changes, do not freeze. Switch routes and protect accuracy." },
+            ].map((isle, isleIdx) => (
+                <button type="button"
+                  key={isle.name}
+                className={`sea-isle story-isle story-isle-right story-isle-${(isleIdx + 1) % 4} sea-new-world`}
+                style={{marginLeft: "64%"}}
+                onClick={(event) => openIslandNote(isle, event)}
+                aria-label={isle.name}>
+                <SeaIsleSvg name={isle.name} variant={isleIdx + 12} />
+                <span className="sea-isle-name">{isle.name}</span>
+              </button>
+            ))}
+          </div>
 
           {/* Laughtale — D-Day island */}
           <div ref={ddayRef}
             className={`dday-island${sel===EXAM_DATE_KEY ? " selected" : ""}`}
             onClick={() => onSel(EXAM_DATE_KEY)} role="button" tabIndex={0}>
+            <div className="dday-checkpoint" aria-hidden="true" />
             <div className="dday-compass" aria-hidden="true">
               <span>N</span>
             </div>
@@ -6653,6 +6685,7 @@ export default function App() {
   const [calcResult, setCalcResult] = useState(null)
   const DAYS_OF_WEEK = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const TOPICS = ["None","Quant","VARC","LRDI"];
+  const currentDayKey = useTodayRolloverKey();
 
   const defaultTimetable = () => Object.fromEntries(
     DAYS_OF_WEEK.map(d => [d, {
@@ -6670,7 +6703,7 @@ export default function App() {
   const userInitials = userName
     ? userName.trim().split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2)
     : "ME"
-  const _today = new Date()
+  const _today = new Date(currentDayKey + "T00:00:00")
   _today.setHours(0, 0, 0, 0)
   const dl = getDaysLeft()
   const totalDays = useMemo(() => {
@@ -6690,7 +6723,7 @@ export default function App() {
     (a, d) => ({quant:a.quant+(+d.q||0), varc:a.varc+(+d.v||0), lrdi:a.lrdi+(+d.l||0)}),
     {quant:0, varc:0, lrdi:0}
   ), [data]);
-  const todayData = data[todayKey()] || defaultDay();
+  const todayData = data[currentDayKey] || defaultDay();
   const handleAvatarChange = (key, value) => {
     const setters = {
       gender: setAvatarGender,
@@ -7127,7 +7160,7 @@ export default function App() {
 
   const upd = (date, f, v) => setData(p => ({...p, [date]: {...(p[date]||defaultDay()), [f]:v}}));
 
-  const addMissedLiveClassToBacklog = (classEntry, dateKey = todayKey()) => {
+  const addMissedLiveClassToBacklog = (classEntry, dateKey = currentDayKey) => {
     if (!classEntry || classEntry.topic === "None") return "";
     const subtopic = classEntry.subtopic?.trim();
     const text = subtopic ? `${classEntry.topic}: ${subtopic}` : classEntry.topic;
@@ -7167,7 +7200,7 @@ export default function App() {
           daysLeft: dl,
           totals,
           dayNum: dn,
-          todayData: data[todayKey()] || defaultDay(),
+          todayData: data[currentDayKey] || defaultDay(),
           mode,
           userName: userName || "",
           startDate: startDate || "",
@@ -7290,7 +7323,7 @@ export default function App() {
             strokeLinecap="round">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
-        </button>c
+        </button>
         <div className="days-pill">
           <div className="dp-num">{dl}</div>
           <div className="dp-lab">days to CAT</div>

@@ -1223,7 +1223,7 @@ select:focus { border-color: #f97316; }
   top: 0;
   left: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 5;
   overflow: visible;
 }
 /* Start island */
@@ -1243,7 +1243,7 @@ select:focus { border-color: #f97316; }
     0 8px 28px rgba(0,0,0,0.55);
   z-index: 4;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 .map-start-island::before {
   content: '';
@@ -1284,7 +1284,7 @@ select:focus { border-color: #f97316; }
   line-height: 1;
   text-shadow: 0 0 22px rgba(249,115,22,0.6), 0 0 8px rgba(249,115,22,0.4);
   position: relative;
-  z-index: 3;
+  z-index: 6;
   transform: rotate(-8deg);
   width: max-content;
 }
@@ -1412,12 +1412,19 @@ select:focus { border-color: #f97316; }
   border: none;
   cursor: pointer;
   padding: 4px;
-  z-index: 3;
+  z-index: 8;
   transition: transform 0.2s;
   flex-shrink: 0;
   transform-origin: center bottom;
 }
 .sea-isle:hover { transform: scale(1.1) translateY(-4px); }
+.story-isle-right {
+  margin-top: 8px;
+  transform: translateX(-18%);
+}
+.story-isle-right:hover {
+  transform: translateX(-18%) scale(1.1) translateY(-4px);
+}
 .story-isle {
   max-width: 122px;
   min-width: 96px;
@@ -1523,10 +1530,10 @@ select:focus { border-color: #f97316; }
   width: 132px;
   height: 132px;
   border-radius: 50%;
-  opacity: 0.9;
+  opacity: 0.42;
   background:
     conic-gradient(from 30deg, transparent 0 42deg, rgba(255,255,255,0.46) 42deg 58deg, transparent 58deg 120deg, rgba(186,230,253,0.34) 120deg 142deg, transparent 142deg 360deg);
-  filter: blur(0.2px) drop-shadow(0 0 18px rgba(186,230,253,0.34));
+  filter: blur(0.4px) drop-shadow(0 0 12px rgba(186,230,253,0.2));
   animation: seaCycloneSpin 14s linear infinite;
 }
 .sea-cyclone::after {
@@ -1534,12 +1541,12 @@ select:focus { border-color: #f97316; }
   position: absolute;
   inset: 26px;
   border-radius: 50%;
-  border: 3px dashed rgba(255,255,255,0.6);
+  border: 2px dashed rgba(255,255,255,0.34);
 }
 .sea-cyclone-1 {
   width: 96px;
   height: 96px;
-  opacity: 0.72;
+  opacity: 0.34;
   animation-duration: 18s;
 }
 @keyframes seaCycloneSpin {
@@ -1847,7 +1854,7 @@ select:focus { border-color: #f97316; }
   flex-wrap: wrap;
   gap: 12px;
   padding: 8px 0;
-  z-index: 2;
+  z-index: 6;
   overflow: visible;
 }
 .map-route-hint::before {
@@ -2286,13 +2293,29 @@ select:focus { border-color: #f97316; }
     0 14px 42px rgba(0,0,0,0.8),
     inset 0 1px 0 rgba(255,255,255,0.08);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   z-index: 4;
   animation: laughtaleGlow 4s ease-in-out infinite;
 }
 @keyframes laughtaleGlow {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(2,16,8,0.6), 0 0 60px rgba(255,198,56,0.08), 0 14px 42px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08); }
-  50% { box-shadow: 0 0 0 4px rgba(2,16,8,0.6), 0 0 100px rgba(255,198,56,0.14), 0 0 200px rgba(255,198,56,0.06), 0 14px 42px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1); }
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px rgba(2,16,8,0.62),
+      0 0 0 9px rgba(255,215,0,0.08),
+      0 0 78px rgba(255,198,56,0.18),
+      0 0 150px rgba(249,115,22,0.08),
+      0 14px 42px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(2,16,8,0.62),
+      0 0 0 11px rgba(255,215,0,0.12),
+      0 0 120px rgba(255,198,56,0.28),
+      0 0 220px rgba(249,115,22,0.12),
+      0 14px 42px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.12);
+  }
 }
 .dday-island::before {
   content: '';
@@ -2300,6 +2323,23 @@ select:focus { border-color: #f97316; }
   inset: 11px;
   border: 1px solid rgba(255,231,132,0.18);
   border-radius: 13px;
+  pointer-events: none;
+}
+.dday-checkpoint {
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, #ffe066 30%, #f97316 100%);
+  box-shadow:
+    0 0 0 3px rgba(0,0,0,0.42),
+    0 0 18px rgba(249,115,22,0.78),
+    0 0 10px rgba(255,215,0,0.68);
+  z-index: 12;
+  border: 2px solid rgba(0,0,0,0.55);
   pointer-events: none;
 }
 .dday-island::after {
@@ -3135,30 +3175,34 @@ select:focus { border-color: #f97316; }
 }
 
 @media (max-width: 1023px) {
+  :root {
+    --mobile-header-h: 64px;
+  }
   html,
   body,
   #root {
-    height: auto;
+    height: 100%;
     min-height: 100%;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: hidden;
   }
   body {
     position: static;
+    overscroll-behavior-y: none;
   }
   .sidebar { display: none; }
   .app {
     display: block;
-    height: auto;
+    height: 100dvh;
     min-height: 100dvh;
-    overflow: visible;
+    overflow: hidden;
   }
   .mobile-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    height: 64px;
+    height: var(--mobile-header-h);
     padding: max(10px, env(safe-area-inset-top)) 14px 10px;
     background: rgba(0,0,0,0.72);
     border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -3371,7 +3415,7 @@ select:focus { border-color: #f97316; }
   .page {
     width: 100%;
     max-width: 100%;
-    padding: 24px 16px calc(96px + env(safe-area-inset-bottom)) !important;
+    padding: 24px 16px calc(24px + env(safe-area-inset-bottom)) !important;
   }
   /* Calendar page overrides the generic .page !important — sea must be edge-to-edge */
   .page.calendar-page {
@@ -3380,7 +3424,7 @@ select:focus { border-color: #f97316; }
   /* Plain mode on mobile: restore side padding; override ocean full-width */
   .cal-plain-mode.page.calendar-page {
     max-width: 100% !important;
-    padding: 22px 16px calc(96px + env(safe-area-inset-bottom)) !important;
+    padding: 22px 16px calc(24px + env(safe-area-inset-bottom)) !important;
   }
   .cal-plain-mode.page.calendar-page .page-header,
   .cal-plain-mode.page.calendar-page .month-strip,
@@ -3425,19 +3469,22 @@ select:focus { border-color: #f97316; }
   }
   .main {
     width: 100%;
-    min-height: 100dvh;
+    height: 100dvh;
+    min-height: 0;
     overflow-x: hidden;
     overflow-y: auto;
-    padding-top: 64px !important;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    padding-top: var(--mobile-header-h) !important;
+    padding-bottom: 0 !important;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
   }
   /* Calendar page: sea covers the nav clearance — no dark gap after Laughtale */
   .main.calendar-main {
     padding-bottom: 0 !important;
   }
   .calendar-months {
-    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
   .main::-webkit-scrollbar { display: none; }
   .main.mentor-main {
@@ -3547,7 +3594,7 @@ select:focus { border-color: #f97316; }
   }
   .floating-btn {
     right: 20px;
-    bottom: calc(84px + env(safe-area-inset-bottom));
+    bottom: calc(20px + env(safe-area-inset-bottom));
     width: 58px;
     height: 58px;
   }
@@ -3591,13 +3638,71 @@ select:focus { border-color: #f97316; }
 }
 
 @media (max-width: 560px) {
+  :root {
+    --mobile-header-h: 92px;
+  }
+  .mobile-header {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) 70px;
+    grid-template-rows: 42px 32px;
+    align-items: center;
+    gap: 4px 10px;
+    padding: max(32px, env(safe-area-inset-top)) 14px 8px;
+  }
+  .mobile-menu-btn {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .mobile-days-pill {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .mobile-brand {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    text-align: center;
+    padding: 0 8px;
+  }
+  .mobile-title,
+  .mobile-sub {
+    text-align: center;
+  }
+  .main {
+    padding-top: var(--mobile-header-h) !important;
+  }
   .calendar-months {
-    padding: 16px 0 4px;
+    padding: 16px 0 calc(10px + env(safe-area-inset-bottom));
     gap: 32px;
     /* Prevent horizontal overflow causing infinite zoom */
     overflow-x: hidden;
     width: 100%;
     max-width: 100%;
+  }
+  .calendar-months::before,
+  .calendar-months::after,
+  .voyage-ship-inner,
+  .voyage-ship-marker,
+  .grand-line-wall,
+  .red-line-wall,
+  .dday-island,
+  .dday-treasure-pile {
+    animation: none !important;
+  }
+  .calendar-month,
+  .calendar-month:hover,
+  .sea-isle,
+  .sea-isle:hover,
+  .month-chip:hover,
+  .save-btn:hover,
+  .floating-btn:hover {
+    transform: none !important;
+  }
+  .calendar-months::after {
+    opacity: 0.45;
+  }
+  .voyage-path-svg {
+    opacity: 0.72;
   }
   /* Tighter header on mobile */
   .page.calendar-page {
@@ -3712,6 +3817,27 @@ select:focus { border-color: #f97316; }
     margin-left: 0 !important;
     transform: scale(0.78);
     transform-origin: center bottom;
+  }
+  .story-isle-zou {
+    margin-left: auto !important;
+    margin-right: 18px !important;
+  }
+  .map-route-hint.dday-approach::before {
+    left: auto;
+    right: 4px;
+    bottom: 16px;
+    width: 76px;
+    height: 50px;
+    opacity: 0.4;
+    transform: none;
+  }
+  .map-route-hint.dday-approach::after {
+    left: auto;
+    right: 36px;
+    top: 0;
+    width: 72px;
+    height: 72px;
+    opacity: 0.34;
   }
   .sea-isle-svg { width: 58px; height: 46px; }
   .sea-isle-name { font-size: 6.5px; max-width: 68px; }
@@ -3865,6 +3991,12 @@ select:focus { border-color: #f97316; }
   }
   .pin-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) and (min-height: 780px) {
+  :root {
+    --mobile-header-h: 118px;
   }
 }
 .bottom-nav { display: none !important; }
@@ -4062,7 +4194,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* ── Plain mode mobile overrides ── */
 @media (max-width: 560px) {
   .plain-cal-wrap {
-    padding: 0 10px 100px;
+    padding: 0 10px calc(8px + env(safe-area-inset-bottom));
     gap: 14px;
   }
   .plain-month-card .calendar-month-grid { gap: 3px; }
@@ -4076,6 +4208,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .cal-pg-header { align-items: center; }
   /* Plain mode on small mobile */
   .cal-plain-mode.page.calendar-page {
-    padding: 18px 12px calc(96px + env(safe-area-inset-bottom)) !important;
+    padding: 18px 12px calc(8px + env(safe-area-inset-bottom)) !important;
   }
 }
