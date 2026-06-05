@@ -7,34 +7,36 @@ import { appendChat, getRecentChat, retrieveMemories } from "./memory.js";
 import { ALL_TOOLS, searchTool } from "./tools.js";
 
 const MAX_TOOL_HOPS = 3;
+const PROVIDER_TIMEOUT_MS = 35000;
 
 const groqKeys = [
-  process.env.GROQ_API_KEY,
-  process.env.GROQ_API_KEY_2,
-  process.env.GROQ_API_KEY_3,
-  process.env.GROQ_API_KEY_4,
-].filter(key => key?.trim());
+  { label: "groq-main-1", apiKey: process.env.GROQ_API_KEY },
+  { label: "groq-main-2", apiKey: process.env.GROQ_API_KEY_2 },
+  { label: "groq-main-3", apiKey: process.env.GROQ_API_KEY_3 },
+  { label: "groq-main-4", apiKey: process.env.GROQ_API_KEY_4 },
+].filter(slot => slot.apiKey?.trim());
+// GROQ_SMALL_TASK_KEY is intentionally excluded from mentor/chat rotation.
 
 const geminiKeys = [
-  process.env.GEMINI_API_KEY_1,
-  process.env.GEMINI_API_KEY_2,
-  process.env.GEMINI_API_KEY_3,
-  process.env.GEMINI_API_KEY_4,
-  process.env.GEMINI_API_KEY_5,
-  process.env.GEMINI_API_KEY_6,
-  process.env.GEMINI_API_KEY_7,
-  process.env.GEMINI_API_KEY_8,
-].filter(k => k?.trim());
+  { label: "gemini-main-1", apiKey: process.env.GEMINI_API_KEY_1 },
+  { label: "gemini-main-2", apiKey: process.env.GEMINI_API_KEY_2 },
+  { label: "gemini-main-3", apiKey: process.env.GEMINI_API_KEY_3 },
+  { label: "gemini-main-4", apiKey: process.env.GEMINI_API_KEY_4 },
+  { label: "gemini-main-5", apiKey: process.env.GEMINI_API_KEY_5 },
+  { label: "gemini-main-6", apiKey: process.env.GEMINI_API_KEY_6 },
+  { label: "gemini-main-7", apiKey: process.env.GEMINI_API_KEY_7 },
+  { label: "gemini-main-8", apiKey: process.env.GEMINI_API_KEY_8 },
+].filter(slot => slot.apiKey?.trim());
 
 const KEY_COOLDOWN_MS = 60000;
 const keyCooldowns = new Map();
 
 const providerPool = [
-  ...groqKeys.map(apiKey => ({ provider: "groq", apiKey, model: "llama-3.3-70b-versatile" })),
-  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash-lite" })),
-  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.5-flash" })),
-  ...geminiKeys.map(apiKey => ({ provider: "gemini", apiKey, model: "gemini-2.0-flash" })),
-  { provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: "claude-sonnet-4-6" },
+  ...groqKeys.map(slot => ({ provider: "groq", label: slot.label, apiKey: slot.apiKey, model: "llama-3.3-70b-versatile" })),
+  ...geminiKeys.map(slot => ({ provider: "gemini", label: slot.label, apiKey: slot.apiKey, model: "gemini-2.5-flash-lite" })),
+  ...geminiKeys.map(slot => ({ provider: "gemini", label: slot.label, apiKey: slot.apiKey, model: "gemini-2.5-flash" })),
+  ...geminiKeys.map(slot => ({ provider: "gemini", label: slot.label, apiKey: slot.apiKey, model: "gemini-2.0-flash" })),
+  { provider: "anthropic", label: "anthropic-main-1", apiKey: process.env.ANTHROPIC_API_KEY, model: "claude-sonnet-4-6" },
 ].filter(slot => slot.apiKey?.trim());
 
 let poolIndex = 0;
@@ -45,7 +47,7 @@ function getNextAvailableSlot() {
   for (let i = 0; i < total; i++) {
     const idx = (poolIndex + i) % total;
     const slot = providerPool[idx];
-    if (now > (keyCooldowns.get(slot.apiKey + slot.model) || 0)) {
+    if (now > (keyCooldowns.get(`${slot.label}:${slot.model}`) || 0)) {
       poolIndex = (idx + 1) % total;
       return { slot, idx };
     }
@@ -54,8 +56,20 @@ function getNextAvailableSlot() {
 }
 
 function markSlotCooldown(slot) {
-  keyCooldowns.set(slot.apiKey + slot.model, Date.now() + KEY_COOLDOWN_MS);
-  console.warn(`Cooldown: ${slot.provider} ${slot.model}`);
+  keyCooldowns.set(`${slot.label}:${slot.model}`, Date.now() + KEY_COOLDOWN_MS);
+  console.warn(`Cooldown: ${slot.label} ${slot.model}`);
+}
+
+async function withTimeout(promise, label, timeoutMs = PROVIDER_TIMEOUT_MS) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function toLangChainHistory(messages = []) {
@@ -235,12 +249,12 @@ async function runWithPool(messages, withTools = true) {
       }
 
       const bound = withTools ? model.bindTools(ALL_TOOLS) : model;
-      const result = await runWithTools(bound, messages);
+      const result = await withTimeout(runWithTools(bound, messages), slot.label);
 
       if (!result.reply) throw new Error("Empty reply");
 
       const u = result.usage;
-      console.log(`Response from ${slot.provider} ${slot.model}${u ? ` | in=${u.input_tokens} out=${u.output_tokens} total=${u.total_tokens}` : ""}`);
+      console.log(`Response from ${slot.label} ${slot.model}${u ? ` | in=${u.input_tokens} out=${u.output_tokens} total=${u.total_tokens}` : ""}`);
       return { ...result, provider: slot.provider };
 
     } catch (err) {
@@ -251,15 +265,16 @@ async function runWithPool(messages, withTools = true) {
         msg.toLowerCase().includes("quota")
       ) {
         markSlotCooldown(slot);
-        console.warn(`Slot ${slot.provider}/${slot.model} rate limited, trying next`);
+        console.warn(`Slot ${slot.label}/${slot.model} rate limited, trying next`);
         continue;
       }
-      console.warn(`Slot ${slot.provider}/${slot.model} error:`, msg.slice(0, 100));
+      if (msg.toLowerCase().includes("timeout")) markSlotCooldown(slot);
+      console.warn(`Slot ${slot.label}/${slot.model} error:`, msg.slice(0, 100));
       continue;
     }
   }
 
-  throw new Error("All 28 provider slots failed");
+  throw new Error(`All ${total} provider slots failed`);
 }
 
 function isSundayEveningIST() {
@@ -289,9 +304,13 @@ async function classifyIntent(message) {
   const groqKey = process.env.GROQ_API_KEY?.trim();
   if (!groqKey) return "general";
 
+  let timeout;
   try {
+    const controller = new AbortController();
+    timeout = setTimeout(() => controller.abort(), 12000);
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${groqKey}`,
         "Content-Type": "application/json",
@@ -324,6 +343,8 @@ Return ONLY the one word. No explanation.`
     return valid.includes(raw) ? raw : "general";
   } catch {
     return "general";
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
 

@@ -400,14 +400,14 @@ async function callGroq({ systemText, messages, maxTokens }) {
     }));
   } catch (err) {
     if (err.name === "AbortError" || /timeout|ETIMEDOUT/i.test(err.message || "")) {
-      console.warn("Groq timeout, trying next key or fallback");
+      console.warn("Groq timeout, trying fallback provider path");
     }
     throw err;
   }
 
   if (!response.ok) {
     if (response.status === 503 || response.status === 504) {
-      console.warn("Groq timeout, trying next key or fallback");
+      console.warn("Groq provider unavailable, trying fallback provider path");
     }
     throw new Error(apiErrorMessage(data, `Groq error: ${response.status}`));
   }
@@ -879,15 +879,22 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
     }
 
     if (existing && !existing.completed) {
-      // Resume: fetch full question objects for remaining questions
-      const remainingIds = existing.questions.slice(existing.current_index);
+      // Resume: fetch full question objects in stored order; frontend owns current_index.
+      const questionIds = existing.questions || [];
+      if (questionIds.length === 0) {
+        return res.json({
+          session: { ...existing, questionObjects: [] },
+          type,
+          resuming: true,
+        });
+      }
       const { data: questions } = await supabase
         .from("questions")
-        .select("id, topic, difficulty, question_text, options")
-        .in("id", remainingIds);
+        .select("id, topic, difficulty, question_text, options, correct_answer, explanation, source, cat_year")
+        .in("id", questionIds);
 
       // Reorder to match stored order
-      const ordered = remainingIds
+      const ordered = questionIds
         .map(id => (questions || []).find(q => q.id === id))
         .filter(Boolean);
 
@@ -900,8 +907,9 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
 
     // New session
     const allQuestions = await getQuestionsForSession(userId, type);
-    if (allQuestions.length === 0) {
-      return res.json({ session: null, type, error: "Bank empty — seed required" });
+    const expectedCount = type === "weekly" ? 10 : 3;
+    if (allQuestions.length !== expectedCount) {
+      return res.json({ session: null, type, error: `Bank incomplete — expected ${expectedCount}, got ${allQuestions.length}` });
     }
 
     const session = await getOrCreateSession(userId, today, type, allQuestions);
@@ -921,6 +929,13 @@ app.post("/api/assessment/answer", async (req, res) => {
   const { userId, sessionId, questionId, userAnswer, correctAnswer, topic } = req.body;
   if (!userId || !questionId || !userAnswer || !correctAnswer) {
     return res.status(400).json({ error: "Missing required fields" });
+  }
+  if (!supabase) {
+    return res.json({
+      isCorrect: String(userAnswer).trim() === String(correctAnswer).trim(),
+      correctAnswer,
+      explanation: null,
+    });
   }
 
   try {

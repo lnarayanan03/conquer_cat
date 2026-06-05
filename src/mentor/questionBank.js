@@ -9,6 +9,22 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 
 const TOPICS = ["quant", "varc", "lrdi"];
 const WRONG_RETRY_DAYS = 3;
+const SESSION_TOPIC_COUNTS = {
+  daily: { quant: 1, varc: 1, lrdi: 1 },
+  weekly: { quant: 4, varc: 3, lrdi: 3 },
+};
+const CATEGORY_PLAN = {
+  daily: {
+    quant: ["fresh"],
+    varc: ["weak"],
+    lrdi: ["high_value"],
+  },
+  weekly: {
+    quant: ["fresh", "weak", "high_value", "fallback"],
+    varc: ["fresh", "weak", "high_value"],
+    lrdi: ["fresh", "fresh", "weak"],
+  },
+};
 
 // ── Select questions for a session ──────────────────────────────────────────
 
@@ -35,70 +51,108 @@ async function getSeenQuestionIds(userId) {
   return (data || []).map(r => r.question_id);
 }
 
-async function fetchQuestions(topic, difficulty, excludeIds, limit) {
+function isOverusedLowValue(q) {
+  const seen = Number(q?.times_seen || 0);
+  const correct = Number(q?.times_correct || 0);
+  if (seen < 8) return false;
+  return correct / Math.max(seen, 1) >= 0.8;
+}
+
+function highValueScore(q) {
+  const seen = Number(q?.times_seen || 0);
+  const correct = Number(q?.times_correct || 0);
+  const correctness = seen > 0 ? correct / seen : 0;
+  const difficulty = q?.difficulty === "hard" ? 3 : q?.difficulty === "cat_level" ? 2 : 0;
+  return difficulty + (1 - correctness);
+}
+
+async function fetchQuestionCandidates(topic, { excludeIds = [], includeIds = [], freshOnly = false, highValueOnly = false, limit = 10 } = {}) {
   if (!supabase) return [];
   let query = supabase
     .from("questions")
-    .select("id, topic, difficulty, question_text, options, explanation")
+    .select("id, topic, difficulty, question_text, options, correct_answer, explanation, source, cat_year, times_seen, times_correct")
     .eq("topic", topic)
     .eq("is_archived", false)
-    .limit(limit + 10);
+    .limit(Math.max(limit * 6, 24));
 
-  if (difficulty) query = query.eq("difficulty", difficulty);
+  if (includeIds.length > 0) query = query.in("id", includeIds);
   if (excludeIds.length > 0) query = query.not("id", "in", `(${excludeIds.join(",")})`);
+  if (freshOnly) {
+    // Freshness is primarily enforced by excluding user-attempted question ids.
+    query = query.order("times_seen", { ascending: true });
+  } else if (highValueOnly) {
+    query = query.in("difficulty", ["cat_level", "hard"]);
+  }
 
   const { data } = await query;
-  return (data || []).slice(0, limit);
+  let rows = (data || []).filter(q => !isOverusedLowValue(q));
+  if (highValueOnly) {
+    rows = rows.sort((a, b) => highValueScore(b) - highValueScore(a));
+  }
+  return rows.slice(0, limit);
 }
 
-async function pickQuestionsForTopic(userId, topic, count, preferHard = false) {
-  const wrongIds = await getWrongQuestionIds(userId, topic, count);
+async function pickOneByCategory(userId, topic, category, selectedIds) {
   const seenIds = await getSeenQuestionIds(userId);
+  const excludeIds = [...new Set([...seenIds, ...selectedIds])];
 
-  const questions = [];
-
-  // Step 1: wrong questions first (up to 1 for daily, up to 5 for weekly)
-  if (wrongIds.length > 0) {
-    const wrongQ = await fetchQuestions(
-      topic,
-      null,
-      [],
-      Math.ceil(count / 2)
-    );
-    const filtered = wrongQ.filter(q => wrongIds.includes(q.id));
-    questions.push(...filtered.slice(0, Math.ceil(count / 2)));
+  if (category === "weak") {
+    const wrongIds = await getWrongQuestionIds(userId, topic, 8);
+    if (wrongIds.length > 0) {
+      const weak = await fetchQuestionCandidates(topic, {
+        includeIds: wrongIds,
+        excludeIds: selectedIds,
+        limit: 1,
+      });
+      if (weak[0]) return weak[0];
+    }
   }
 
-  // Step 2: unseen questions fill remaining slots
-  const remaining = count - questions.length;
-  if (remaining > 0) {
-    const diff = preferHard ? "hard" : "cat_level";
-    const excludeNow = [...seenIds, ...questions.map(q => q.id)];
-    const unseen = await fetchQuestions(topic, diff, excludeNow, remaining);
-    questions.push(...unseen);
+  if (category === "fresh") {
+    const fresh = await fetchQuestionCandidates(topic, {
+      excludeIds,
+      freshOnly: true,
+      limit: 1,
+    });
+    if (fresh[0]) return fresh[0];
   }
 
-  // Step 3: fallback — any unseen regardless of difficulty
-  if (questions.length < count) {
-    const still = count - questions.length;
-    const excludeNow = [...seenIds, ...questions.map(q => q.id)];
-    const fallback = await fetchQuestions(topic, null, excludeNow, still);
-    questions.push(...fallback);
+  if (category === "high_value") {
+    const highValue = await fetchQuestionCandidates(topic, {
+      excludeIds: selectedIds,
+      highValueOnly: true,
+      limit: 1,
+    });
+    if (highValue[0]) return highValue[0];
   }
 
-  return questions.slice(0, count);
+  const fallback = await fetchQuestionCandidates(topic, {
+    excludeIds: selectedIds,
+    limit: 1,
+  });
+  return fallback[0] || null;
 }
 
 export async function getQuestionsForSession(userId, type) {
-  const countPerTopic = type === "weekly" ? 10 : 2;
+  const topicCounts = SESSION_TOPIC_COUNTS[type] || SESSION_TOPIC_COUNTS.daily;
+  const categoryPlan = CATEGORY_PLAN[type] || CATEGORY_PLAN.daily;
   const allQuestions = [];
+  const selectedIds = [];
 
   for (const topic of TOPICS) {
-    const qs = await pickQuestionsForTopic(userId, topic, countPerTopic, type === "weekly");
-    allQuestions.push(...qs);
+    const count = topicCounts[topic] || 0;
+    const categories = categoryPlan[topic] || [];
+    for (let i = 0; i < count; i += 1) {
+      const category = categories[i] || "fallback";
+      const question = await pickOneByCategory(userId, topic, category, selectedIds);
+      if (question) {
+        allQuestions.push(question);
+        selectedIds.push(question.id);
+      }
+    }
   }
 
-  return allQuestions;
+  return allQuestions.slice(0, Object.values(topicCounts).reduce((sum, n) => sum + n, 0));
 }
 
 // ── Save answer ──────────────────────────────────────────────────────────────

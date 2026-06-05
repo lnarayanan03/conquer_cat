@@ -11,40 +11,99 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 
 const TOPICS = ["quant", "varc", "lrdi"];
 const BANK_TARGET_PER_TOPIC = 50;
+const GROQ_TIMEOUT_MS = 35000;
+const GROQ_COOLDOWN_MS = 60000;
 
 let groqIngestIndex = 0;
+const groqCooldowns = new Map();
 
-function getGroq() {
-  const keys = [
-    process.env.GROQ_API_KEY,
-    process.env.GROQ_API_KEY_2,
-    process.env.GROQ_API_KEY_3,
-    process.env.GROQ_API_KEY_4,
-  ].filter(k => k?.trim());
+function getGroqSlots() {
+  // GROQ_SMALL_TASK_KEY is intentionally excluded from ingest rotation.
+  return [
+    { label: "groq-main-1", apiKey: process.env.GROQ_API_KEY },
+    { label: "groq-main-2", apiKey: process.env.GROQ_API_KEY_2 },
+    { label: "groq-main-3", apiKey: process.env.GROQ_API_KEY_3 },
+    { label: "groq-main-4", apiKey: process.env.GROQ_API_KEY_4 },
+  ].filter(slot => slot.apiKey?.trim());
+}
 
-  if (keys.length === 0) throw new Error("No Groq API keys configured");
+function getGroqSlot() {
+  const slots = getGroqSlots();
+  if (slots.length === 0) throw new Error("No Groq API keys configured");
+  const now = Date.now();
 
-  const key = keys[groqIngestIndex % keys.length];
-  groqIngestIndex++;
-  console.log(`[ingest] Using Groq key ${(groqIngestIndex % keys.length) + 1}/${keys.length}`);
+  for (let i = 0; i < slots.length; i += 1) {
+    const idx = (groqIngestIndex + i) % slots.length;
+    const slot = slots[idx];
+    if (now > (groqCooldowns.get(slot.label) || 0)) {
+      groqIngestIndex = (idx + 1) % slots.length;
+      console.log(`[ingest] Using ${slot.label}`);
+      return slot;
+    }
+  }
+
+  throw new Error("All ingest Groq keys are cooling down");
+}
+
+function createGroq(slot) {
   return new ChatGroq({
-    apiKey: key,
+    apiKey: slot.apiKey,
     model: "llama-3.3-70b-versatile",
     temperature: 0.7,
     maxTokens: 4000,
   });
 }
 
+async function withTimeout(promise, label, timeoutMs = GROQ_TIMEOUT_MS) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function invokeGroq(messages) {
+  const slots = getGroqSlots();
+  let attempts = 0;
+
+  while (attempts < slots.length) {
+    const slot = getGroqSlot();
+    attempts += 1;
+    try {
+      return await withTimeout(createGroq(slot).invoke(messages), slot.label);
+    } catch (err) {
+      const msg = err?.message || "";
+      const rateLimited = msg.includes("429") ||
+        msg.toLowerCase().includes("rate limit") ||
+        msg.toLowerCase().includes("quota") ||
+        msg.toLowerCase().includes("timeout");
+      if (rateLimited) {
+        groqCooldowns.set(slot.label, Date.now() + GROQ_COOLDOWN_MS);
+        console.warn(`[ingest] ${slot.label} cooling down: ${msg.slice(0, 100)}`);
+      } else {
+        console.warn(`[ingest] ${slot.label} failed: ${msg.slice(0, 100)}`);
+      }
+    }
+  }
+
+  throw new Error("All ingest Groq keys failed");
+}
+
 function buildTavilyIngestPrompt(topic, rawText, count) {
-  return `Below is raw text scraped from a CAT preparation source. 
-Extract and format exactly ${count} valid CAT-style questions for topic: ${topic}.
+  return `Below is source text from CAT preparation material.
+Use it only as topic/context. Generate exactly ${count} original CAT-style questions for topic: ${topic}.
 
 SOURCE TEXT:
 ${rawText.slice(0, 3000)}
 
 STRICT RULES:
-- Extract real questions from the text — do NOT hallucinate new ones
-- Skip any question that is incomplete or missing an answer
+- Do not copy website questions directly
+- Generate original questions inspired only by the topic/context
+- Skip any generated question that is incomplete or missing an answer
 - correctAnswer must be EXACT TEXT of one of the 4 options
 - Return ONLY valid JSON array, no markdown, no explanation
 
@@ -224,8 +283,8 @@ export async function ingestFromTavily(topic, count = 20) {
 
   if (!rawText.trim()) throw new Error("Tavily returned no content");
 
-  const llmResponse = await getGroq().invoke([
-    new SystemMessage("You extract and format CAT questions from raw text into JSON. Return only valid JSON arrays."),
+  const llmResponse = await invokeGroq([
+    new SystemMessage("You generate original CAT-style questions from source context into JSON. Never copy website questions directly. Return only valid JSON arrays."),
     new HumanMessage(buildTavilyIngestPrompt(topic, rawText, count)),
   ]);
 

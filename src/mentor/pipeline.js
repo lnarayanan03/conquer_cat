@@ -10,6 +10,7 @@ const TIMEZONE = "Asia/Kolkata";
 const TOPICS = ["quant", "varc", "lrdi"];
 const DAILY_REPLENISH_PER_TOPIC = 2;
 const WEEKLY_REPLENISH_PER_TOPIC = 10;
+const DISTILLER_TIMEOUT_MS = 35000;
 let scheduledTask;
 
 function requireEnv(name) {
@@ -32,6 +33,18 @@ function createDistiller() {
     temperature: 0.85,
     maxTokens: 400,
   });
+}
+
+async function withTimeout(promise, label, timeoutMs = DISTILLER_TIMEOUT_MS) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function todayIst() {
@@ -148,7 +161,7 @@ function ensureDistillationShape(payload, fallbackSummary) {
 
 async function distillDailyMemory({ userId, date, chatMessages, trackerData }) {
   const model = createDistiller();
-  const response = await model.invoke([
+  const response = await withTimeout(model.invoke([
     new SystemMessage(`You distill one day of CONQUER mentor chat into long-term memory.
 Return only valid JSON. Do not wrap it in markdown.
 Do not store raw chat messages. Extract patterns and assessment only.
@@ -160,7 +173,7 @@ raw_summary must be a concise string suitable for vector embedding.`),
       trackerData,
       chatMessages,
     }, null, 2)),
-  ]);
+  ]), "groq-main-1 distillation");
 
   const text = normalizeContent(response.content);
   const parsed = parseJsonObject(text);

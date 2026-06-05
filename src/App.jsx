@@ -271,6 +271,20 @@ const VALIDATED_ASSESSMENT_BANK = [
     }
   },
   {
+    id: "validated-quant-4",
+    topic: "quant",
+    difficulty: "cat_level",
+    question_text: "The average of 8 numbers is 42. If one number, 56, is removed, what is the average of the remaining 7 numbers?",
+    options: ["38", "39", "40", "41"],
+    correct_answer: "40",
+    explanation: "Total of 8 numbers = 8 x 42 = 336. Removing 56 leaves 280. Average of remaining 7 numbers = 280/7 = 40.",
+    wrong_explanations: {
+      "38": "This underestimates the remaining total after removing 56.",
+      "39": "The remaining total is 280, and 280 divided by 7 is exactly 40.",
+      "41": "Removing a number above the original average should lower the average, not keep it near 42."
+    }
+  },
+  {
     id: "validated-varc-1",
     topic: "varc",
     difficulty: "cat_level",
@@ -1312,8 +1326,8 @@ function TodayPage({
                 </div>
                 <div className="row-sub">
                   {isSundayIST
-                    ? "10 questions per topic · Sunday calibre check"
-                    : "2 questions per topic · Daily calibre check"}
+                    ? "10 questions total · Sunday calibre check"
+                    : "3 questions total · Daily calibre check"}
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
@@ -2152,6 +2166,29 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
   );
 }
 
+function normalizeAssessmentQuestion(q) {
+  return {
+    ...q,
+    question_text: q?.question_text || q?.questionText || "",
+    correct_answer: q?.correct_answer || q?.correctAnswer || "",
+    wrong_explanations: q?.wrong_explanations || q?.wrongOptionExplanations || {},
+    topic: String(q?.topic || q?.section || "").toLowerCase(),
+  };
+}
+
+function getFallbackAssessmentQuestions(type) {
+  const counts = type === "weekly"
+    ? { quant: 4, varc: 3, lrdi: 3 }
+    : { quant: 1, varc: 1, lrdi: 1 };
+
+  return ["quant", "varc", "lrdi"].flatMap(topic =>
+    VALIDATED_ASSESSMENT_BANK
+      .filter(q => q.topic === topic)
+      .slice(0, counts[topic])
+      .map(normalizeAssessmentQuestion)
+  );
+}
+
 function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, TOPICS, onSaveToChat }) {
   const [saved, setSaved] = useState(false);
   const [localTT, setLocalTT] = useState(() => JSON.parse(JSON.stringify(timetable)));
@@ -2316,32 +2353,89 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
   const sessionType = isSunday ? "weekly" : "daily";
   const assessmentDate = todayKeyIST();
   const storageKey = `conquer_assessment_${userId || "local"}_${assessmentDate}_${sessionType}`;
-  const [questions] = useState(() => {
-    const byTopic = ["quant", "varc", "lrdi"].flatMap(topic =>
-      VALIDATED_ASSESSMENT_BANK.filter(q => q.topic === topic).slice(0, 3)
-    );
-    return byTopic;
-  });
+  const [session, setSession] = useState(null);
+  const [questions, setQuestions] = useState([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [result, setResult] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(0);
+  const [usingFallbackBank, setUsingFallbackBank] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-      if (!saved) return;
-      setAnswers(saved.answers || []);
-      setCompleted(!!saved.completed);
-      setScore((saved.answers || []).filter(a => a.isCorrect).length);
-      setCurrentIdx(Math.min(saved.currentIdx || 0, questions.length - 1));
-    } catch {
-      localStorage.removeItem(storageKey);
-    }
-  }, [storageKey, questions.length]);
+    let cancelled = false;
+    const expectedCount = sessionType === "weekly" ? 10 : 3;
+
+    const useFallback = (saved = null) => {
+      const fallbackQuestions = getFallbackAssessmentQuestions(sessionType);
+      setQuestions(fallbackQuestions);
+      setSession(null);
+      setUsingFallbackBank(true);
+      if (saved) {
+        setAnswers(saved.answers || []);
+        setCompleted(!!saved.completed);
+        setScore((saved.answers || []).filter(a => a.isCorrect).length);
+        setCurrentIdx(Math.min(saved.currentIdx || 0, Math.max(fallbackQuestions.length - 1, 0)));
+      } else {
+        setAnswers([]);
+        setCompleted(false);
+        setScore(0);
+        setCurrentIdx(0);
+      }
+    };
+
+    const loadAssessment = async () => {
+      setLoading(true);
+      let saved = null;
+      try {
+        saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      } catch {
+        localStorage.removeItem(storageKey);
+      }
+
+      try {
+        if (!userId) throw new Error("Missing user ID");
+        const res = await fetch(`/api/assessment/session/${encodeURIComponent(userId)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.error) throw new Error(data.error || "Assessment session failed");
+        if (data.completed) {
+          if (!cancelled) {
+            setCompleted(true);
+            setLoading(false);
+          }
+          return;
+        }
+
+        const backendQuestions = (data.session?.questionObjects || []).map(normalizeAssessmentQuestion);
+        if (backendQuestions.length !== expectedCount) {
+          throw new Error(`Backend returned ${backendQuestions.length}/${expectedCount} questions`);
+        }
+
+        if (!cancelled) {
+          setSession(data.session);
+          setQuestions(backendQuestions);
+          setUsingFallbackBank(false);
+          setAnswers(data.session?.answers || []);
+          setCompleted(false);
+          setScore((data.session?.answers || []).filter(a => a.isCorrect).length);
+          setCurrentIdx(Math.min(data.session?.current_index || 0, backendQuestions.length - 1));
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn("Assessment backend unavailable; using local fallback bank:", err?.message || err);
+        if (!cancelled) {
+          useFallback(saved);
+          setLoading(false);
+        }
+      }
+    };
+
+    loadAssessment();
+    return () => { cancelled = true; };
+  }, [sessionType, storageKey, userId]);
 
   const persistProgress = useCallback((next) => {
     localStorage.setItem(storageKey, JSON.stringify({
@@ -2364,13 +2458,13 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     const q = questions[currentIdx];
     setSubmitting(true);
     const isCorrect = selected === q.correct_answer;
-    const data = {
+    const localResult = {
       isCorrect,
       correctAnswer: q.correct_answer,
       explanation: q.explanation,
       wrongExplanation: isCorrect ? "" : q.wrong_explanations?.[selected]
     };
-    setResult(data);
+    setResult(localResult);
 
     const newAnswer = {
       questionId: q.id,
@@ -2383,7 +2477,51 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     setAnswers(updatedAnswers);
     persistProgress({ answers: updatedAnswers, currentIdx: currentIdx + 1 });
     if (isCorrect) setScore(s => s + 1);
-    setSubmitting(false);
+
+    try {
+      if (userId) {
+        const answerRes = await fetch("/api/assessment/answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            sessionId: session?.id || null,
+            questionId: q.id,
+            userAnswer: selected,
+            correctAnswer: q.correct_answer,
+            topic: q.topic,
+          })
+        });
+        const answerData = await answerRes.json().catch(() => ({}));
+        if (!answerRes.ok) throw new Error(answerData.error || "Answer save failed");
+        setResult(prev => ({
+          ...prev,
+          isCorrect: answerData.isCorrect ?? prev.isCorrect,
+          correctAnswer: answerData.correctAnswer || prev.correctAnswer,
+          explanation: answerData.explanation || prev.explanation,
+        }));
+      }
+    } catch (err) {
+      console.warn("Assessment answer save failed:", err?.message || err);
+    }
+
+    try {
+      if (session?.id && !usingFallbackBank) {
+        await fetch("/api/assessment/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: session.id,
+            currentIndex: currentIdx + 1,
+            answers: updatedAnswers,
+          })
+        });
+      }
+    } catch (err) {
+      console.warn("Assessment progress save failed:", err?.message || err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleNext = async () => {
@@ -2393,6 +2531,21 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     if (currentIdx + 1 >= questions.length) {
       const finalScore = completedAnswers.filter(a => a.isCorrect).length;
       persistProgress({ answers: completedAnswers, currentIdx: questions.length, completed: true });
+
+      if (session?.id && userId && !usingFallbackBank) {
+        fetch("/api/assessment/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            sessionId: session.id,
+            type: sessionType,
+            score: finalScore,
+            total: questions.length,
+            answers: completedAnswers,
+          })
+        }).catch(err => console.warn("Assessment completion save failed:", err?.message || err));
+      }
 
       const topicScores = ["quant","varc","lrdi"].map(t => {
         const tAnswers = completedAnswers.filter(a => a.topic === t);
@@ -2418,6 +2571,22 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
   };
 
   const topicColors = { quant:"#f97316", varc:"#3b82f6", lrdi:"#22c55e" };
+
+  if (loading) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Loading assessment...</div>
+      </div>
+    </div>
+  );
 
   if (completed) return (
     <div className="page">
