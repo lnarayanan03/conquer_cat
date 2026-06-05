@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import ws from "ws";
-import { ASSESSMENT_TOPICS, getAssessmentTopicCounts } from "./assessmentCounts.js";
+import { ASSESSMENT_TOPICS } from "./assessmentCounts.js";
 
 dotenv.config();
 
@@ -15,6 +15,7 @@ const TAVILY_TIMEOUT_MS = 8000;
 const ANTHROPIC_TIMEOUT_MS = 90000;
 const GROQ_SMALL_TIMEOUT_MS = 10000;
 const PRELOAD_TOPIC_TIMEOUT_MS = 90000;
+const BANK_MIN_ACTIVE_PER_TOPIC = 20;
 const QUESTION_JACCARD_DUP_THRESHOLD = 0.82;
 const QUESTION_BIGRAM_DUP_THRESHOLD = 0.86;
 const QUESTION_CONTAINMENT_LENGTH_RATIO = 0.72;
@@ -739,21 +740,20 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
   }
 
   lastPreloadDateKey = dateKey;
-  const dailyCounts = getAssessmentTopicCounts("daily");
   const results = [];
 
   for (const topic of ASSESSMENT_TOPICS) {
     let activeCount = null;
     try {
       activeCount = await getActiveQuestionCount(topic);
-      const required = dailyCounts[topic] || 0;
-      if (activeCount >= required + 5 && !bypassCapacity) {
-        console.log(`[assessment/preload] ${topic} capacity sufficient, skipped`);
+      if (activeCount >= BANK_MIN_ACTIVE_PER_TOPIC && !bypassCapacity) {
+        console.log(`[assessment/preload] ${topic} capacity sufficient: ${activeCount}/${BANK_MIN_ACTIVE_PER_TOPIC}, skipped`);
         results.push({
           topic,
           skipped: true,
           reason: "capacity sufficient",
           activeCount,
+          minRequired: BANK_MIN_ACTIVE_PER_TOPIC,
           requested: 0,
           generated: 0,
           accepted: 0,
@@ -767,7 +767,10 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
         console.log(`[assessment/preload] ${topic} refill already running`);
       }
 
-      console.log(`[assessment/preload] ${topic} generating 3`);
+      const capacityLog = activeCount >= BANK_MIN_ACTIVE_PER_TOPIC
+        ? `bypassing capacity: ${activeCount}/${BANK_MIN_ACTIVE_PER_TOPIC}`
+        : `below capacity: ${activeCount}/${BANK_MIN_ACTIVE_PER_TOPIC}`;
+      console.log(`[assessment/preload] ${topic} ${capacityLog}, generating 3`);
       const result = await withTimeout(
         refillQuestionBank({ topic, count: 3 }),
         `preload ${topic}`,
@@ -778,6 +781,7 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
         skipped: false,
         reason: "generated",
         activeCount,
+        minRequired: BANK_MIN_ACTIVE_PER_TOPIC,
       });
     } catch (err) {
       const message = shortError(err);
@@ -791,6 +795,7 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
         skipped: false,
         reason: "generation failed",
         activeCount,
+        minRequired: BANK_MIN_ACTIVE_PER_TOPIC,
         requested: 3,
         generated: 0,
         accepted: 0,
