@@ -1997,11 +1997,12 @@ body:has(.app.theme-light) {
   .mobile-header {
     height: calc(env(safe-area-inset-top) + 64px);
     padding-top: calc(env(safe-area-inset-top) + 10px);
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
     padding-bottom: 0;
     align-items: center;
-    gap: 10px;
+    justify-content: flex-start;
+    gap: 8px;
     background: transparent !important;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -2014,6 +2015,33 @@ body:has(.app.theme-light) {
     -webkit-backdrop-filter: none;
     border-bottom: 0 !important;
     box-shadow: none !important;
+  }
+  .mobile-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(8,8,8,0.22) 0%,
+        rgba(8,8,8,0.14) 55%,
+        rgba(8,8,8,0.04) 100%
+      );
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
+    z-index: 0;
+  }
+  .app.theme-light .mobile-header::before {
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.34) 0%,
+        rgba(250,248,244,0.22) 55%,
+        rgba(250,248,244,0.06) 100%
+      );
+    backdrop-filter: blur(22px) saturate(1.2);
+    -webkit-backdrop-filter: blur(22px) saturate(1.2);
   }
   .mobile-header::after {
     display: none;
@@ -2029,25 +2057,26 @@ body:has(.app.theme-light) {
   .mobile-brand,
   .mobile-days-pill,
   .mobile-theme-btn {
-    background: rgba(20,20,20,0.58);
-    border: 1px solid rgba(255,255,255,0.10);
-    box-shadow: 0 10px 30px rgba(0,0,0,0.24), 0 1px 0 rgba(255,255,255,0.08) inset;
+    background: rgba(18,18,18,0.44);
+    border: 1px solid rgba(255,255,255,0.09);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.20);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
   }
   .mobile-menu-btn {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
     border-radius: 999px;
     color: #f5f5f7;
-    flex: 0 0 54px;
+    flex: 0 0 48px;
   }
   .mobile-brand {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
+    width: auto;
     min-width: 0;
-    max-width: min(58vw, 260px);
-    height: 54px;
-    padding: 0 22px;
+    max-width: clamp(170px, 48vw, 260px);
+    height: 48px;
+    padding: 0 16px;
     border-radius: 999px;
     display: flex;
     flex-direction: column;
@@ -2059,29 +2088,33 @@ body:has(.app.theme-light) {
     width: 100%;
     text-align: center;
     font-size: 14px;
-    letter-spacing: 0.04em;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: #f5f5f7;
     text-shadow: 0 1px 8px rgba(0,0,0,0.22);
   }
   .mobile-sub {
     width: 100%;
     text-align: center;
-    font-size: 8.5px;
-    letter-spacing: 0.045em;
-    margin-top: 2px;
-    opacity: 0.78;
+    font-size: 9px;
+    letter-spacing: 0.10em;
+    margin-top: 4px;
+    line-height: 1;
+    opacity: 0.84;
   }
   .mobile-days-pill {
-    height: 54px;
-    min-width: 64px;
-    padding: 7px 12px;
+    height: 48px;
+    min-width: 60px;
+    padding: 0 12px;
     border-radius: 999px;
     border-color: rgba(255,255,255,0.10);
     flex: 0 0 auto;
     margin-right: 0;
   }
   .mobile-theme-btn {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
     border-radius: 999px;
     color: #f5f5f7;
   }
@@ -2089,18 +2122,18 @@ body:has(.app.theme-light) {
   .app.theme-light .mobile-brand,
   .app.theme-light .mobile-days-pill,
   .app.theme-light .mobile-theme-btn {
-    background: rgba(255,255,255,0.62);
-    border: 1px solid rgba(255,255,255,0.72);
-    box-shadow: 0 10px 30px rgba(91,78,61,0.13), 0 1px 0 rgba(255,255,255,0.92) inset;
+    background: rgba(255,255,255,0.48);
+    border: 1px solid rgba(255,255,255,0.62);
+    box-shadow: 0 10px 28px rgba(70,55,35,0.10);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
   }
   .app.theme-light .mobile-menu-btn,
   .app.theme-light .mobile-theme-btn {
-    color: #24211d;
+    color: #151515;
   }
   .app.theme-light .mobile-title {
-    color: #24211d;
+    color: #151515;
     text-shadow: 0 1px 8px rgba(255,255,255,0.35);
   }
   .app.theme-light .mobile-sub {
