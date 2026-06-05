@@ -2079,9 +2079,6 @@ body:has(.app.theme-light) {
 @media (min-width: 1024px) {
   .mentor-panel { bottom: 96px; right: 24px; }
 }
-@media (max-width: 400px) {
-  .mentor-panel { width: calc(100vw - 24px); right: 12px; }
-}
 @media (max-width: 560px) {
   .dday-today-card {
     padding: 22px 14px;
