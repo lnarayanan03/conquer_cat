@@ -15,7 +15,17 @@ const TAVILY_TIMEOUT_MS = 8000;
 const ANTHROPIC_TIMEOUT_MS = 90000;
 const GROQ_SMALL_TIMEOUT_MS = 10000;
 const PRELOAD_TOPIC_TIMEOUT_MS = 90000;
+const QUESTION_JACCARD_DUP_THRESHOLD = 0.82;
+const QUESTION_BIGRAM_DUP_THRESHOLD = 0.86;
+const QUESTION_CONTAINMENT_LENGTH_RATIO = 0.72;
+const MAX_INSERTS_PER_SUBTOPIC_BATCH = 2;
 const VALID_DIFFICULTIES = ["medium", "cat_level", "hard"];
+const COMMON_QUESTION_TOKENS = new Set([
+  "the", "and", "for", "are", "was", "were", "with", "from", "that", "this",
+  "then", "than", "into", "find", "what", "which", "when", "where", "given",
+  "each", "total", "value", "values", "number", "numbers", "option", "answer",
+  "following", "statement", "statements", "quantity", "quantities", "passage",
+]);
 const GENERIC_CONTEXT = {
   quant: "CAT Quant often tests arithmetic, algebra, geometry, number systems, time-work, percentages, ratios, averages, mixtures, and clean multi-step reasoning.",
   varc: "CAT VARC often tests reading comprehension, para summaries, odd sentence, para completion, critical reasoning, and precise elimination between close options.",
@@ -120,6 +130,112 @@ function compactText(value, maxLength = 380) {
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+export function normalizeQuestionTextForSimilarity(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function tokenizeQuestionText(text) {
+  return normalizeQuestionTextForSimilarity(text)
+    .split(" ")
+    .filter(token => {
+      if (!token) return false;
+      if (/^\d+$/.test(token)) return true;
+      if (token.length <= 2) return false;
+      return !COMMON_QUESTION_TOKENS.has(token);
+    });
+}
+
+export function jaccardSimilarity(aTokens, bTokens) {
+  const a = new Set(aTokens || []);
+  const b = new Set(bTokens || []);
+  if (a.size === 0 && b.size === 0) return 1;
+  if (a.size === 0 || b.size === 0) return 0;
+
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+  const union = a.size + b.size - intersection;
+  return union ? intersection / union : 0;
+}
+
+function wordBigrams(text) {
+  const words = normalizeQuestionTextForSimilarity(text).split(" ").filter(Boolean);
+  if (words.length < 2) return words;
+  const bigrams = [];
+  for (let index = 0; index < words.length - 1; index += 1) {
+    bigrams.push(`${words[index]} ${words[index + 1]}`);
+  }
+  return bigrams;
+}
+
+export function bigramDiceSimilarity(aText, bText) {
+  const a = wordBigrams(aText);
+  const b = wordBigrams(bText);
+  if (a.length === 0 && b.length === 0) return 1;
+  if (a.length === 0 || b.length === 0) return 0;
+
+  const counts = new Map();
+  for (const item of a) counts.set(item, (counts.get(item) || 0) + 1);
+
+  let overlap = 0;
+  for (const item of b) {
+    const count = counts.get(item) || 0;
+    if (count > 0) {
+      overlap += 1;
+      counts.set(item, count - 1);
+    }
+  }
+  return (2 * overlap) / (a.length + b.length);
+}
+
+function normalizeSubtopicForBatch(subtopic) {
+  return normalizeQuestionTextForSimilarity(subtopic || "") || "__blank__";
+}
+
+export function isNearDuplicateQuestion(candidate, existingQuestions = []) {
+  const candidateText = candidate?.question_text || candidate;
+  const candidateNormalized = normalizeQuestionTextForSimilarity(candidateText);
+  if (!candidateNormalized) return { duplicate: false, reason: "" };
+
+  const candidateTokens = tokenizeQuestionText(candidateNormalized);
+  for (const existing of existingQuestions || []) {
+    const existingText = existing?.question_text || existing;
+    const existingNormalized = normalizeQuestionTextForSimilarity(existingText);
+    if (!existingNormalized) continue;
+
+    if (candidateNormalized === existingNormalized) {
+      return { duplicate: true, reason: "exact normalized match" };
+    }
+
+    const shorterLength = Math.min(candidateNormalized.length, existingNormalized.length);
+    const longerLength = Math.max(candidateNormalized.length, existingNormalized.length);
+    const lengthRatio = longerLength ? shorterLength / longerLength : 0;
+    if (
+      lengthRatio >= QUESTION_CONTAINMENT_LENGTH_RATIO &&
+      (candidateNormalized.includes(existingNormalized) || existingNormalized.includes(candidateNormalized))
+    ) {
+      return { duplicate: true, reason: "strong containment overlap" };
+    }
+
+    const jaccard = jaccardSimilarity(candidateTokens, tokenizeQuestionText(existingNormalized));
+    if (jaccard >= QUESTION_JACCARD_DUP_THRESHOLD) {
+      return { duplicate: true, reason: `token similarity ${jaccard.toFixed(2)}` };
+    }
+
+    const dice = bigramDiceSimilarity(candidateNormalized, existingNormalized);
+    if (dice >= QUESTION_BIGRAM_DUP_THRESHOLD) {
+      return { duplicate: true, reason: `phrase similarity ${dice.toFixed(2)}` };
+    }
+  }
+
+  return { duplicate: false, reason: "" };
 }
 
 export function buildIndexedContext(results = [], topic) {
@@ -410,20 +526,29 @@ function toInsertRow(question, includeMetadata = true) {
   };
 }
 
-export async function insertGeneratedQuestions(questions = []) {
+export async function fetchExistingQuestionsForSimilarity(topic) {
   if (!supabase) {
-    return { inserted: 0, errors: ["Supabase service client not configured"] };
+    return { ok: false, questions: [], error: "Supabase service client not configured" };
   }
 
-  const valid = questions
-    .map(question => validateGeneratedQuestion(question))
-    .filter(result => result.ok)
-    .map(result => result.question);
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id, question_text, subtopic")
+    .eq("topic", topic)
+    .eq("is_archived", false)
+    .limit(600);
 
-  if (valid.length === 0) return { inserted: 0, errors: [] };
+  if (error) {
+    return { ok: false, questions: [], error: shortError(error) };
+  }
 
-  console.log(`[question-generator] inserting ${valid.length} ${valid[0].topic} questions`);
-  const fullRows = valid.map(question => toInsertRow(question, true));
+  return { ok: true, questions: data || [], error: "" };
+}
+
+async function insertQuestionRowsWithRetry(questions) {
+  if (questions.length === 0) return { inserted: 0, errors: [] };
+
+  const fullRows = questions.map(question => toInsertRow(question, true));
   const { data, error } = await supabase
     .from("questions")
     .insert(fullRows)
@@ -432,7 +557,7 @@ export async function insertGeneratedQuestions(questions = []) {
   if (!error) return { inserted: data?.length || fullRows.length, errors: [] };
 
   console.warn(`[question-generator] metadata insert retrying with base columns: ${shortError(error)}`);
-  const baseRows = valid.map(question => toInsertRow(question, false));
+  const baseRows = questions.map(question => toInsertRow(question, false));
   const retry = await supabase
     .from("questions")
     .insert(baseRows)
@@ -444,6 +569,97 @@ export async function insertGeneratedQuestions(questions = []) {
   return { inserted: retry.data?.length || baseRows.length, errors: [shortError(error)] };
 }
 
+export async function insertGeneratedQuestions(questions = []) {
+  if (!supabase) {
+    return {
+      inserted: 0,
+      rejected: 0,
+      duplicateRejected: 0,
+      subtopicRejected: 0,
+      errors: ["Supabase service client not configured"],
+    };
+  }
+
+  const validationResults = questions.map(question => validateGeneratedQuestion(question));
+  const valid = validationResults
+    .filter(result => result.ok)
+    .map(result => result.question);
+  const validationRejected = validationResults.length - valid.length;
+
+  if (valid.length === 0) {
+    return {
+      inserted: 0,
+      rejected: Math.max(validationRejected, 0),
+      duplicateRejected: 0,
+      subtopicRejected: 0,
+      errors: [],
+    };
+  }
+
+  const byTopic = new Map();
+  for (const question of valid) {
+    if (!byTopic.has(question.topic)) byTopic.set(question.topic, []);
+    byTopic.get(question.topic).push(question);
+  }
+
+  let inserted = 0;
+  let duplicateRejected = 0;
+  let subtopicRejected = 0;
+  let safetyRejected = 0;
+  const errors = [];
+
+  for (const [topic, topicQuestions] of byTopic.entries()) {
+    const existingResult = await fetchExistingQuestionsForSimilarity(topic);
+    if (!existingResult.ok) {
+      safetyRejected += topicQuestions.length;
+      errors.push(`similarity check failed for ${topic}: ${existingResult.error}`);
+      continue;
+    }
+
+    const acceptedForInsert = [];
+    const subtopicCounts = new Map();
+    for (const question of topicQuestions) {
+      const existingDuplicate = isNearDuplicateQuestion(question, existingResult.questions);
+      if (existingDuplicate.duplicate) {
+        duplicateRejected += 1;
+        console.log(`[question-generator] duplicate rejected for ${topic}: ${existingDuplicate.reason}`);
+        continue;
+      }
+
+      const batchDuplicate = isNearDuplicateQuestion(question, acceptedForInsert);
+      if (batchDuplicate.duplicate) {
+        duplicateRejected += 1;
+        console.log(`[question-generator] duplicate rejected for ${topic}: generated batch ${batchDuplicate.reason}`);
+        continue;
+      }
+
+      const subtopicKey = normalizeSubtopicForBatch(question.subtopic);
+      const subtopicCount = subtopicCounts.get(subtopicKey) || 0;
+      if (subtopicCount >= MAX_INSERTS_PER_SUBTOPIC_BATCH) {
+        subtopicRejected += 1;
+        console.log(`[question-generator] subtopic cap rejected for ${topic}: ${compactText(question.subtopic || "blank", 60)}`);
+        continue;
+      }
+
+      subtopicCounts.set(subtopicKey, subtopicCount + 1);
+      acceptedForInsert.push(question);
+    }
+
+    console.log(`[question-generator] inserting ${acceptedForInsert.length} ${topic} questions after duplicate filter`);
+    const result = await insertQuestionRowsWithRetry(acceptedForInsert);
+    inserted += result.inserted;
+    errors.push(...result.errors);
+  }
+
+  return {
+    inserted,
+    rejected: Math.max(validationRejected, 0) + duplicateRejected + subtopicRejected + safetyRejected,
+    duplicateRejected,
+    subtopicRejected,
+    errors,
+  };
+}
+
 async function runRefillQuestionBank({ topic, count = 5 } = {}) {
   const generated = await generateQuestionsForTopic({ topic, count });
   const insertResult = await insertGeneratedQuestions(generated.questions);
@@ -452,8 +668,10 @@ async function runRefillQuestionBank({ topic, count = 5 } = {}) {
     requested: generated.requested,
     generated: generated.generated,
     accepted: generated.accepted,
-    rejected: generated.rejected,
+    rejected: generated.rejected + (insertResult.rejected || 0),
     inserted: insertResult.inserted,
+    duplicateRejected: insertResult.duplicateRejected || 0,
+    subtopicRejected: insertResult.subtopicRejected || 0,
     errors: [...generated.errors, ...insertResult.errors],
   };
 }
