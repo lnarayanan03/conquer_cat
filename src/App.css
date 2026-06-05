@@ -167,6 +167,82 @@ button.card-row {
   appearance: none;
 }
 .card-row + .card-row { border-top: 1px solid var(--b1); }
+.iquanta-backlog-card {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+.iquanta-backlog-top {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--tp);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+}
+.iquanta-backlog-title-btn {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: var(--tp);
+}
+.iquanta-watch-row {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(48,209,88,0.34);
+  border-radius: 10px;
+  background: rgba(48,209,88,0.11);
+  color: #30d158;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: inherit;
+  line-height: 1.2;
+  padding: 9px 11px;
+  text-align: left;
+  overflow: hidden;
+}
+.iquanta-watch-main,
+.iquanta-watch-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.iquanta-watch-main {
+  color: #30d158;
+  font-size: 12px;
+  font-weight: 850;
+}
+.iquanta-watch-meta {
+  color: rgba(48,209,88,0.74);
+  font-size: 11px;
+  font-weight: 650;
+}
+.iquanta-watch-empty {
+  min-width: 0;
+}
+.backlog-jump-highlight {
+  animation: backlogJumpGlow 1.8s ease-out;
+}
+@keyframes backlogJumpGlow {
+  0% {
+    box-shadow: 0 0 0 2px rgba(48,209,88,0.72), 0 0 30px rgba(48,209,88,0.42);
+    background: rgba(48,209,88,0.14);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(48,209,88,0);
+  }
+}
 .row-label { font-size: 14px; color: var(--tp); }
 .row-sub { font-size: 11px; color: var(--tt); margin-top: 1px; }
 .theme-card {

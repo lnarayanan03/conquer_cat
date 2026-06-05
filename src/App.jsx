@@ -787,7 +787,7 @@ function TodayPage({
   backlogVideos, backlogConcepts, notes = [], onSave, data, totals, userName, userInitials,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
-  todayLiveLabel, todayAppLabel, isSundayIST, theme,
+  todayLiveLabel, todayAppLabel, isSundayIST, theme, onOpenWatchingBacklog,
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -1327,39 +1327,51 @@ function TodayPage({
         <div>
           <div className="sec-label">iQuanta</div>
           <div className="card">
-            <button
-              className="card-row"
-              onClick={() => setTab("backlog")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <div>
-                <div className="row-label">iQuanta Backlogs</div>
-                <div className="row-sub">
-                  {totalBacklog > 0
-                    ? `${backlogPending} pending · ${backlogCoverage}% covered`
-                    : "Log videos and concepts"}
+            <div className="card-row iquanta-backlog-card">
+              <button
+                type="button"
+                className="iquanta-backlog-top"
+                onClick={() => setTab("backlog")}
+              >
+                <span className="iquanta-backlog-title-btn">iQuanta Backlogs</span>
+                <svg width="16" height="16" viewBox="0 0 24 24"
+                  fill="none" stroke="var(--tt)" strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+              </button>
+              {currentWatchingBacklog ? (
+                <button
+                  type="button"
+                  className="iquanta-watch-row"
+                  aria-label="Open currently watching backlog item"
+                  onClick={() => onOpenWatchingBacklog?.({
+                    kind: currentWatchingBacklog.type.toLowerCase(),
+                    id: currentWatchingBacklog.item.id
+                  })}
+                >
+                  <span className="iquanta-watch-main">
+                    Currently watching: {currentWatchingBacklog.item.text}
+                  </span>
+                  <span className="iquanta-watch-meta">
+                    {totalBacklog > 0
+                      ? `${backlogPending} pending · ${backlogCoverage}% covered`
+                      : "Log videos and concepts"}
+                  </span>
+                </button>
+              ) : (
+                <div className="iquanta-watch-empty">
+                  <div className="row-sub">
+                    Currently watching: None
+                  </div>
+                  <div className="row-sub">
+                    {totalBacklog > 0
+                      ? `${backlogPending} pending · ${backlogCoverage}% covered`
+                      : "Log videos and concepts"}
+                  </div>
                 </div>
-                <div className="row-sub">
-                  Currently watching: {currentWatchingBacklog
-                    ? `${currentWatchingBacklog.type} · ${currentWatchingBacklog.item.text}`
-                    : "Nothing selected"}
-                </div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="var(--tt)" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
+              )}
+            </div>
             <button
               className="card-row"
               onClick={() => setTab("notes")}
@@ -1962,9 +1974,11 @@ function NotesPage({ notes, onBack, userId, syncMessage, onSaveNote, onDeleteNot
   );
 }
 
-function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
+function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack, focusTarget, onFocusConsumed }) {
   const [videoInput, setVideoInput] = useState("");
   const [conceptInput, setConceptInput] = useState("");
+  const itemRefs = useRef({});
+  const [jumpHighlightKey, setJumpHighlightKey] = useState(null);
 
   const createItem = (text) => ({
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -2028,8 +2042,11 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
 
   const setWatchingItem = (kind, id) => {
     const now = new Date().toISOString();
+    const isAlreadyWatching = kind === "video"
+      ? videos.some(item => item.id === id && item.watching)
+      : concepts.some(item => item.id === id && item.watching);
     setVideos(prev => prev.map(item => {
-      const active = kind === "video" && item.id === id;
+      const active = !isAlreadyWatching && kind === "video" && item.id === id;
       return {
         ...item,
         watching: active,
@@ -2037,7 +2054,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
       };
     }));
     setConcepts(prev => prev.map(item => {
-      const active = kind === "concept" && item.id === id;
+      const active = !isAlreadyWatching && kind === "concept" && item.id === id;
       return {
         ...item,
         watching: active,
@@ -2072,6 +2089,18 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
   const total = videos.length + concepts.length;
   const coverage = total > 0 ? Math.round((totalDone/total)*100) : 0;
   const currentWatching = getCurrentWatchingBacklog(videos, concepts);
+
+  useEffect(() => {
+    if (!focusTarget?.kind || !focusTarget?.id) return;
+    const key = `${focusTarget.kind}:${focusTarget.id}`;
+    const row = itemRefs.current[key];
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      setJumpHighlightKey(key);
+      setTimeout(() => setJumpHighlightKey(prev => prev === key ? null : prev), 1800);
+    }
+    onFocusConsumed?.();
+  }, [focusTarget, onFocusConsumed]);
 
   const renderSection = ({
     kind,
@@ -2144,8 +2173,17 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
             <div style={{borderTop:"1px solid var(--b1)"}}>
               {pending.map(item => {
                 const isWatching = !!item.watching;
+                const itemKey = `${kind}:${item.id}`;
+                const isJumpHighlighted = jumpHighlightKey === itemKey;
                 return (
-                <div key={item.id} style={{
+                <div
+                  key={item.id}
+                  ref={node => {
+                    if (node) itemRefs.current[itemKey] = node;
+                    else delete itemRefs.current[itemKey];
+                  }}
+                  className={isJumpHighlighted ? "backlog-jump-highlight" : ""}
+                  style={{
                   display:"flex", alignItems:"center",
                   gap:12, padding:"12px 8px",
                   borderBottom:"1px solid var(--b1)",
@@ -6033,6 +6071,7 @@ export default function App() {
       return [];
     }
   });
+  const [backlogFocusTarget, setBacklogFocusTarget] = useState(null);
   const [academicNotes, setAcademicNotes] = useState(() => {
     return readLocalAcademicNotes();
   });
@@ -6921,7 +6960,10 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onOpenWatchingBacklog={(target) => {
+          setBacklogFocusTarget(target);
+          setTab("backlog");
+        }} onSave={async () => {
           const dayData = data[sel] || defaultDay();
           try {
             await fetch("/api/log/save", {
@@ -6970,6 +7012,8 @@ export default function App() {
             concepts={backlogConcepts}
             setConcepts={setBacklogConcepts}
             onBack={() => setTab("today")}
+            focusTarget={backlogFocusTarget}
+            onFocusConsumed={() => setBacklogFocusTarget(null)}
           />
         )}
         {tab === "notes" && (
