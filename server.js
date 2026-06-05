@@ -69,9 +69,11 @@ import { startPipeline, runNightlyDistillation } from "./src/mentor/pipeline.js"
 import {
   getQuestionsForSession, saveAttempt, updateDailyLog,
   markAssessmentComplete, getOrCreateSession,
-  saveSessionProgress, completeSession, getAssessmentAttendance
+  saveSessionProgress, completeSession, getAssessmentAttendance,
+  ensureQuestionBankCapacity
 } from "./src/mentor/questionBank.js";
-import { getAssessmentQuestionCount } from "./src/mentor/assessmentCounts.js";
+import { ASSESSMENT_TOPICS, getAssessmentQuestionCount } from "./src/mentor/assessmentCounts.js";
+import { preloadDailyQuestionBank, refillAllTopics, refillQuestionBank } from "./src/mentor/questionGenerator.js";
 import { seedInitialBank, ingestFromTavily } from "./src/mentor/ingest.js";
 
 dotenv.config();
@@ -316,6 +318,14 @@ function apiErrorMessage(data, fallback) {
 
 function shortReason(err) {
   return (err?.message || String(err) || "Unknown error").slice(0, 240)
+}
+
+function withServerTimeout(promise, label, timeoutMs) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
 }
 
 async function fetchJsonWithTimeout(url, options, timeoutMs = MENTOR_TIMEOUT_MS) {
@@ -908,9 +918,27 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
     }
 
     // New session
-    const allQuestions = await getQuestionsForSession(userId, type);
+    await withServerTimeout(
+      preloadDailyQuestionBank(),
+      "assessment preload",
+      6000
+    ).catch(err => {
+      console.warn("[assessment/session] preload skipped:", err?.message?.slice(0, 160));
+    });
+
+    await ensureQuestionBankCapacity(userId, type).catch(err => {
+      console.warn("[assessment/session] auto-refill skipped:", err?.message?.slice(0, 160));
+    });
+
+    let allQuestions = await getQuestionsForSession(userId, type);
     if (allQuestions.length !== expectedCount) {
-      return res.json({ session: null, type, error: `Bank incomplete — expected ${expectedCount}, got ${allQuestions.length}` });
+      await ensureQuestionBankCapacity(userId, type).catch(err => {
+        console.warn("[assessment/session] shortfall refill skipped:", err?.message?.slice(0, 160));
+      });
+      allQuestions = await getQuestionsForSession(userId, type);
+      if (allQuestions.length !== expectedCount) {
+        return res.json({ session: null, type, error: `Bank incomplete — expected ${expectedCount}, got ${allQuestions.length}` });
+      }
     }
 
     const session = await getOrCreateSession(userId, today, type, allQuestions);
@@ -922,6 +950,61 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
   } catch (err) {
     console.error("[assessment/session] error:", err?.message);
     res.status(500).json({ error: err?.message });
+  }
+});
+
+// ── Assessment: manual daily preload ─────────────────────────────────────────
+app.post("/api/assessment/preload", async (req, res) => {
+  const force = req.body?.force === true;
+  try {
+    const result = await preloadDailyQuestionBank({ force });
+    return res.json(result);
+  } catch (err) {
+    console.error("[assessment/preload] error:", err?.message?.slice(0, 180));
+    return res.status(500).json({
+      skipped: false,
+      results: [],
+      errors: [err?.message || "preload failed"],
+    });
+  }
+});
+
+// ── Assessment: manual AI refill ─────────────────────────────────────────────
+app.post("/api/assessment/refill", async (req, res) => {
+  const topic = String(req.body?.topic || "").toLowerCase().trim();
+  const count = Math.max(1, Math.min(Number(req.body?.count) || 5, 10));
+
+  if (![...ASSESSMENT_TOPICS, "all"].includes(topic)) {
+    return res.status(400).json({ error: "topic must be quant, varc, lrdi, or all" });
+  }
+
+  try {
+    if (topic === "all") {
+      const results = await refillAllTopics({ countPerTopic: count });
+      const summary = results.reduce((acc, item) => ({
+        requested: acc.requested + item.requested,
+        generated: acc.generated + item.generated,
+        accepted: acc.accepted + item.accepted,
+        rejected: acc.rejected + item.rejected,
+        inserted: acc.inserted + item.inserted,
+        errors: [...acc.errors, ...(item.errors || [])],
+      }), { requested: 0, generated: 0, accepted: 0, rejected: 0, inserted: 0, errors: [] });
+      return res.json({ topic, ...summary, results });
+    }
+
+    const result = await refillQuestionBank({ topic, count });
+    return res.json(result);
+  } catch (err) {
+    console.error("[assessment/refill] error:", err?.message?.slice(0, 180));
+    return res.status(500).json({
+      topic,
+      requested: count,
+      generated: 0,
+      accepted: 0,
+      rejected: 0,
+      inserted: 0,
+      errors: [err?.message || "refill failed"],
+    });
   }
 });
 
@@ -1069,6 +1152,29 @@ const server = app.listen(PORT, () => {
   } catch (err) {
     console.error("Mentor pipeline startup failed:", err?.message || err);
   }
-  warmup().catch(err => console.warn('Warmup error:', err.message));
+  warmup()
+    .catch(err => console.warn("Warmup error:", err.message))
+    .finally(() => {
+      preloadDailyQuestionBank()
+        .then(result => console.log("[assessment/preload] startup", {
+          dateKey: result.dateKey,
+          skipped: result.skipped,
+          topics: result.results?.length || 0,
+        }))
+        .catch(err => console.warn("[assessment/preload] startup skipped:", err?.message?.slice(0, 160)));
+    });
 });
 server.on("error", err => console.error(err));
+
+setInterval(() => {
+  preloadDailyQuestionBank()
+    .then(result => {
+      if (!result.skipped) {
+        console.log("[assessment/preload] interval", {
+          dateKey: result.dateKey,
+          topics: result.results?.length || 0,
+        });
+      }
+    })
+    .catch(err => console.warn("[assessment/preload] interval skipped:", err?.message?.slice(0, 160)));
+}, 30 * 60 * 1000);

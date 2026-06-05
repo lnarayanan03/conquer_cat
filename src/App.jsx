@@ -2829,7 +2829,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
             <polyline points="15 18 9 12 15 6"/></svg>
           Today
         </button>
-        <div className="page-title">Loading assessment...</div>
+        <div className="page-title">Preparing assessment...</div>
       </div>
     </div>
   );

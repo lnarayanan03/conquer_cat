@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import dotenv from "dotenv";
 import ws from "ws";
 import { ASSESSMENT_TOPICS, getAssessmentQuestionCount, getAssessmentTopicCounts } from "./assessmentCounts.js";
+import { refillQuestionBank } from "./questionGenerator.js";
+
+dotenv.config();
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
@@ -9,6 +13,8 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   : null;
 
 const WRONG_RETRY_DAYS = 3;
+const REFILL_BATCH_SIZE = 5;
+const REFILL_TIMEOUT_MS = 22000;
 const CATEGORY_PLAN = {
   daily: {
     quant: ["fresh", "weak"],
@@ -50,8 +56,22 @@ async function getSeenQuestionIds(userId) {
 function isOverusedLowValue(q) {
   const seen = Number(q?.times_seen || 0);
   const correct = Number(q?.times_correct || 0);
-  if (seen < 8) return false;
-  return correct / Math.max(seen, 1) >= 0.8;
+  if (seen < 5) return false;
+  const correctness = correct / Math.max(seen, 1);
+  return correctness >= 0.8 && q?.keep_for_revision !== true && q?.mock_ready !== true;
+}
+
+function isPrimaryHighValue(q) {
+  return q?.keep_for_revision === true ||
+    q?.mock_ready === true ||
+    Number(q?.cat_likelihood_score || 0) >= 8 ||
+    Number(q?.importance_score || 0) >= 8;
+}
+
+function hasLowCorrectnessRatio(q) {
+  const seen = Number(q?.times_seen || 0);
+  if (seen === 0) return false;
+  return Number(q?.times_correct || 0) / seen <= 0.45;
 }
 
 function highValueScore(q) {
@@ -59,14 +79,19 @@ function highValueScore(q) {
   const correct = Number(q?.times_correct || 0);
   const correctness = seen > 0 ? correct / seen : 0;
   const difficulty = q?.difficulty === "hard" ? 3 : q?.difficulty === "cat_level" ? 2 : 0;
-  return difficulty + (1 - correctness);
+  const primary = isPrimaryHighValue(q) ? 8 : 0;
+  const revision = q?.keep_for_revision ? 2 : 0;
+  const mock = q?.mock_ready ? 2 : 0;
+  const importance = Number(q?.importance_score || 0) / 2;
+  const likelihood = Number(q?.cat_likelihood_score || 0) / 2;
+  return primary + revision + mock + importance + likelihood + difficulty + (1 - correctness);
 }
 
 async function fetchQuestionCandidates(topic, { excludeIds = [], includeIds = [], freshOnly = false, highValueOnly = false, limit = 10 } = {}) {
   if (!supabase) return [];
   let query = supabase
     .from("questions")
-    .select("id, topic, difficulty, question_text, options, correct_answer, explanation, source, cat_year, times_seen, times_correct")
+    .select("*")
     .eq("topic", topic)
     .eq("is_archived", false)
     .limit(Math.max(limit * 6, 24));
@@ -77,12 +102,21 @@ async function fetchQuestionCandidates(topic, { excludeIds = [], includeIds = []
     // Freshness is primarily enforced by excluding user-attempted question ids.
     query = query.order("times_seen", { ascending: true });
   } else if (highValueOnly) {
-    query = query.in("difficulty", ["cat_level", "hard"]);
+    query = query.order("times_seen", { ascending: true });
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    console.warn(`[questionBank] candidate fetch failed for ${topic}: ${error.message?.slice(0, 140)}`);
+    return [];
+  }
   let rows = (data || []).filter(q => !isOverusedLowValue(q));
   if (highValueOnly) {
+    rows = rows.filter(q =>
+      isPrimaryHighValue(q) ||
+      ["cat_level", "hard"].includes(q?.difficulty) ||
+      hasLowCorrectnessRatio(q)
+    );
     rows = rows.sort((a, b) => highValueScore(b) - highValueScore(a));
   }
   return rows.slice(0, limit);
@@ -114,6 +148,17 @@ async function pickOneByCategory(userId, topic, category, selectedIds) {
   }
 
   if (category === "high_value") {
+    const wrongIds = await getWrongQuestionIds(userId, topic, 8);
+    if (wrongIds.length > 0) {
+      const wrongHighValue = await fetchQuestionCandidates(topic, {
+        includeIds: wrongIds,
+        excludeIds: selectedIds,
+        highValueOnly: true,
+        limit: 1,
+      });
+      if (wrongHighValue[0]) return wrongHighValue[0];
+    }
+
     const highValue = await fetchQuestionCandidates(topic, {
       excludeIds: selectedIds,
       highValueOnly: true,
@@ -150,6 +195,78 @@ export async function getQuestionsForSession(userId, type) {
 
   return allQuestions.slice(0, getAssessmentQuestionCount(type));
 }
+
+async function withTimeout(promise, label, timeoutMs = REFILL_TIMEOUT_MS) {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(`${label} timeout`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getActiveQuestions(topic) {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id")
+    .eq("topic", topic)
+    .eq("is_archived", false);
+  if (error) {
+    console.warn(`[questionBank] active count failed for ${topic}: ${error.message?.slice(0, 140)}`);
+    return [];
+  }
+  return data || [];
+}
+
+export async function ensureQuestionBankCapacity(userId, type) {
+  if (!supabase) return [];
+  const topicCounts = getAssessmentTopicCounts(type);
+  const seenIds = new Set(await getSeenQuestionIds(userId));
+  const lowTopics = [];
+
+  for (const topic of ASSESSMENT_TOPICS) {
+    const required = topicCounts[topic] || 0;
+    const active = await getActiveQuestions(topic);
+    const unseen = active.filter(question => !seenIds.has(question.id));
+    if (active.length < required + 5 || unseen.length < required) {
+      lowTopics.push(topic);
+    }
+  }
+
+  if (lowTopics.length === 0) return [];
+
+  const results = [];
+  for (const topic of lowTopics) {
+    try {
+      const result = await withTimeout(
+        refillQuestionBank({ topic, count: REFILL_BATCH_SIZE }),
+        `assessment ${topic} refill`
+      );
+      console.log(`[assessment/refill-auto] ${topic}: inserted ${result.inserted}/${result.requested}`);
+      results.push(result);
+    } catch (err) {
+      console.warn(`[assessment/refill-auto] ${topic} skipped: ${err?.message?.slice(0, 160)}`);
+      results.push({
+        topic,
+        requested: REFILL_BATCH_SIZE,
+        generated: 0,
+        accepted: 0,
+        rejected: 0,
+        inserted: 0,
+        errors: [err?.message || "refill failed"],
+      });
+    }
+  }
+
+  return results;
+}
+
+// Future August Mock Test:
+// Pull from mock_ready questions, mixing high-value revision, fresh unseen, and previous wrong questions.
 
 // ── Save answer ──────────────────────────────────────────────────────────────
 
