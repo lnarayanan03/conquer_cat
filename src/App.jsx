@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
 import AvatarPreview from "./AvatarPreview.jsx";
+import { ASSESSMENT_TOPICS, getAssessmentQuestionCount, getAssessmentTopicCounts } from "./mentor/assessmentCounts.js";
 
 function MentorAvatar({ size = 40 }) {
   // Vikram Anand — middle-aged, distinguished: grey hair, wrinkles, slick glasses
@@ -293,6 +294,20 @@ const VALIDATED_ASSESSMENT_BANK = [
     }
   },
   {
+    id: "validated-quant-5",
+    topic: "quant",
+    difficulty: "cat_level",
+    question_text: "A and B can finish a job in 12 days and 18 days respectively. They work together for 4 days, after which A leaves. How many more days will B take to finish the remaining work?",
+    options: ["6 days", "8 days", "10 days", "12 days"],
+    correct_answer: "8 days",
+    explanation: "A's rate is 1/12 and B's rate is 1/18. Together they complete 4 x (1/12 + 1/18) = 4 x 5/36 = 5/9 of the work. Remaining work is 4/9. B alone takes (4/9)/(1/18) = 8 days.",
+    wrong_explanations: {
+      "6 days": "This underestimates the remaining work. After 4 days, 4/9 of the job is still left.",
+      "10 days": "This uses an incorrect combined rate or remaining fraction. B's rate is 1/18 per day.",
+      "12 days": "This ignores the work already completed together in the first 4 days."
+    }
+  },
+  {
     id: "validated-varc-1",
     topic: "varc",
     difficulty: "cat_level",
@@ -345,6 +360,44 @@ const VALIDATED_ASSESSMENT_BANK = [
     }
   },
   {
+    id: "validated-varc-4",
+    topic: "varc",
+    difficulty: "cat_level",
+    question_text: "Choose the option that weakens the argument:\n\nA city council claims that banning private cars from the central market will increase small-shop revenue because pedestrian footfall will rise.",
+    options: [
+      "Most shoppers in the central market currently arrive by public transport.",
+      "Small-shop revenue depends more on high-value purchases than on footfall.",
+      "Several nearby streets are already pedestrian-only on weekends.",
+      "The council plans to add more benches and street lighting."
+    ],
+    correct_answer: "Small-shop revenue depends more on high-value purchases than on footfall.",
+    explanation: "The argument assumes increased footfall will raise revenue. If revenue depends more on high-value purchases than footfall, that link becomes weaker.",
+    wrong_explanations: {
+      "Most shoppers in the central market currently arrive by public transport.": "This may make the ban less disruptive, but it does not weaken the footfall-to-revenue link.",
+      "Several nearby streets are already pedestrian-only on weekends.": "This gives context but does not directly attack the argument.",
+      "The council plans to add more benches and street lighting.": "This could support higher footfall rather than weaken the claim."
+    }
+  },
+  {
+    id: "validated-varc-5",
+    topic: "varc",
+    difficulty: "cat_level",
+    question_text: "Find the best summary:\n\nScientific models are not miniature copies of reality. They are selective tools that deliberately ignore some details so that important relationships can be studied clearly. A model fails not when it is incomplete, but when the omissions distort the question it was built to answer.",
+    options: [
+      "Scientific models are useless because they leave out real details.",
+      "A model is valuable when its simplifications preserve the relationship being studied.",
+      "Reality can be understood only through complete and detailed replicas.",
+      "The best scientific models are those that answer every possible question."
+    ],
+    correct_answer: "A model is valuable when its simplifications preserve the relationship being studied.",
+    explanation: "The paragraph says models simplify reality on purpose, and the key test is whether those simplifications suit the question.",
+    wrong_explanations: {
+      "Scientific models are useless because they leave out real details.": "The paragraph argues the opposite: selective omission is useful when done appropriately.",
+      "Reality can be understood only through complete and detailed replicas.": "This contradicts the idea that models work through deliberate simplification.",
+      "The best scientific models are those that answer every possible question.": "The paragraph says models are built for specific questions, not every question."
+    }
+  },
+  {
     id: "validated-lrdi-1",
     topic: "lrdi",
     difficulty: "cat_level",
@@ -384,6 +437,39 @@ const VALIDATED_ASSESSMENT_BANK = [
       "Q": "Q must be immediately after S, and the only possible S-Q pair is Monday-Tuesday, so Q is Tuesday.",
       "S": "S starts the only possible consecutive pair, so S is Monday.",
       "R": "R is explicitly fixed on Friday."
+    }
+  },
+  {
+    id: "validated-lrdi-4",
+    topic: "lrdi",
+    difficulty: "cat_level",
+    question_text: "A shop sold 66 pens over three days. The number sold on Tuesday was twice the number sold on Monday. The number sold on Wednesday was 6 more than Monday. How many pens were sold on Tuesday?",
+    options: ["18", "24", "30", "36"],
+    correct_answer: "30",
+    explanation: "Let Monday sales be x. Tuesday = 2x and Wednesday = x + 6. Total: x + 2x + x + 6 = 66, so 4x = 60 and x = 15. Tuesday sales = 2x = 30.",
+    wrong_explanations: {
+      "18": "This would make Monday 9 and Wednesday 15, totaling 42, not 66.",
+      "24": "This would make Monday 12 and Wednesday 18, totaling 54, not 66.",
+      "36": "This would make Monday 18 and Wednesday 24, totaling 78, not 66."
+    }
+  },
+  {
+    id: "validated-lrdi-5",
+    topic: "lrdi",
+    difficulty: "cat_level",
+    question_text: "Six people sit in a row. A is immediately to the left of B. C is somewhere to the right of B. D is at one end. E is not next to D. If D is in position 1, which statement must be true?",
+    options: [
+      "A is in position 2",
+      "B is left of C",
+      "E is in position 6",
+      "C is immediately right of B"
+    ],
+    correct_answer: "B is left of C",
+    explanation: "The condition directly says C is somewhere to the right of B. Therefore B must be left of C in every valid arrangement.",
+    wrong_explanations: {
+      "A is in position 2": "A and B must be consecutive, but they need not occupy positions 2 and 3.",
+      "E is in position 6": "E only cannot be next to D. With D at position 1, E cannot be position 2 but can be elsewhere.",
+      "C is immediately right of B": "C is somewhere to the right of B, not necessarily immediately right."
     }
   }
 ];
@@ -2339,11 +2425,9 @@ function normalizeAssessmentQuestion(q) {
 }
 
 function getFallbackAssessmentQuestions(type) {
-  const counts = type === "weekly"
-    ? { quant: 4, varc: 3, lrdi: 3 }
-    : { quant: 1, varc: 1, lrdi: 1 };
+  const counts = getAssessmentTopicCounts(type);
 
-  return ["quant", "varc", "lrdi"].flatMap(topic =>
+  return ASSESSMENT_TOPICS.flatMap(topic =>
     VALIDATED_ASSESSMENT_BANK
       .filter(q => q.topic === topic)
       .slice(0, counts[topic])
@@ -2529,7 +2613,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
 
   useEffect(() => {
     let cancelled = false;
-    const expectedCount = sessionType === "weekly" ? 10 : 3;
+    const expectedCount = getAssessmentQuestionCount(sessionType);
 
     const useFallback = (saved = null) => {
       const fallbackQuestions = getFallbackAssessmentQuestions(sessionType);
@@ -2709,7 +2793,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
         }).catch(err => console.warn("Assessment completion save failed:", err?.message || err));
       }
 
-      const topicScores = ["quant","varc","lrdi"].map(t => {
+      const topicScores = ASSESSMENT_TOPICS.map(t => {
         const tAnswers = completedAnswers.filter(a => a.topic === t);
         const correct = tAnswers.filter(a => a.isCorrect).length;
         return `${t.toUpperCase()}: ${correct}/${tAnswers.length}`;

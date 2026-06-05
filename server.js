@@ -71,6 +71,7 @@ import {
   markAssessmentComplete, getOrCreateSession,
   saveSessionProgress, completeSession, getAssessmentAttendance
 } from "./src/mentor/questionBank.js";
+import { getAssessmentQuestionCount } from "./src/mentor/assessmentCounts.js";
 import { seedInitialBank, ingestFromTavily } from "./src/mentor/ingest.js";
 
 dotenv.config();
@@ -857,6 +858,7 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const dayOfWeek = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" });
   const type = dayOfWeek === "Sun" ? "weekly" : "daily";
+  const expectedCount = getAssessmentQuestionCount(type);
 
   try {
     if (!supabase) return res.json({ session: null, type });
@@ -907,7 +909,6 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
 
     // New session
     const allQuestions = await getQuestionsForSession(userId, type);
-    const expectedCount = type === "weekly" ? 10 : 3;
     if (allQuestions.length !== expectedCount) {
       return res.json({ session: null, type, error: `Bank incomplete — expected ${expectedCount}, got ${allQuestions.length}` });
     }

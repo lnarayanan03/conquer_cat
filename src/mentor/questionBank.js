@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
+import { ASSESSMENT_TOPICS, getAssessmentQuestionCount, getAssessmentTopicCounts } from "./assessmentCounts.js";
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
@@ -7,22 +8,17 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
     })
   : null;
 
-const TOPICS = ["quant", "varc", "lrdi"];
 const WRONG_RETRY_DAYS = 3;
-const SESSION_TOPIC_COUNTS = {
-  daily: { quant: 1, varc: 1, lrdi: 1 },
-  weekly: { quant: 4, varc: 3, lrdi: 3 },
-};
 const CATEGORY_PLAN = {
   daily: {
-    quant: ["fresh"],
-    varc: ["weak"],
-    lrdi: ["high_value"],
+    quant: ["fresh", "weak"],
+    varc: ["weak", "fresh"],
+    lrdi: ["high_value", "fresh"],
   },
   weekly: {
-    quant: ["fresh", "weak", "high_value", "fallback"],
-    varc: ["fresh", "weak", "high_value"],
-    lrdi: ["fresh", "fresh", "weak"],
+    quant: ["fresh", "weak", "high_value", "fallback", "fresh"],
+    varc: ["fresh", "weak", "high_value", "fallback", "fresh"],
+    lrdi: ["fresh", "fresh", "weak", "high_value", "fallback"],
   },
 };
 
@@ -134,12 +130,12 @@ async function pickOneByCategory(userId, topic, category, selectedIds) {
 }
 
 export async function getQuestionsForSession(userId, type) {
-  const topicCounts = SESSION_TOPIC_COUNTS[type] || SESSION_TOPIC_COUNTS.daily;
+  const topicCounts = getAssessmentTopicCounts(type);
   const categoryPlan = CATEGORY_PLAN[type] || CATEGORY_PLAN.daily;
   const allQuestions = [];
   const selectedIds = [];
 
-  for (const topic of TOPICS) {
+  for (const topic of ASSESSMENT_TOPICS) {
     const count = topicCounts[topic] || 0;
     const categories = categoryPlan[topic] || [];
     for (let i = 0; i < count; i += 1) {
@@ -152,7 +148,7 @@ export async function getQuestionsForSession(userId, type) {
     }
   }
 
-  return allQuestions.slice(0, Object.values(topicCounts).reduce((sum, n) => sum + n, 0));
+  return allQuestions.slice(0, getAssessmentQuestionCount(type));
 }
 
 // ── Save answer ──────────────────────────────────────────────────────────────
