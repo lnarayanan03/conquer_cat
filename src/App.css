@@ -1992,18 +1992,24 @@ body:has(.app.theme-light) {
     display: flex !important;
   }
   /* ── iPhone top safe-area + floating glass controls (phone-only) ────────
-     Overrides the 1023px bar so the header becomes a transparent positioning
-     layer and each control carries its own frosted surface. ── */
+     Header is fixed app chrome; each control carries its own frosted surface.
+     position: fixed lifts it out of flow so .main padding-top is the only
+     gap — no double-spacing. ── */
   .mobile-header {
-    height: calc(env(safe-area-inset-top) + 64px);
-    padding-top: calc(env(safe-area-inset-top) + 10px);
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 220;
+    height: calc(env(safe-area-inset-top) + 58px);
+    padding-top: calc(env(safe-area-inset-top) + 8px);
     padding-left: 10px;
     padding-right: 10px;
     padding-bottom: 0;
+    display: flex;
     align-items: center;
     justify-content: flex-start;
     gap: 8px;
-    position: relative;
     overflow: visible;
     background: transparent !important;
     backdrop-filter: none;
@@ -2020,45 +2026,55 @@ body:has(.app.theme-light) {
   }
   .mobile-header::before {
     content: "";
-    position: absolute;
+    position: fixed;
     left: 0;
     right: 0;
     top: 0;
-    height: calc(env(safe-area-inset-top) + 82px);
+    height: calc(env(safe-area-inset-top) + 76px);
     pointer-events: none;
-    background:
-      linear-gradient(
-        to bottom,
-        rgba(6,6,6,0.28) 0%,
-        rgba(6,6,6,0.16) 48%,
-        rgba(6,6,6,0.05) 78%,
-        rgba(6,6,6,0.00) 100%
-      );
-    border: 0;
-    box-shadow: none;
-    backdrop-filter: blur(20px) saturate(1.18);
-    -webkit-backdrop-filter: blur(20px) saturate(1.18);
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0) 100%);
-    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.95) 55%, rgba(0,0,0,0.45) 82%, rgba(0,0,0,0) 100%);
-    z-index: 0;
+    z-index: -1;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(18px) saturate(1.14);
+    -webkit-backdrop-filter: blur(18px) saturate(1.14);
+    background: linear-gradient(
+      to bottom,
+      rgba(6,6,6,0.22) 0%,
+      rgba(6,6,6,0.12) 48%,
+      rgba(6,6,6,0.04) 76%,
+      rgba(6,6,6,0) 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,0.85) 58%,
+      rgba(0,0,0,0.35) 84%,
+      rgba(0,0,0,0) 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgba(0,0,0,1) 0%,
+      rgba(0,0,0,0.85) 58%,
+      rgba(0,0,0,0.35) 84%,
+      rgba(0,0,0,0) 100%
+    );
   }
   .app.theme-light .mobile-header::before {
-    background:
-      linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.34) 0%,
-        rgba(248,246,242,0.22) 48%,
-        rgba(248,246,242,0.07) 78%,
-        rgba(248,246,242,0.00) 100%
-      );
-    backdrop-filter: blur(20px) saturate(1.18);
-    -webkit-backdrop-filter: blur(20px) saturate(1.18);
+    background: linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.28) 0%,
+      rgba(250,248,244,0.16) 48%,
+      rgba(250,248,244,0.05) 76%,
+      rgba(250,248,244,0) 100%
+    );
   }
   .mobile-header::after {
-    display: none;
+    display: none !important;
+    content: none !important;
   }
   .app.theme-light .mobile-header::after {
-    display: none;
+    display: none !important;
+    content: none !important;
   }
   .mobile-header > * {
     position: relative;
@@ -2068,26 +2084,26 @@ body:has(.app.theme-light) {
   .mobile-brand,
   .mobile-days-pill,
   .mobile-theme-btn {
-    background: rgba(18,18,18,0.36);
+    background: rgba(18,18,18,0.34);
     border: 1px solid rgba(255,255,255,0.07);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.14);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
   }
   .mobile-menu-btn {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     color: #f5f5f7;
-    flex: 0 0 48px;
+    flex: 0 0 44px;
   }
   .mobile-brand {
     flex: 0 1 auto;
     width: auto;
     min-width: 0;
-    max-width: clamp(170px, 48vw, 260px);
-    height: 48px;
-    padding: 0 16px;
+    max-width: clamp(160px, 46vw, 230px);
+    height: 44px;
+    padding: 0 14px;
     border-radius: 999px;
     display: flex;
     flex-direction: column;
@@ -2115,8 +2131,8 @@ body:has(.app.theme-light) {
     opacity: 0.84;
   }
   .mobile-days-pill {
-    height: 48px;
-    min-width: 60px;
+    height: 44px;
+    min-width: 58px;
     padding: 0 12px;
     border-radius: 999px;
     border-color: rgba(255,255,255,0.10);
@@ -2124,8 +2140,8 @@ body:has(.app.theme-light) {
     margin-right: 0;
   }
   .mobile-theme-btn {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 999px;
     color: #f5f5f7;
     margin-left: auto;
@@ -2134,9 +2150,9 @@ body:has(.app.theme-light) {
   .app.theme-light .mobile-brand,
   .app.theme-light .mobile-days-pill,
   .app.theme-light .mobile-theme-btn {
-    background: rgba(255,255,255,0.42);
-    border: 1px solid rgba(255,255,255,0.52);
-    box-shadow: 0 8px 24px rgba(90,70,40,0.08);
+    background: rgba(255,255,255,0.40);
+    border: 1px solid rgba(255,255,255,0.50);
+    box-shadow: 0 8px 22px rgba(90,70,40,0.08);
     backdrop-filter: blur(24px) saturate(1.4);
     -webkit-backdrop-filter: blur(24px) saturate(1.4);
   }
@@ -2158,7 +2174,7 @@ body:has(.app.theme-light) {
     color: rgba(36,33,29,0.58);
   }
   .main {
-    padding-top: calc(env(safe-area-inset-top) + 74px) !important;
+    padding-top: calc(env(safe-area-inset-top) + 64px) !important;
   }
   .page::before {
     display: none !important;
