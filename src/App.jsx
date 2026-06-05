@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import "./App.css";
 import InstaCard from "./pages/InstaCard.jsx";
 import AvatarPreview from "./AvatarPreview.jsx";
-import { ASSESSMENT_TOPICS, getAssessmentQuestionCount, getAssessmentTopicCounts } from "./mentor/assessmentCounts.js";
+import { ASSESSMENT_TOPICS, getAssessmentQuestionCount } from "./mentor/assessmentCounts.js";
 
 function MentorAvatar({ size = 40 }) {
   // Vikram Anand — middle-aged, distinguished: grey hair, wrinkles, slick glasses
@@ -235,247 +235,6 @@ function getCurrentWatchingBacklog(videos = [], concepts = []) {
   if (concept) return { type: "Concept", item: concept };
   return null;
 }
-
-const VALIDATED_ASSESSMENT_BANK = [
-  {
-    id: "validated-quant-1",
-    topic: "quant",
-    difficulty: "cat_level",
-    question_text: "A shopkeeper marks an article 40% above cost price and gives a discount of 20%. If he makes a profit of Rs. 96, what is the cost price?",
-    options: ["Rs. 600", "Rs. 800", "Rs. 1,000", "Rs. 1,200"],
-    correct_answer: "Rs. 800",
-    explanation: "Marked price = 1.40C. Selling price after 20% discount = 0.80 x 1.40C = 1.12C. Profit = 0.12C = 96, so C = 800.",
-    wrong_explanations: {
-      "Rs. 600": "This treats the profit percentage as 16% of cost. The discount is applied on marked price, so the net selling price is 112% of cost.",
-      "Rs. 1,000": "At Rs. 1,000 cost, the profit would be 12% x 1,000 = Rs. 120, not Rs. 96.",
-      "Rs. 1,200": "At Rs. 1,200 cost, the profit would be Rs. 144. The actual profit percentage is only 12% of cost."
-    }
-  },
-  {
-    id: "validated-quant-2",
-    topic: "quant",
-    difficulty: "cat_level",
-    question_text: "Three numbers are in the ratio 2:3:5. If 8 is added to each, the new ratio becomes 4:5:7. What is the largest original number?",
-    options: ["20", "30", "40", "50"],
-    correct_answer: "20",
-    explanation: "Let the numbers be 2x, 3x, 5x. Since (2x+8):(3x+8) = 4:5, 5(2x+8)=4(3x+8), giving x=4. Largest = 5x = 20.",
-    wrong_explanations: {
-      "30": "If the largest were 30, x would be 6; after adding 8, the numbers become 20,26,38, not 4:5:7.",
-      "40": "This comes from solving the ratio equation incorrectly. The equation gives x=4, not x=8.",
-      "50": "If the largest were 50, x=10 and the new numbers would be 28,38,58, not in 4:5:7."
-    }
-  },
-  {
-    id: "validated-quant-3",
-    topic: "quant",
-    difficulty: "cat_level",
-    question_text: "A train 180 m long crosses a pole in 12 seconds and a platform in 30 seconds. What is the length of the platform?",
-    options: ["240 m", "270 m", "300 m", "360 m"],
-    correct_answer: "270 m",
-    explanation: "Speed = 180/12 = 15 m/s. In 30 seconds, distance covered = 450 m. This equals train length + platform length, so platform = 450 - 180 = 270 m.",
-    wrong_explanations: {
-      "240 m": "This implies total crossing distance 420 m, which at 15 m/s would take 28 seconds, not 30.",
-      "300 m": "This adds too much distance. A 300 m platform would require 480 m total, taking 32 seconds.",
-      "360 m": "This uses the platform crossing time as if only the platform length were covered, but the train's own length must be included."
-    }
-  },
-  {
-    id: "validated-quant-4",
-    topic: "quant",
-    difficulty: "cat_level",
-    question_text: "The average of 8 numbers is 42. If one number, 56, is removed, what is the average of the remaining 7 numbers?",
-    options: ["38", "39", "40", "41"],
-    correct_answer: "40",
-    explanation: "Total of 8 numbers = 8 x 42 = 336. Removing 56 leaves 280. Average of remaining 7 numbers = 280/7 = 40.",
-    wrong_explanations: {
-      "38": "This underestimates the remaining total after removing 56.",
-      "39": "The remaining total is 280, and 280 divided by 7 is exactly 40.",
-      "41": "Removing a number above the original average should lower the average, not keep it near 42."
-    }
-  },
-  {
-    id: "validated-quant-5",
-    topic: "quant",
-    difficulty: "cat_level",
-    question_text: "A and B can finish a job in 12 days and 18 days respectively. They work together for 4 days, after which A leaves. How many more days will B take to finish the remaining work?",
-    options: ["6 days", "8 days", "10 days", "12 days"],
-    correct_answer: "8 days",
-    explanation: "A's rate is 1/12 and B's rate is 1/18. Together they complete 4 x (1/12 + 1/18) = 4 x 5/36 = 5/9 of the work. Remaining work is 4/9. B alone takes (4/9)/(1/18) = 8 days.",
-    wrong_explanations: {
-      "6 days": "This underestimates the remaining work. After 4 days, 4/9 of the job is still left.",
-      "10 days": "This uses an incorrect combined rate or remaining fraction. B's rate is 1/18 per day.",
-      "12 days": "This ignores the work already completed together in the first 4 days."
-    }
-  },
-  {
-    id: "validated-varc-1",
-    topic: "varc",
-    difficulty: "cat_level",
-    question_text: "Read the statement: 'The historian's task is not merely to record events, but to recover the logic by which those events became thinkable to their participants.' Which option best captures the main idea?",
-    options: [
-      "Historians should avoid recording factual events.",
-      "History must explain the mental and social context that made actions seem reasonable.",
-      "Participants in history usually act without logic.",
-      "Historical records are useful only when written by participants."
-    ],
-    correct_answer: "History must explain the mental and social context that made actions seem reasonable.",
-    explanation: "The sentence contrasts mere recording with recovering the logic available to participants. It asks for contextual explanation, not rejection of facts.",
-    wrong_explanations: {
-      "Historians should avoid recording factual events.": "The word 'merely' means recording is insufficient by itself, not that it should be avoided.",
-      "Participants in history usually act without logic.": "The statement says participants had a logic that needs recovery; it does not call them illogical.",
-      "Historical records are useful only when written by participants.": "Authorship of records is not discussed. The focus is on reconstructing context."
-    }
-  },
-  {
-    id: "validated-varc-2",
-    topic: "varc",
-    difficulty: "cat_level",
-    question_text: "Choose the sentence that best completes the paragraph:\n\nAlgorithms can recommend books, songs, and routes with astonishing efficiency. Yet their success often depends on narrowing the future to patterns already visible in the past. __________",
-    options: [
-      "Therefore, algorithms are always more imaginative than human beings.",
-      "This is why prediction can become a quiet enemy of discovery.",
-      "Hence, old data should never be used in modern systems.",
-      "Consequently, routes are easier to recommend than books."
-    ],
-    correct_answer: "This is why prediction can become a quiet enemy of discovery.",
-    explanation: "The paragraph warns that pattern-based recommendation may limit novelty. The correct sentence extends that idea naturally.",
-    wrong_explanations: {
-      "Therefore, algorithms are always more imaginative than human beings.": "This contradicts the concern that algorithms narrow possibilities to past patterns.",
-      "Hence, old data should never be used in modern systems.": "The paragraph is nuanced; it criticizes over-reliance on past patterns, not all use of old data.",
-      "Consequently, routes are easier to recommend than books.": "This shifts to an unsupported comparison and does not complete the argument."
-    }
-  },
-  {
-    id: "validated-varc-3",
-    topic: "varc",
-    difficulty: "cat_level",
-    question_text: "Which option is the odd one out in this set of sentences?\n1. Cities are not just collections of buildings; they are systems of memory.\n2. A street name can preserve a victory, a migration, or a forgotten injustice.\n3. Urban planning, therefore, is also a form of public storytelling.\n4. Modern buildings are often taller than older buildings.",
-    options: ["1", "2", "3", "4"],
-    correct_answer: "4",
-    explanation: "Sentences 1, 2, and 3 develop the idea that cities encode memory and stories. Sentence 4 is a generic factual comparison and breaks the theme.",
-    wrong_explanations: {
-      "1": "Sentence 1 introduces the central theme of cities as memory systems.",
-      "2": "Sentence 2 supports the theme with an example of street names carrying memory.",
-      "3": "Sentence 3 concludes the same idea by linking planning to storytelling."
-    }
-  },
-  {
-    id: "validated-varc-4",
-    topic: "varc",
-    difficulty: "cat_level",
-    question_text: "Choose the option that weakens the argument:\n\nA city council claims that banning private cars from the central market will increase small-shop revenue because pedestrian footfall will rise.",
-    options: [
-      "Most shoppers in the central market currently arrive by public transport.",
-      "Small-shop revenue depends more on high-value purchases than on footfall.",
-      "Several nearby streets are already pedestrian-only on weekends.",
-      "The council plans to add more benches and street lighting."
-    ],
-    correct_answer: "Small-shop revenue depends more on high-value purchases than on footfall.",
-    explanation: "The argument assumes increased footfall will raise revenue. If revenue depends more on high-value purchases than footfall, that link becomes weaker.",
-    wrong_explanations: {
-      "Most shoppers in the central market currently arrive by public transport.": "This may make the ban less disruptive, but it does not weaken the footfall-to-revenue link.",
-      "Several nearby streets are already pedestrian-only on weekends.": "This gives context but does not directly attack the argument.",
-      "The council plans to add more benches and street lighting.": "This could support higher footfall rather than weaken the claim."
-    }
-  },
-  {
-    id: "validated-varc-5",
-    topic: "varc",
-    difficulty: "cat_level",
-    question_text: "Find the best summary:\n\nScientific models are not miniature copies of reality. They are selective tools that deliberately ignore some details so that important relationships can be studied clearly. A model fails not when it is incomplete, but when the omissions distort the question it was built to answer.",
-    options: [
-      "Scientific models are useless because they leave out real details.",
-      "A model is valuable when its simplifications preserve the relationship being studied.",
-      "Reality can be understood only through complete and detailed replicas.",
-      "The best scientific models are those that answer every possible question."
-    ],
-    correct_answer: "A model is valuable when its simplifications preserve the relationship being studied.",
-    explanation: "The paragraph says models simplify reality on purpose, and the key test is whether those simplifications suit the question.",
-    wrong_explanations: {
-      "Scientific models are useless because they leave out real details.": "The paragraph argues the opposite: selective omission is useful when done appropriately.",
-      "Reality can be understood only through complete and detailed replicas.": "This contradicts the idea that models work through deliberate simplification.",
-      "The best scientific models are those that answer every possible question.": "The paragraph says models are built for specific questions, not every question."
-    }
-  },
-  {
-    id: "validated-lrdi-1",
-    topic: "lrdi",
-    difficulty: "cat_level",
-    question_text: "Four friends A, B, C, and D scored distinct marks in a test. A scored more than B. C scored more than A. D did not score the lowest. Who scored the lowest?",
-    options: ["A", "B", "C", "D"],
-    correct_answer: "B",
-    explanation: "C > A > B. D is not lowest. Since A and C are above B and D cannot be lowest, B must be the lowest.",
-    wrong_explanations: {
-      "A": "A scored more than B, so A cannot be the lowest.",
-      "C": "C scored more than A, so C is above both A and B.",
-      "D": "The condition explicitly says D did not score the lowest."
-    }
-  },
-  {
-    id: "validated-lrdi-2",
-    topic: "lrdi",
-    difficulty: "cat_level",
-    question_text: "In a class, 53 students study at least one of Quant and VARC. 38 study Quant, 35 study VARC, and 20 study both. How many study exactly one of the two subjects?",
-    options: ["13", "33", "40", "53"],
-    correct_answer: "33",
-    explanation: "Exactly one = only Quant + only VARC = (38-20) + (35-20) = 18 + 15 = 33.",
-    wrong_explanations: {
-      "13": "13 is the extra count when 38 and 35 are added and compared with 60; this set has 53 students and a given overlap of 20.",
-      "40": "This does not match either only-Quant plus only-VARC or the at-least-one total. The overlap must be removed from both subject counts.",
-      "53": "This subtracts only 20 from 73; it does not remove both counts of the overlap for exactly-one calculation."
-    }
-  },
-  {
-    id: "validated-lrdi-3",
-    topic: "lrdi",
-    difficulty: "cat_level",
-    question_text: "Five tasks P, Q, R, S, and T are scheduled from Monday to Friday, one per day. P is before R. T is on Wednesday. R is on Friday. Q is immediately after S. Which task is on Thursday?",
-    options: ["P", "Q", "S", "R"],
-    correct_answer: "P",
-    explanation: "T is Wednesday and R is Friday. For Q to be immediately after S, the only available consecutive pair is Monday-Tuesday. Therefore S is Monday and Q is Tuesday. The only remaining day before R is Thursday, so P is on Thursday.",
-    wrong_explanations: {
-      "Q": "Q must be immediately after S, and the only possible S-Q pair is Monday-Tuesday, so Q is Tuesday.",
-      "S": "S starts the only possible consecutive pair, so S is Monday.",
-      "R": "R is explicitly fixed on Friday."
-    }
-  },
-  {
-    id: "validated-lrdi-4",
-    topic: "lrdi",
-    difficulty: "cat_level",
-    question_text: "A shop sold 66 pens over three days. The number sold on Tuesday was twice the number sold on Monday. The number sold on Wednesday was 6 more than Monday. How many pens were sold on Tuesday?",
-    options: ["18", "24", "30", "36"],
-    correct_answer: "30",
-    explanation: "Let Monday sales be x. Tuesday = 2x and Wednesday = x + 6. Total: x + 2x + x + 6 = 66, so 4x = 60 and x = 15. Tuesday sales = 2x = 30.",
-    wrong_explanations: {
-      "18": "This would make Monday 9 and Wednesday 15, totaling 42, not 66.",
-      "24": "This would make Monday 12 and Wednesday 18, totaling 54, not 66.",
-      "36": "This would make Monday 18 and Wednesday 24, totaling 78, not 66."
-    }
-  },
-  {
-    id: "validated-lrdi-5",
-    topic: "lrdi",
-    difficulty: "cat_level",
-    question_text: "Six people sit in a row. A is immediately to the left of B. C is somewhere to the right of B. D is at one end. E is not next to D. If D is in position 1, which statement must be true?",
-    options: [
-      "A is in position 2",
-      "B is left of C",
-      "E is in position 6",
-      "C is immediately right of B"
-    ],
-    correct_answer: "B is left of C",
-    explanation: "The condition directly says C is somewhere to the right of B. Therefore B must be left of C in every valid arrangement.",
-    wrong_explanations: {
-      "A is in position 2": "A and B must be consecutive, but they need not occupy positions 2 and 3.",
-      "E is in position 6": "E only cannot be next to D. With D at position 1, E cannot be position 2 but can be elsewhere.",
-      "C is immediately right of B": "C is somewhere to the right of B, not necessarily immediately right."
-    }
-  }
-];
-// Future upgrade: fetch generated questions from a server-only endpoint such as
-// /api/daily-assessment/generate, with Tavily/Anthropic keys kept off the frontend.
-// If that API fails validation or is unavailable, keep falling back to this bank.
 
 const getSleepDuration = (sleepTime, wakeTime) => {
   if (!sleepTime || !wakeTime) return null;
@@ -2462,17 +2221,6 @@ function normalizeAssessmentQuestion(q) {
   };
 }
 
-function getFallbackAssessmentQuestions(type) {
-  const counts = getAssessmentTopicCounts(type);
-
-  return ASSESSMENT_TOPICS.flatMap(topic =>
-    VALIDATED_ASSESSMENT_BANK
-      .filter(q => q.topic === topic)
-      .slice(0, counts[topic])
-      .map(normalizeAssessmentQuestion)
-  );
-}
-
 function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, TOPICS, onSaveToChat }) {
   const [saved, setSaved] = useState(false);
   const [localTT, setLocalTT] = useState(() => JSON.parse(JSON.stringify(timetable)));
@@ -2647,38 +2395,15 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
   const [loading, setLoading] = useState(true);
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(0);
-  const [usingFallbackBank, setUsingFallbackBank] = useState(false);
+  const [assessmentError, setAssessmentError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     const expectedCount = getAssessmentQuestionCount(sessionType);
 
-    const useFallback = (saved = null) => {
-      const fallbackQuestions = getFallbackAssessmentQuestions(sessionType);
-      setQuestions(fallbackQuestions);
-      setSession(null);
-      setUsingFallbackBank(true);
-      if (saved) {
-        setAnswers(saved.answers || []);
-        setCompleted(!!saved.completed);
-        setScore((saved.answers || []).filter(a => a.isCorrect).length);
-        setCurrentIdx(Math.min(saved.currentIdx || 0, Math.max(fallbackQuestions.length - 1, 0)));
-      } else {
-        setAnswers([]);
-        setCompleted(false);
-        setScore(0);
-        setCurrentIdx(0);
-      }
-    };
-
     const loadAssessment = async () => {
       setLoading(true);
-      let saved = null;
-      try {
-        saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-      } catch {
-        localStorage.removeItem(storageKey);
-      }
+      setAssessmentError("");
 
       try {
         if (!userId) throw new Error("Missing user ID");
@@ -2701,7 +2426,6 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
         if (!cancelled) {
           setSession(data.session);
           setQuestions(backendQuestions);
-          setUsingFallbackBank(false);
           setAnswers(data.session?.answers || []);
           setCompleted(false);
           setScore((data.session?.answers || []).filter(a => a.isCorrect).length);
@@ -2709,9 +2433,15 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
           setLoading(false);
         }
       } catch (err) {
-        console.warn("Assessment backend unavailable; using local fallback bank:", err?.message || err);
+        console.warn("Assessment service unavailable:", err?.message || err);
         if (!cancelled) {
-          useFallback(saved);
+          setSession(null);
+          setQuestions([]);
+          setAnswers([]);
+          setCompleted(false);
+          setScore(0);
+          setCurrentIdx(0);
+          setAssessmentError("Assessment service unavailable. Try again.");
           setLoading(false);
         }
       }
@@ -2790,7 +2520,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     }
 
     try {
-      if (session?.id && !usingFallbackBank) {
+      if (session?.id) {
         await fetch("/api/assessment/progress", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2816,7 +2546,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
       const finalScore = completedAnswers.filter(a => a.isCorrect).length;
       persistProgress({ answers: completedAnswers, currentIdx: questions.length, completed: true });
 
-      if (session?.id && userId && !usingFallbackBank) {
+      if (session?.id && userId) {
         fetch("/api/assessment/complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2872,6 +2602,38 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     </div>
   );
 
+  if (assessmentError) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Assessment Unavailable</div>
+      </div>
+      <div className="card" style={{padding:"22px 18px",textAlign:"center"}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--tp)",marginBottom:8}}>
+          {assessmentError}
+        </div>
+        <div style={{fontSize:13,color:"var(--tt)",lineHeight:1.6}}>
+          Vikram will use the server question bank once it is reachable.
+        </div>
+        <button
+          onClick={onBack}
+          style={{marginTop:18,padding:"11px 24px",
+            background:"#f97316",border:"none",borderRadius:10,
+            color:"white",fontSize:14,fontWeight:700,
+            cursor:"pointer",fontFamily:"inherit"}}>
+          Back to Today
+        </button>
+      </div>
+    </div>
+  );
+
   if (completed) return (
     <div className="page">
       <div className="page-header">
@@ -2908,7 +2670,26 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
   );
 
   const q = questions[currentIdx];
-  if (!q) return null;
+  if (!q) return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={onBack} style={{background:"transparent",border:"none",
+          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Assessment Unavailable</div>
+      </div>
+      <div className="card" style={{padding:"22px 18px",textAlign:"center"}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--tp)"}}>
+          Assessment service unavailable. Try again.
+        </div>
+      </div>
+    </div>
+  );
   const topicColor = topicColors[q.topic] || "#f97316";
 
   return (
