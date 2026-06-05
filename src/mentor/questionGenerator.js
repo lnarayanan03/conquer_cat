@@ -16,6 +16,8 @@ const ANTHROPIC_TIMEOUT_MS = 90000;
 const GROQ_SMALL_TIMEOUT_MS = 10000;
 const PRELOAD_TOPIC_TIMEOUT_MS = 90000;
 const BANK_MIN_ACTIVE_PER_TOPIC = 20;
+const PRELOAD_MAX_REFILL_PER_TOPIC = 10;
+const PRELOAD_ACCEPTANCE_BUFFER = 2;
 const QUESTION_JACCARD_DUP_THRESHOLD = 0.82;
 const QUESTION_BIGRAM_DUP_THRESHOLD = 0.86;
 const QUESTION_CONTAINMENT_LENGTH_RATIO = 0.72;
@@ -1049,6 +1051,7 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
 
   for (const topic of ASSESSMENT_TOPICS) {
     let activeCount = null;
+    let requestCount = 3;
     try {
       activeCount = await getActiveQuestionCount(topic);
       if (activeCount >= BANK_MIN_ACTIVE_PER_TOPIC && !bypassCapacity) {
@@ -1075,9 +1078,13 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
       const capacityLog = activeCount >= BANK_MIN_ACTIVE_PER_TOPIC
         ? `bypassing capacity: ${activeCount}/${BANK_MIN_ACTIVE_PER_TOPIC}`
         : `below capacity: ${activeCount}/${BANK_MIN_ACTIVE_PER_TOPIC}`;
-      console.log(`[assessment/preload] ${topic} ${capacityLog}, generating 3`);
+      if (activeCount < BANK_MIN_ACTIVE_PER_TOPIC) {
+        const needed = BANK_MIN_ACTIVE_PER_TOPIC - activeCount;
+        requestCount = Math.min(PRELOAD_MAX_REFILL_PER_TOPIC, needed + PRELOAD_ACCEPTANCE_BUFFER);
+      }
+      console.log(`[assessment/preload] ${topic} ${capacityLog}, generating ${requestCount}`);
       const result = await withTimeout(
-        refillQuestionBank({ topic, count: 3 }),
+        refillQuestionBank({ topic, count: requestCount }),
         `preload ${topic}`,
         PRELOAD_TOPIC_TIMEOUT_MS
       );
@@ -1101,7 +1108,7 @@ export async function preloadDailyQuestionBank({ force = false, bypassCapacity =
         reason: "generation failed",
         activeCount,
         minRequired: BANK_MIN_ACTIVE_PER_TOPIC,
-        requested: 3,
+        requested: requestCount,
         generated: 0,
         accepted: 0,
         rejected: 0,
