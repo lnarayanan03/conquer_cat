@@ -73,7 +73,12 @@ import {
   ensureQuestionBankCapacity
 } from "./src/mentor/questionBank.js";
 import { ASSESSMENT_TOPICS, getAssessmentQuestionCount } from "./src/mentor/assessmentCounts.js";
-import { preloadDailyQuestionBank, refillAllTopics, refillQuestionBank } from "./src/mentor/questionGenerator.js";
+import {
+  auditQuestionBank,
+  preloadDailyQuestionBank,
+  refillAllTopics,
+  refillQuestionBank,
+} from "./src/mentor/questionGenerator.js";
 import { seedInitialBank, ingestFromTavily } from "./src/mentor/ingest.js";
 
 dotenv.config();
@@ -970,6 +975,35 @@ app.post("/api/assessment/preload", async (req, res) => {
   }
 });
 
+// ── Assessment: audit active question bank ──────────────────────────────────
+app.post("/api/assessment/audit-bank", async (req, res) => {
+  const topic = String(req.body?.topic || "all").toLowerCase().trim();
+  const dryRun = req.body?.dryRun !== false;
+  const limitPerTopic = Math.max(1, Math.min(Number(req.body?.limitPerTopic) || 1000, 5000));
+
+  if (![...ASSESSMENT_TOPICS, "all"].includes(topic)) {
+    return res.status(400).json({ error: "topic must be quant, varc, lrdi, or all" });
+  }
+
+  try {
+    const result = await auditQuestionBank({ topic, dryRun, limitPerTopic });
+    return res.json(result);
+  } catch (err) {
+    console.error("[assessment/audit-bank] error:", err?.message?.slice(0, 180));
+    return res.status(500).json({
+      dryRun,
+      topic,
+      scanned: 0,
+      archiveCandidates: 0,
+      archived: 0,
+      warnings: 0,
+      byTopic: {},
+      reasons: [],
+      errors: [err?.message || "audit failed"],
+    });
+  }
+});
+
 // ── Assessment: manual AI refill ─────────────────────────────────────────────
 app.post("/api/assessment/refill", async (req, res) => {
   const topic = String(req.body?.topic || "").toLowerCase().trim();
@@ -1142,7 +1176,12 @@ const server = app.listen(PORT, () => {
           skipped: result.skipped,
           topics: result.results?.length || 0,
         }))
-        .catch(err => console.warn("[assessment/preload] startup skipped:", err?.message?.slice(0, 160)));
+        .catch(err => console.warn("[assessment/preload] startup skipped:", err?.message?.slice(0, 160)))
+        .then(() => auditQuestionBank({ topic: "all", dryRun: true, limitPerTopic: 1000 }))
+        .then(result => console.log(
+          `[assessment/audit-bank] dry run scanned ${result.scanned}, candidates ${result.archiveCandidates}, warnings ${result.warnings}`
+        ))
+        .catch(err => console.warn("[assessment/audit-bank] startup dry run skipped:", err?.message?.slice(0, 160)));
     });
 });
 server.on("error", err => console.error(err));

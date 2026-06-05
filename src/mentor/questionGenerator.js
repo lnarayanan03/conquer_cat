@@ -21,6 +21,14 @@ const QUESTION_BIGRAM_DUP_THRESHOLD = 0.86;
 const QUESTION_CONTAINMENT_LENGTH_RATIO = 0.72;
 const MAX_INSERTS_PER_SUBTOPIC_BATCH = 2;
 const VALID_DIFFICULTIES = ["medium", "cat_level", "hard"];
+const AUDIT_PLACEHOLDER_RE = /lorem ipsum|placeholder|sample question|\binsert\b|\btodo\b|\bn\/a\b/i;
+const AUDIT_SOURCE_COPY_RE = /copied from|source:|previous year question/i;
+const AUDIT_JSON_REMNANT_RE = /```|"\s*:\s*"|^\s*[\]}]|[\[{]\s*$/;
+const AUDIT_ALLOWED_SOURCE_COPY_SOURCES = new Set([
+  "official_previous_year",
+  "cat_previous_year",
+  "validated_previous_year",
+]);
 const COMMON_QUESTION_TOKENS = new Set([
   "the", "and", "for", "are", "was", "were", "with", "from", "that", "this",
   "then", "than", "into", "find", "what", "which", "when", "where", "given",
@@ -705,6 +713,303 @@ export async function refillAllTopics({ countPerTopic = 5 } = {}) {
     results.push(await refillQuestionBank({ topic, count: countPerTopic }));
   }
   return results;
+}
+
+function hasAuditScore(value) {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function toAuditNumber(value) {
+  return hasAuditScore(value) ? Number(value) : null;
+}
+
+function getAuditOptions(question) {
+  return Array.isArray(question?.options) ? question.options : question?.options;
+}
+
+function isSourceCopyAllowed(question) {
+  return AUDIT_ALLOWED_SOURCE_COPY_SOURCES.has(String(question?.source || "").toLowerCase().trim());
+}
+
+export function auditQuestionQuality(question = {}) {
+  const archiveReasons = [];
+  const warnReasons = [];
+  const questionText = String(question.question_text || "").trim();
+  const explanation = String(question.explanation || "").trim();
+  const options = getAuditOptions(question);
+  const correctAnswer = String(question.correct_answer || "").trim();
+  const qualityScore = toAuditNumber(question.quality_score);
+  const importanceScore = toAuditNumber(question.importance_score);
+  const catLikelihoodScore = toAuditNumber(question.cat_likelihood_score);
+  const wrongExplanations = question.wrong_explanations;
+
+  if (!questionText) archiveReasons.push("missing question_text");
+  if (questionText && questionText.length < 20) archiveReasons.push("question_text length below 20");
+  if (!Array.isArray(options)) {
+    archiveReasons.push("options is not an array");
+  } else {
+    if (options.length !== 4) archiveReasons.push("options length is not 4");
+    if (options.some(option => !String(option || "").trim())) archiveReasons.push("empty option");
+    const normalizedOptions = options.map(option => String(option || "").trim().toLowerCase());
+    if (new Set(normalizedOptions).size !== normalizedOptions.length) archiveReasons.push("duplicate options");
+    if (correctAnswer && !options.map(option => String(option).trim()).includes(correctAnswer)) {
+      archiveReasons.push("correct_answer does not exactly match an option");
+    }
+  }
+
+  if (!correctAnswer) archiveReasons.push("missing correct_answer");
+  if (!explanation) archiveReasons.push("missing explanation");
+  if (explanation && explanation.length < 30) archiveReasons.push("explanation length below 30");
+  if (qualityScore !== null && qualityScore < 5) archiveReasons.push("quality_score below 5");
+  if (catLikelihoodScore !== null && catLikelihoodScore < 5) archiveReasons.push("cat_likelihood_score below 5");
+  if (AUDIT_PLACEHOLDER_RE.test(questionText)) archiveReasons.push("placeholder question text");
+  if (AUDIT_SOURCE_COPY_RE.test(questionText) && !isSourceCopyAllowed(question)) archiveReasons.push("source-copy wording");
+  if (AUDIT_JSON_REMNANT_RE.test(questionText) || AUDIT_JSON_REMNANT_RE.test(explanation)) {
+    archiveReasons.push("malformed JSON remnants");
+  }
+
+  if (!wrongExplanations || typeof wrongExplanations !== "object" || Object.keys(wrongExplanations).length === 0) {
+    warnReasons.push("wrong_explanations missing or empty");
+  } else if (Array.isArray(options)) {
+    const wrongOptions = options
+      .map(option => String(option).trim())
+      .filter(option => option && option !== correctAnswer);
+    const explainedOptions = new Set(Object.keys(wrongExplanations).map(option => String(option).trim()));
+    if (wrongOptions.some(option => !explainedOptions.has(option))) {
+      warnReasons.push("wrong_explanations does not cover all wrong options");
+    }
+  }
+  if (!String(question.subtopic || "").trim()) warnReasons.push("subtopic missing");
+  if (qualityScore === null) warnReasons.push("quality_score missing");
+  if (importanceScore === null) warnReasons.push("importance_score missing");
+  if (catLikelihoodScore === null) warnReasons.push("cat_likelihood_score missing");
+  if (explanation.length >= 30 && explanation.length < 60) warnReasons.push("explanation length between 30 and 60");
+
+  const severity = archiveReasons.length ? "archive" : warnReasons.length ? "warn" : "keep";
+  return {
+    ok: severity !== "archive",
+    reasons: severity === "archive" ? archiveReasons : warnReasons,
+    severity,
+  };
+}
+
+function compareQuestionQuality(left, right) {
+  const leftQuality = Number(left?.quality_score || 0);
+  const rightQuality = Number(right?.quality_score || 0);
+  if (leftQuality !== rightQuality) return leftQuality - rightQuality;
+
+  const leftLikelihood = Number(left?.cat_likelihood_score || 0);
+  const rightLikelihood = Number(right?.cat_likelihood_score || 0);
+  if (leftLikelihood !== rightLikelihood) return leftLikelihood - rightLikelihood;
+
+  const leftImportance = Number(left?.importance_score || 0);
+  const rightImportance = Number(right?.importance_score || 0);
+  if (leftImportance !== rightImportance) return leftImportance - rightImportance;
+
+  const leftAnthropic = String(left?.generated_by || "").toLowerCase() === "anthropic" ? 1 : 0;
+  const rightAnthropic = String(right?.generated_by || "").toLowerCase() === "anthropic" ? 1 : 0;
+  if (leftAnthropic !== rightAnthropic) return leftAnthropic - rightAnthropic;
+
+  const leftCreated = new Date(left?.created_at || 0).getTime() || 0;
+  const rightCreated = new Date(right?.created_at || 0).getTime() || 0;
+  return leftCreated - rightCreated;
+}
+
+function pickBetterQuestion(left, right) {
+  return compareQuestionQuality(left, right) >= 0 ? left : right;
+}
+
+export async function auditDuplicateQuestionsByTopic(topic, { limitPerTopic = 1000 } = {}) {
+  if (!supabase) {
+    return { topic, scanned: 0, archiveCandidates: [], errors: ["Supabase service client not configured"] };
+  }
+
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id, topic, subtopic, question_text, quality_score, importance_score, cat_likelihood_score, source, generated_by, created_at")
+    .eq("topic", topic)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false })
+    .limit(Math.max(1, Math.min(Number(limitPerTopic) || 1000, 5000)));
+
+  if (error) {
+    return { topic, scanned: 0, archiveCandidates: [], errors: [shortError(error)] };
+  }
+
+  const questions = data || [];
+  const keepByDuplicate = new Map();
+  for (let outer = 0; outer < questions.length; outer += 1) {
+    const left = keepByDuplicate.get(questions[outer].id) || questions[outer];
+    if (keepByDuplicate.has(questions[outer].id) && keepByDuplicate.get(questions[outer].id).id !== questions[outer].id) {
+      continue;
+    }
+
+    for (let inner = outer + 1; inner < questions.length; inner += 1) {
+      const right = keepByDuplicate.get(questions[inner].id) || questions[inner];
+      if (keepByDuplicate.has(questions[inner].id) && keepByDuplicate.get(questions[inner].id).id !== questions[inner].id) {
+        continue;
+      }
+
+      const duplicate = isNearDuplicateQuestion(left, [right]);
+      if (!duplicate.duplicate) continue;
+
+      const keeper = pickBetterQuestion(left, right);
+      const weaker = keeper.id === left.id ? right : left;
+      keepByDuplicate.set(weaker.id, keeper);
+      keepByDuplicate.set(keeper.id, keeper);
+    }
+  }
+
+  const archiveCandidates = [];
+  for (const question of questions) {
+    const keeper = keepByDuplicate.get(question.id);
+    if (keeper && keeper.id !== question.id) {
+      archiveCandidates.push({
+        id: question.id,
+        topic: question.topic,
+        reason: `Archived by audit: near-duplicate of question ${keeper.id}`,
+      });
+    }
+  }
+
+  return { topic, scanned: questions.length, archiveCandidates, errors: [] };
+}
+
+function createAuditTopicSummary() {
+  return { scanned: 0, archiveCandidates: 0, archived: 0, warnings: 0 };
+}
+
+async function fetchQuestionsForAudit(topic, limitPerTopic) {
+  const { data, error } = await supabase
+    .from("questions")
+    .select("id, topic, subtopic, difficulty, question_text, options, correct_answer, explanation, wrong_explanations, quality_score, importance_score, cat_likelihood_score, source, generated_by")
+    .eq("topic", topic)
+    .eq("is_archived", false)
+    .limit(Math.max(1, Math.min(Number(limitPerTopic) || 1000, 5000)));
+
+  if (error) throw new Error(shortError(error));
+  return data || [];
+}
+
+async function archiveAuditCandidate(candidate) {
+  const { error } = await supabase
+    .from("questions")
+    .update({
+      is_archived: true,
+      archived_reason: candidate.reason,
+    })
+    .eq("id", candidate.id);
+
+  if (error) throw new Error(shortError(error));
+}
+
+export async function auditQuestionBank({ topic = "all", dryRun = true, limitPerTopic = 1000 } = {}) {
+  if (!supabase) {
+    return {
+      dryRun,
+      topic,
+      scanned: 0,
+      archiveCandidates: 0,
+      archived: 0,
+      warnings: 0,
+      byTopic: Object.fromEntries(ASSESSMENT_TOPICS.map(item => [item, createAuditTopicSummary()])),
+      reasons: [],
+      errors: ["Supabase service client not configured"],
+    };
+  }
+
+  const normalizedTopic = String(topic || "all").toLowerCase().trim();
+  const topics = normalizedTopic === "all" ? ASSESSMENT_TOPICS : [normalizedTopic];
+  if (normalizedTopic !== "all" && !ASSESSMENT_TOPICS.includes(normalizedTopic)) {
+    return {
+      dryRun,
+      topic: normalizedTopic,
+      scanned: 0,
+      archiveCandidates: 0,
+      archived: 0,
+      warnings: 0,
+      byTopic: Object.fromEntries(ASSESSMENT_TOPICS.map(item => [item, createAuditTopicSummary()])),
+      reasons: [],
+      errors: ["topic must be quant, varc, lrdi, or all"],
+    };
+  }
+
+  const byTopic = Object.fromEntries(ASSESSMENT_TOPICS.map(item => [item, createAuditTopicSummary()]));
+  const archiveMap = new Map();
+  const reasons = [];
+  const errors = [];
+
+  for (const auditTopic of topics) {
+    let rows = [];
+    try {
+      rows = await fetchQuestionsForAudit(auditTopic, limitPerTopic);
+    } catch (err) {
+      errors.push(`quality audit failed for ${auditTopic}: ${shortError(err)}`);
+      continue;
+    }
+
+    byTopic[auditTopic].scanned += rows.length;
+    for (const row of rows) {
+      const result = auditQuestionQuality(row);
+      if (result.severity === "archive") {
+        const reason = `Archived by audit: ${result.reasons.join("; ")}`;
+        archiveMap.set(row.id, { id: row.id, topic: row.topic, reason });
+        reasons.push({ id: row.id, topic: row.topic, action: "archive", reason });
+      } else if (result.severity === "warn") {
+        byTopic[auditTopic].warnings += 1;
+        reasons.push({
+          id: row.id,
+          topic: row.topic,
+          action: "warn",
+          reason: result.reasons.join("; "),
+        });
+      }
+    }
+
+    const duplicateResult = await auditDuplicateQuestionsByTopic(auditTopic, { limitPerTopic });
+    if (duplicateResult.errors?.length) {
+      errors.push(...duplicateResult.errors.map(error => `duplicate audit failed for ${auditTopic}: ${error}`));
+    }
+    for (const candidate of duplicateResult.archiveCandidates || []) {
+      if (!archiveMap.has(candidate.id)) {
+        reasons.push({ id: candidate.id, topic: candidate.topic, action: "archive", reason: candidate.reason });
+      }
+      archiveMap.set(candidate.id, candidate);
+    }
+  }
+
+  for (const candidate of archiveMap.values()) {
+    byTopic[candidate.topic].archiveCandidates += 1;
+  }
+
+  let archived = 0;
+  if (!dryRun) {
+    for (const candidate of archiveMap.values()) {
+      try {
+        await archiveAuditCandidate(candidate);
+        archived += 1;
+        byTopic[candidate.topic].archived += 1;
+      } catch (err) {
+        errors.push(`archive failed for ${candidate.id}: ${shortError(err)}`);
+      }
+    }
+  }
+
+  const scanned = Object.values(byTopic).reduce((sum, item) => sum + item.scanned, 0);
+  const archiveCandidates = archiveMap.size;
+  const warnings = Object.values(byTopic).reduce((sum, item) => sum + item.warnings, 0);
+
+  return {
+    dryRun,
+    topic: normalizedTopic,
+    scanned,
+    archiveCandidates,
+    archived,
+    warnings,
+    byTopic,
+    reasons,
+    errors,
+  };
 }
 
 function withTimeout(promise, label, timeoutMs) {
