@@ -4,3 +4,6 @@ dist
 .env.local
 .DS_Store
 .env
+
+# Local cleanup scratch files
+CLEANUP_AUDIT.md
