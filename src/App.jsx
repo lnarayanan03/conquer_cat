@@ -227,6 +227,14 @@ const defaultDay = () => ({
   iq:"", n:"", backlog:[]
 });
 
+function getCurrentWatchingBacklog(videos = [], concepts = []) {
+  const video = videos.find(item => item?.watching);
+  if (video) return { type: "Video", item: video };
+  const concept = concepts.find(item => item?.watching);
+  if (concept) return { type: "Concept", item: concept };
+  return null;
+}
+
 const VALIDATED_ASSESSMENT_BANK = [
   {
     id: "validated-quant-1",
@@ -761,6 +769,7 @@ function TodayPage({
   const backlogCoverage = totalBacklog > 0
     ? Math.round((totalDone / totalBacklog) * 100)
     : 0;
+  const currentWatchingBacklog = getCurrentWatchingBacklog(backlogVideos, backlogConcepts);
   const sudokuMins = Number(d.skm || 0);
   const sudokuSecs = Number(d.sks || 0);
   const sudokuTimeValid =
@@ -1252,6 +1261,11 @@ function TodayPage({
                   {totalBacklog > 0
                     ? `${backlogPending} pending · ${backlogCoverage}% covered`
                     : "Log videos and concepts"}
+                </div>
+                <div className="row-sub">
+                  Currently watching: {currentWatchingBacklog
+                    ? `${currentWatchingBacklog.type} · ${currentWatchingBacklog.item.text}`
+                    : "Nothing selected"}
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
@@ -1871,7 +1885,9 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
     text: text.trim(),
     checked: false,
     addedDate: new Date().toISOString().split("T")[0],
-    checkedDate: null
+    checkedDate: null,
+    watching: false,
+    watchingStartedAt: null
   });
 
   const addVideo = (text) => {
@@ -1889,13 +1905,18 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
   const toggleVideo = (id) => {
     setVideos(prev => prev.map(item =>
       item.id === id
-        ? {
+        ? (() => {
+          const nextChecked = !item.checked;
+          return {
             ...item,
-            checked: !item.checked,
-            checkedDate: !item.checked
+            checked: nextChecked,
+            checkedDate: nextChecked
               ? new Date().toISOString().split("T")[0]
-              : null
-          }
+              : null,
+            watching: nextChecked ? false : item.watching,
+            watchingStartedAt: nextChecked ? null : item.watchingStartedAt
+          };
+        })()
         : item
     ));
   };
@@ -1903,15 +1924,53 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
   const toggleConcept = (id) => {
     setConcepts(prev => prev.map(item =>
       item.id === id
-        ? {
+        ? (() => {
+          const nextChecked = !item.checked;
+          return {
             ...item,
-            checked: !item.checked,
-            checkedDate: !item.checked
+            checked: nextChecked,
+            checkedDate: nextChecked
               ? new Date().toISOString().split("T")[0]
-              : null
-          }
+              : null,
+            watching: nextChecked ? false : item.watching,
+            watchingStartedAt: nextChecked ? null : item.watchingStartedAt
+          };
+        })()
         : item
     ));
+  };
+
+  const setWatchingItem = (kind, id) => {
+    const now = new Date().toISOString();
+    setVideos(prev => prev.map(item => {
+      const active = kind === "video" && item.id === id;
+      return {
+        ...item,
+        watching: active,
+        watchingStartedAt: active ? now : null
+      };
+    }));
+    setConcepts(prev => prev.map(item => {
+      const active = kind === "concept" && item.id === id;
+      return {
+        ...item,
+        watching: active,
+        watchingStartedAt: active ? now : null
+      };
+    }));
+  };
+
+  const clearWatching = () => {
+    setVideos(prev => prev.map(item => ({
+      ...item,
+      watching: false,
+      watchingStartedAt: null
+    })));
+    setConcepts(prev => prev.map(item => ({
+      ...item,
+      watching: false,
+      watchingStartedAt: null
+    })));
   };
 
   const deleteVideo = (id) => {
@@ -1926,8 +1985,10 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                     concepts.filter(i=>i.checked).length;
   const total = videos.length + concepts.length;
   const coverage = total > 0 ? Math.round((totalDone/total)*100) : 0;
+  const currentWatching = getCurrentWatchingBacklog(videos, concepts);
 
   const renderSection = ({
+    kind,
     title,
     subtitle,
     icon,
@@ -1995,11 +2056,18 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
           <div style={{marginBottom:14}}>
             <div className="sec-label">Pending ({pending.length})</div>
             <div style={{borderTop:"1px solid var(--b1)"}}>
-              {pending.map(item => (
+              {pending.map(item => {
+                const isWatching = !!item.watching;
+                return (
                 <div key={item.id} style={{
                   display:"flex", alignItems:"center",
-                  gap:12, padding:"12px 0",
-                  borderBottom:"1px solid var(--b1)"
+                  gap:12, padding:"12px 8px",
+                  borderBottom:"1px solid var(--b1)",
+                  borderRadius:isWatching ? 10 : 0,
+                  outline:isWatching ? "1px solid rgba(48,209,88,0.45)" : "none",
+                  outlineOffset:-1,
+                  background:isWatching ? "rgba(48,209,88,0.07)" : "transparent",
+                  boxShadow:isWatching ? "0 0 18px rgba(48,209,88,0.16)" : "none"
                 }}>
                   <button
                     onClick={() => toggleItem(item.id)}
@@ -2013,10 +2081,47 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                       justifyContent:"center"
                     }}
                   />
-                  <span style={{
+                  <div style={{
                     flex:1, fontSize:14,
-                    color:"var(--tp)", lineHeight:1.4
-                  }}>{item.text}</span>
+                    color:"var(--tp)", lineHeight:1.4,
+                    minWidth:0
+                  }}>
+                    <div style={{
+                      overflow:"hidden",
+                      textOverflow:"ellipsis"
+                    }}>{item.text}</div>
+                    {isWatching && (
+                      <div style={{
+                        marginTop:4,
+                        color:"#30d158",
+                        fontSize:11,
+                        fontWeight:800,
+                        letterSpacing:"0.04em",
+                        textTransform:"uppercase"
+                      }}>
+                        Watching now
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setWatchingItem(kind, item.id)}
+                    aria-pressed={isWatching}
+                    title={isWatching ? "Watching now" : "Mark as watching"}
+                    style={{
+                      border:isWatching ? "1px solid rgba(48,209,88,0.55)" : "1px solid var(--b2)",
+                      background:isWatching ? "rgba(48,209,88,0.14)" : "transparent",
+                      color:isWatching ? "#30d158" : "var(--tt)",
+                      borderRadius:8,
+                      padding:"6px 8px",
+                      fontSize:12,
+                      fontWeight:800,
+                      cursor:"pointer",
+                      lineHeight:1,
+                      flexShrink:0
+                    }}
+                  >
+                    {isWatching ? "Watching" : "▶"}
+                  </button>
                   <button
                     onClick={() => deleteItem(item.id)}
                     style={{
@@ -2027,7 +2132,8 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
                     }}
                   ><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -2127,6 +2233,60 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
             }}>{coverage}%</span>
           </div>
         )}
+
+        <div style={{
+          marginTop:12,
+          padding:"10px 14px",
+          background:"rgba(48,209,88,0.07)",
+          border:"1px solid rgba(48,209,88,0.22)",
+          borderRadius:10,
+          display:"flex",
+          justifyContent:"space-between",
+          alignItems:"center",
+          gap:12
+        }}>
+          <div style={{minWidth:0}}>
+            <div style={{
+              fontSize:11,
+              color:"var(--tt)",
+              letterSpacing:"0.08em",
+              textTransform:"uppercase",
+              marginBottom:4
+            }}>
+              Currently watching:
+            </div>
+            <div style={{
+              fontSize:14,
+              fontWeight:800,
+              color:"var(--tp)",
+              overflow:"hidden",
+              textOverflow:"ellipsis",
+              whiteSpace:"nowrap"
+            }}>
+              {currentWatching
+                ? `${currentWatching.type} · ${currentWatching.item.text}`
+                : "Nothing selected"}
+            </div>
+          </div>
+          {currentWatching && (
+            <button
+              onClick={clearWatching}
+              style={{
+                border:"1px solid rgba(48,209,88,0.35)",
+                background:"transparent",
+                color:"#30d158",
+                borderRadius:8,
+                padding:"6px 10px",
+                fontSize:12,
+                fontWeight:800,
+                cursor:"pointer",
+                flexShrink:0
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{
@@ -2135,6 +2295,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
         gap:16
       }}>
         {renderSection({
+          kind: "video",
           title: "Videos",
           subtitle: "iQuanta backlog videos",
           icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>,
@@ -2148,6 +2309,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
           placeholder: "Video name or topic..."
         })}
         {renderSection({
+          kind: "concept",
           title: "Concepts",
           subtitle: "Missing concepts to revise",
           icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/></svg>,
