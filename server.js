@@ -755,6 +755,102 @@ app.post("/api/user/update", async (req, res) => {
   }
 });
 
+// ── Academic notes ──────────────────────────────────────────────────────────
+app.get("/api/academic-notes/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!userId) return res.status(400).json({ error: "userId is required" });
+  if (!supabase) return res.json({ notes: [], syncAvailable: false });
+
+  try {
+    const { data, error } = await supabase
+      .from("academic_notes")
+      .select("id, user_id, note_text, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return res.json({ notes: data || [] });
+  } catch (err) {
+    console.error("[academic-notes/get] DB error:", err?.message || err);
+    return res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.post("/api/academic-notes", async (req, res) => {
+  const { userId, noteText } = req.body;
+  if (!userId || !noteText?.trim()) {
+    return res.status(400).json({ error: "userId and noteText are required" });
+  }
+  if (!supabase) return res.status(503).json({ error: "Supabase is not configured" });
+
+  try {
+    const { data, error } = await supabase
+      .from("academic_notes")
+      .insert({
+        user_id: userId,
+        note_text: noteText.trim(),
+      })
+      .select("id, user_id, note_text, created_at, updated_at")
+      .single();
+
+    if (error) throw error;
+    return res.json({ note: data });
+  } catch (err) {
+    console.error("[academic-notes/create] DB error:", err?.message || err);
+    return res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.put("/api/academic-notes/:noteId", async (req, res) => {
+  const { noteId } = req.params;
+  const { userId, noteText } = req.body;
+  if (!noteId || !userId || !noteText?.trim()) {
+    return res.status(400).json({ error: "noteId, userId, and noteText are required" });
+  }
+  if (!supabase) return res.status(503).json({ error: "Supabase is not configured" });
+
+  try {
+    const { data, error } = await supabase
+      .from("academic_notes")
+      .update({ note_text: noteText.trim() })
+      .eq("id", noteId)
+      .eq("user_id", userId)
+      .select("id, user_id, note_text, created_at, updated_at")
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Note not found" });
+    return res.json({ note: data });
+  } catch (err) {
+    console.error("[academic-notes/update] DB error:", err?.message || err);
+    return res.status(500).json({ error: "DB error" });
+  }
+});
+
+app.delete("/api/academic-notes/:noteId", async (req, res) => {
+  const { noteId } = req.params;
+  const { userId } = req.body;
+  if (!noteId || !userId) {
+    return res.status(400).json({ error: "noteId and userId are required" });
+  }
+  if (!supabase) return res.status(503).json({ error: "Supabase is not configured" });
+
+  try {
+    const { error } = await supabase
+      .from("academic_notes")
+      .delete()
+      .eq("id", noteId)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("[academic-notes/delete] DB error:", err?.message || err);
+    return res.status(500).json({ error: "DB error" });
+  }
+});
+
 // ── Assessment: get or resume session ────────────────────────────────────────
 app.get("/api/assessment/session/:userId", async (req, res) => {
   const { userId } = req.params;

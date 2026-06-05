@@ -191,6 +191,7 @@ const toLocalDateKey = (date) => {
   return `${y}-${m}-${d}`;
 };
 const todayKey = () => toLocalDateKey(new Date());
+const todayKeyIST = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 const isDateKeyBetween = (key, startKey, endKey) => key >= startKey && key <= endKey;
 const isApplicationWindow = (key) => isDateKeyBetween(key, APPLICATION_START_KEY, APPLICATION_END_KEY);
 const isFinalPushDate = (key) => isDateKeyBetween(key, "2026-11-23", EXAM_DATE_KEY);
@@ -225,6 +226,148 @@ const defaultDay = () => ({
   ca:false,
   iq:"", n:"", backlog:[]
 });
+
+const VALIDATED_ASSESSMENT_BANK = [
+  {
+    id: "validated-quant-1",
+    topic: "quant",
+    difficulty: "cat_level",
+    question_text: "A shopkeeper marks an article 40% above cost price and gives a discount of 20%. If he makes a profit of Rs. 96, what is the cost price?",
+    options: ["Rs. 600", "Rs. 800", "Rs. 1,000", "Rs. 1,200"],
+    correct_answer: "Rs. 800",
+    explanation: "Marked price = 1.40C. Selling price after 20% discount = 0.80 x 1.40C = 1.12C. Profit = 0.12C = 96, so C = 800.",
+    wrong_explanations: {
+      "Rs. 600": "This treats the profit percentage as 16% of cost. The discount is applied on marked price, so the net selling price is 112% of cost.",
+      "Rs. 1,000": "At Rs. 1,000 cost, the profit would be 12% x 1,000 = Rs. 120, not Rs. 96.",
+      "Rs. 1,200": "At Rs. 1,200 cost, the profit would be Rs. 144. The actual profit percentage is only 12% of cost."
+    }
+  },
+  {
+    id: "validated-quant-2",
+    topic: "quant",
+    difficulty: "cat_level",
+    question_text: "Three numbers are in the ratio 2:3:5. If 8 is added to each, the new ratio becomes 4:5:7. What is the largest original number?",
+    options: ["20", "30", "40", "50"],
+    correct_answer: "20",
+    explanation: "Let the numbers be 2x, 3x, 5x. Since (2x+8):(3x+8) = 4:5, 5(2x+8)=4(3x+8), giving x=4. Largest = 5x = 20.",
+    wrong_explanations: {
+      "30": "If the largest were 30, x would be 6; after adding 8, the numbers become 20,26,38, not 4:5:7.",
+      "40": "This comes from solving the ratio equation incorrectly. The equation gives x=4, not x=8.",
+      "50": "If the largest were 50, x=10 and the new numbers would be 28,38,58, not in 4:5:7."
+    }
+  },
+  {
+    id: "validated-quant-3",
+    topic: "quant",
+    difficulty: "cat_level",
+    question_text: "A train 180 m long crosses a pole in 12 seconds and a platform in 30 seconds. What is the length of the platform?",
+    options: ["240 m", "270 m", "300 m", "360 m"],
+    correct_answer: "270 m",
+    explanation: "Speed = 180/12 = 15 m/s. In 30 seconds, distance covered = 450 m. This equals train length + platform length, so platform = 450 - 180 = 270 m.",
+    wrong_explanations: {
+      "240 m": "This implies total crossing distance 420 m, which at 15 m/s would take 28 seconds, not 30.",
+      "300 m": "This adds too much distance. A 300 m platform would require 480 m total, taking 32 seconds.",
+      "360 m": "This uses the platform crossing time as if only the platform length were covered, but the train's own length must be included."
+    }
+  },
+  {
+    id: "validated-varc-1",
+    topic: "varc",
+    difficulty: "cat_level",
+    question_text: "Read the statement: 'The historian's task is not merely to record events, but to recover the logic by which those events became thinkable to their participants.' Which option best captures the main idea?",
+    options: [
+      "Historians should avoid recording factual events.",
+      "History must explain the mental and social context that made actions seem reasonable.",
+      "Participants in history usually act without logic.",
+      "Historical records are useful only when written by participants."
+    ],
+    correct_answer: "History must explain the mental and social context that made actions seem reasonable.",
+    explanation: "The sentence contrasts mere recording with recovering the logic available to participants. It asks for contextual explanation, not rejection of facts.",
+    wrong_explanations: {
+      "Historians should avoid recording factual events.": "The word 'merely' means recording is insufficient by itself, not that it should be avoided.",
+      "Participants in history usually act without logic.": "The statement says participants had a logic that needs recovery; it does not call them illogical.",
+      "Historical records are useful only when written by participants.": "Authorship of records is not discussed. The focus is on reconstructing context."
+    }
+  },
+  {
+    id: "validated-varc-2",
+    topic: "varc",
+    difficulty: "cat_level",
+    question_text: "Choose the sentence that best completes the paragraph:\n\nAlgorithms can recommend books, songs, and routes with astonishing efficiency. Yet their success often depends on narrowing the future to patterns already visible in the past. __________",
+    options: [
+      "Therefore, algorithms are always more imaginative than human beings.",
+      "This is why prediction can become a quiet enemy of discovery.",
+      "Hence, old data should never be used in modern systems.",
+      "Consequently, routes are easier to recommend than books."
+    ],
+    correct_answer: "This is why prediction can become a quiet enemy of discovery.",
+    explanation: "The paragraph warns that pattern-based recommendation may limit novelty. The correct sentence extends that idea naturally.",
+    wrong_explanations: {
+      "Therefore, algorithms are always more imaginative than human beings.": "This contradicts the concern that algorithms narrow possibilities to past patterns.",
+      "Hence, old data should never be used in modern systems.": "The paragraph is nuanced; it criticizes over-reliance on past patterns, not all use of old data.",
+      "Consequently, routes are easier to recommend than books.": "This shifts to an unsupported comparison and does not complete the argument."
+    }
+  },
+  {
+    id: "validated-varc-3",
+    topic: "varc",
+    difficulty: "cat_level",
+    question_text: "Which option is the odd one out in this set of sentences?\n1. Cities are not just collections of buildings; they are systems of memory.\n2. A street name can preserve a victory, a migration, or a forgotten injustice.\n3. Urban planning, therefore, is also a form of public storytelling.\n4. Modern buildings are often taller than older buildings.",
+    options: ["1", "2", "3", "4"],
+    correct_answer: "4",
+    explanation: "Sentences 1, 2, and 3 develop the idea that cities encode memory and stories. Sentence 4 is a generic factual comparison and breaks the theme.",
+    wrong_explanations: {
+      "1": "Sentence 1 introduces the central theme of cities as memory systems.",
+      "2": "Sentence 2 supports the theme with an example of street names carrying memory.",
+      "3": "Sentence 3 concludes the same idea by linking planning to storytelling."
+    }
+  },
+  {
+    id: "validated-lrdi-1",
+    topic: "lrdi",
+    difficulty: "cat_level",
+    question_text: "Four friends A, B, C, and D scored distinct marks in a test. A scored more than B. C scored more than A. D did not score the lowest. Who scored the lowest?",
+    options: ["A", "B", "C", "D"],
+    correct_answer: "B",
+    explanation: "C > A > B. D is not lowest. Since A and C are above B and D cannot be lowest, B must be the lowest.",
+    wrong_explanations: {
+      "A": "A scored more than B, so A cannot be the lowest.",
+      "C": "C scored more than A, so C is above both A and B.",
+      "D": "The condition explicitly says D did not score the lowest."
+    }
+  },
+  {
+    id: "validated-lrdi-2",
+    topic: "lrdi",
+    difficulty: "cat_level",
+    question_text: "In a class, 53 students study at least one of Quant and VARC. 38 study Quant, 35 study VARC, and 20 study both. How many study exactly one of the two subjects?",
+    options: ["13", "33", "40", "53"],
+    correct_answer: "33",
+    explanation: "Exactly one = only Quant + only VARC = (38-20) + (35-20) = 18 + 15 = 33.",
+    wrong_explanations: {
+      "13": "13 is the extra count when 38 and 35 are added and compared with 60; this set has 53 students and a given overlap of 20.",
+      "40": "This does not match either only-Quant plus only-VARC or the at-least-one total. The overlap must be removed from both subject counts.",
+      "53": "This subtracts only 20 from 73; it does not remove both counts of the overlap for exactly-one calculation."
+    }
+  },
+  {
+    id: "validated-lrdi-3",
+    topic: "lrdi",
+    difficulty: "cat_level",
+    question_text: "Five tasks P, Q, R, S, and T are scheduled from Monday to Friday, one per day. P is before R. T is on Wednesday. R is on Friday. Q is immediately after S. Which task is on Thursday?",
+    options: ["P", "Q", "S", "R"],
+    correct_answer: "P",
+    explanation: "T is Wednesday and R is Friday. For Q to be immediately after S, the only available consecutive pair is Monday-Tuesday. Therefore S is Monday and Q is Tuesday. The only remaining day before R is Thursday, so P is on Thursday.",
+    wrong_explanations: {
+      "Q": "Q must be immediately after S, and the only possible S-Q pair is Monday-Tuesday, so Q is Tuesday.",
+      "S": "S starts the only possible consecutive pair, so S is Monday.",
+      "R": "R is explicitly fixed on Friday."
+    }
+  }
+];
+// Future upgrade: fetch generated questions from a server-only endpoint such as
+// /api/daily-assessment/generate, with Tavily/Anthropic keys kept off the frontend.
+// If that API fails validation or is unavailable, keep falling back to this bank.
 
 const getSleepDuration = (sleepTime, wakeTime) => {
   if (!sleepTime || !wakeTime) return null;
@@ -533,7 +676,7 @@ function DdaySymbolIcon({ type, size = 22 }) {
 
 function TodayPage({
   date, d, upd, dl, start, totalDays, mode, setTab,
-  backlogVideos, backlogConcepts, onSave, data, totals, userName, userInitials,
+  backlogVideos, backlogConcepts, notes = [], onSave, data, totals, userName, userInitials,
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   todayLiveLabel, todayAppLabel, isSundayIST, theme,
@@ -614,6 +757,9 @@ function TodayPage({
   const showApplicationToggle = isApplicationWindow(date);
   const showFinalPush = isFinalPushDate(date);
   const todayScore = effortScore(d, backlogVideos, backlogConcepts);
+  const latestNote = useMemo(() => {
+    return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)))[0] || null;
+  }, [notes]);
 
   if (isExamDay) {
     const reveal = isDdayRevealDay();
@@ -1070,7 +1216,7 @@ function TodayPage({
         </div>
 
         <div>
-          <div className="sec-label">iQuanta Backlog</div>
+          <div className="sec-label">iQuanta</div>
           <div className="card">
             <button
               className="card-row"
@@ -1087,11 +1233,40 @@ function TodayPage({
               }}
             >
               <div>
-                <div className="row-label">iQuanta Backlog ({totalBacklog})</div>
+                <div className="row-label">iQuanta Backlogs</div>
                 <div className="row-sub">
                   {totalBacklog > 0
                     ? `${backlogPending} pending · ${backlogCoverage}% covered`
                     : "Log videos and concepts"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="var(--tt)" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+            <button
+              className="card-row"
+              onClick={() => setTab("notes")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                background: "transparent",
+                border: "none",
+                borderTop: "1px solid var(--b1)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              <div>
+                <div className="row-label">Academic Notes</div>
+                <div className="row-sub">
+                  {notes?.length
+                    ? `${notes.length} note${notes.length === 1 ? "" : "s"} · ${getNotePreview(latestNote)}`
+                    : "Save formulas, mistakes, and class points"}
                 </div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24"
@@ -1365,6 +1540,309 @@ function TodayPage({
             </svg>
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function formatNoteDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function getNoteText(note) {
+  return note?.note_text ?? note?.text ?? "";
+}
+
+function getNoteCreatedAt(note) {
+  return note?.created_at ?? note?.createdAt ?? "";
+}
+
+function getNoteUpdatedAt(note) {
+  return note?.updated_at ?? note?.updatedAt ?? getNoteCreatedAt(note);
+}
+
+function getNoteTitle(note) {
+  const text = getNoteText(note).trim();
+  if (!text) return "Untitled Note";
+  const firstLine = text.split("\n").map(line => line.trim()).find(Boolean);
+  const source = firstLine || text;
+  return source.length > 60 ? `${source.slice(0, 57).trim()}...` : source;
+}
+
+function getNotePreview(note) {
+  const text = getNoteText(note).replace(/\s+/g, " ").trim();
+  if (!text) return "No note text yet.";
+  return text.length > 96 ? `${text.slice(0, 93).trim()}...` : text;
+}
+
+function normalizeAcademicNote(note) {
+  const now = new Date().toISOString();
+  return {
+    id: note?.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    user_id: note?.user_id,
+    note_text: getNoteText(note),
+    created_at: getNoteCreatedAt(note) || now,
+    updated_at: getNoteUpdatedAt(note) || getNoteCreatedAt(note) || now,
+  };
+}
+
+function readLocalAcademicNotes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("conquer_academic_notes") || "[]");
+    return Array.isArray(saved) ? saved.map(normalizeAcademicNote) : [];
+  } catch {
+    return [];
+  }
+}
+
+function NotesPage({ notes, onBack, userId, syncMessage, onSaveNote, onDeleteNote }) {
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [activeNote, setActiveNote] = useState(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [noteError, setNoteError] = useState("");
+
+  const sortedNotes = useMemo(() => {
+    return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)));
+  }, [notes]);
+
+  const filteredNotes = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sortedNotes;
+    return sortedNotes.filter(note => {
+      const createdAt = getNoteCreatedAt(note);
+      const updatedAt = getNoteUpdatedAt(note);
+      const created = formatNoteDate(createdAt).toLowerCase();
+      const updated = formatNoteDate(updatedAt).toLowerCase();
+      return getNoteText(note).toLowerCase().includes(q) ||
+        createdAt?.slice(0, 10).includes(q) ||
+        updatedAt?.slice(0, 10).includes(q) ||
+        created.includes(q) ||
+        updated.includes(q);
+    });
+  }, [search, sortedNotes]);
+
+  const openNewNote = () => {
+    setActiveNote(null);
+    setEditingId(null);
+    setDraft("");
+    setEditorOpen(true);
+    setNoteError("");
+  };
+
+  const openNote = (note) => {
+    setActiveNote(note);
+    setEditingId(note.id);
+    setDraft(getNoteText(note));
+    setEditorOpen(true);
+    setNoteError("");
+  };
+
+  const saveNote = async () => {
+    const text = draft.trim();
+    if (!text) return;
+    if (!userId) {
+      setNoteError("Notes sync needs your user ID. Reopen the app after profile sync.");
+      return;
+    }
+    setSaving(true);
+    setNoteError("");
+    try {
+      await onSaveNote({ id: editingId, noteText: text });
+      setDraft("");
+      setEditingId(null);
+      setActiveNote(null);
+      setEditorOpen(false);
+    } catch (err) {
+      setNoteError(err?.message || "Could not save note.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteNote = async (id) => {
+    setSaving(true);
+    setNoteError("");
+    try {
+      await onDeleteNote(id);
+      if (editingId === id) {
+        setDraft("");
+        setEditingId(null);
+        setActiveNote(null);
+        setEditorOpen(false);
+      }
+    } catch (err) {
+      setNoteError(err?.message || "Could not delete note.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inEditor = editorOpen;
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button onClick={inEditor ? () => {
+          setDraft("");
+          setEditingId(null);
+          setActiveNote(null);
+          setEditorOpen(false);
+          setNoteError("");
+        } : onBack} style={{
+          background:"transparent", border:"none",
+          color:"#f97316", fontSize:15, cursor:"pointer",
+          fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#f97316" strokeWidth="2"
+            strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          {inEditor ? "Notes" : "Today"}
+        </button>
+        <div className="page-title">Academic Notes</div>
+        <div className="page-sub">Notes sync when you save them.</div>
+      </div>
+
+      <div className="sections">
+        {syncMessage && (
+          <div className="card" style={{padding:"11px 14px", color:"var(--tt)", fontSize:12, lineHeight:1.5}}>
+            {syncMessage}
+          </div>
+        )}
+        {noteError && (
+          <div className="card" style={{padding:"11px 14px", color:"#ff453a", fontSize:12, lineHeight:1.5}}>
+            {noteError}
+          </div>
+        )}
+        {inEditor ? (
+          <div className="card" style={{padding:"16px"}}>
+            <textarea
+              className="textarea"
+              placeholder="Write notes, formulas, mistakes, class points, strategy observations..."
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              rows={10}
+            />
+            <div style={{display:"flex", gap:10, marginTop:12, flexWrap:"wrap"}}>
+              <button
+                onClick={saveNote}
+                disabled={!draft.trim() || saving}
+                style={{
+                  padding:"11px 18px", border:"none", borderRadius:10,
+                  background:draft.trim() && !saving ? "#f97316" : "var(--b2)",
+                  color:"white", fontSize:14, fontWeight:800,
+                  fontFamily:"inherit", cursor:draft.trim() && !saving ? "pointer" : "not-allowed"
+                }}
+              >
+                {saving ? "Saving..." : editingId ? "Update Note" : "Save Note"}
+              </button>
+              {editingId && (
+                <button
+                  onClick={() => deleteNote(editingId)}
+                  disabled={saving}
+                  style={{
+                    padding:"11px 18px", border:"1px solid var(--b2)",
+                    borderRadius:10, background:"transparent", color:"#ff453a",
+                    fontSize:14, fontWeight:700, fontFamily:"inherit",
+                    cursor:saving ? "not-allowed" : "pointer"
+                  }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:10}}>
+              <div className="sec-label" style={{marginBottom:0}}>Saved Notes ({notes.length})</div>
+              <button
+                onClick={openNewNote}
+                style={{
+                  padding:"8px 12px", border:"1px solid rgba(249,115,22,0.35)",
+                  borderRadius:8, background:"rgba(249,115,22,0.10)",
+                  color:"#f97316", fontSize:12, fontWeight:800,
+                  fontFamily:"inherit", cursor:"pointer"
+                }}
+              >
+                New Note
+              </button>
+            </div>
+            <input
+              type="search"
+              placeholder="Search notes or date, e.g. 2026-06-05"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                width:"100%", background:"var(--s2)", border:"1px solid var(--b2)",
+                borderRadius:10, padding:"12px 14px", color:"var(--tp)",
+                fontSize:14, fontFamily:"inherit", outline:"none", marginBottom:12
+              }}
+            />
+            <div style={{display:"flex", flexDirection:"column", gap:12}}>
+              {filteredNotes.map(note => (
+                <div key={note.id} className="card" style={{padding:0}}>
+                  <button
+                    onClick={() => openNote(note)}
+                    style={{
+                      width:"100%", padding:"14px 16px", background:"transparent",
+                      border:"none", textAlign:"left", fontFamily:"inherit",
+                      cursor:"pointer"
+                    }}
+                  >
+                    <div style={{fontSize:15, fontWeight:800, color:"var(--tp)", lineHeight:1.25}}>
+                      {getNoteTitle(note)}
+                    </div>
+                    <div style={{
+                      fontSize:12, color:"var(--tt)", lineHeight:1.45,
+                      whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                      marginTop:5
+                    }}>
+                      {getNotePreview(note)}
+                    </div>
+                    <div style={{fontSize:11, color:"var(--tt)", lineHeight:1.5, marginTop:8}}>
+                      {getNoteUpdatedAt(note) && getNoteUpdatedAt(note) !== getNoteCreatedAt(note)
+                        ? `Updated ${formatNoteDate(getNoteUpdatedAt(note))}`
+                        : `Created ${formatNoteDate(getNoteCreatedAt(note))}`}
+                    </div>
+                  </button>
+                  <div style={{
+                    display:"flex", gap:8, justifyContent:"flex-end",
+                    padding:"0 16px 14px"
+                  }}>
+                    <button onClick={() => openNote(note)} style={{
+                      background:"var(--s2)", border:"1px solid var(--b2)",
+                      color:"var(--tp)", borderRadius:8, padding:"7px 10px",
+                      fontSize:12, fontWeight:700, fontFamily:"inherit", cursor:"pointer"
+                    }}>Edit</button>
+                    <button onClick={() => deleteNote(note.id)} style={{
+                      background:"transparent", border:"1px solid var(--b2)",
+                      color:"#ff453a", borderRadius:8, padding:"7px 10px",
+                      fontSize:12, fontWeight:700, fontFamily:"inherit", cursor:"pointer"
+                    }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              {filteredNotes.length === 0 && (
+                <div className="card" style={{padding:"28px 16px", textAlign:"center", color:"var(--tt)", fontSize:13}}>
+                  {notes.length ? "No notes match your search." : "No saved notes yet."}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1669,6 +2147,7 @@ function BacklogPage({ videos, setVideos, concepts, setConcepts, onBack }) {
           placeholder: "Concept or topic name..."
         })}
       </div>
+
     </div>
   );
 }
@@ -1834,43 +2313,46 @@ function TimetablePage({ timetable, setTimetable, onBack, userId, DAYS_OF_WEEK, 
 }
 
 function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSend }) {
-  const [session, setSession] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const sessionType = isSunday ? "weekly" : "daily";
+  const assessmentDate = todayKeyIST();
+  const storageKey = `conquer_assessment_${userId || "local"}_${assessmentDate}_${sessionType}`;
+  const [questions] = useState(() => {
+    const byTopic = ["quant", "varc", "lrdi"].flatMap(topic =>
+      VALIDATED_ASSESSMENT_BANK.filter(q => q.topic === topic).slice(0, 3)
+    );
+    return byTopic;
+  });
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [result, setResult] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(0);
-  const [error, setError] = useState(null);
-  const sessionType = isSunday ? "weekly" : "daily";
-  const totalQ = isSunday ? 30 : 6;
 
   useEffect(() => {
-    if (!userId) { setError("No user ID"); setLoading(false); return; }
-    fetch(`/api/assessment/session/${userId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.completed) {
-          setCompleted(true);
-          setLoading(false);
-          return;
-        }
-        if (!data.session || !data.session.questionObjects?.length) {
-          setError(data.error || "No questions available. Bank may still be seeding.");
-          setLoading(false);
-          return;
-        }
-        setSession(data.session);
-        setQuestions(data.session.questionObjects);
-        setCurrentIdx(data.session.current_index || 0);
-        setAnswers(data.session.answers || []);
-        setLoading(false);
-      })
-      .catch(err => { setError(err.message); setLoading(false); });
-  }, [userId]);
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (!saved) return;
+      setAnswers(saved.answers || []);
+      setCompleted(!!saved.completed);
+      setScore((saved.answers || []).filter(a => a.isCorrect).length);
+      setCurrentIdx(Math.min(saved.currentIdx || 0, questions.length - 1));
+    } catch {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey, questions.length]);
+
+  const persistProgress = useCallback((next) => {
+    localStorage.setItem(storageKey, JSON.stringify({
+      date: assessmentDate,
+      type: sessionType,
+      currentIdx,
+      answers,
+      completed,
+      ...next
+    }));
+  }, [answers, assessmentDate, completed, currentIdx, sessionType, storageKey]);
 
   const handleSelect = (option) => {
     if (result) return;
@@ -1881,67 +2363,39 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
     if (!selected || submitting) return;
     const q = questions[currentIdx];
     setSubmitting(true);
-    try {
-      const res = await fetch("/api/assessment/answer", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          userId,
-          sessionId: session.id,
-          questionId: q.id,
-          userAnswer: selected,
-          correctAnswer: q.correct_answer || selected,
-          topic: q.topic,
-        })
-      });
-      const data = await res.json();
-      setResult(data);
+    const isCorrect = selected === q.correct_answer;
+    const data = {
+      isCorrect,
+      correctAnswer: q.correct_answer,
+      explanation: q.explanation,
+      wrongExplanation: isCorrect ? "" : q.wrong_explanations?.[selected]
+    };
+    setResult(data);
 
-      const newAnswer = {
-        questionId: q.id,
-        topic: q.topic,
-        userAnswer: selected,
-        isCorrect: data.isCorrect,
-      };
-      const updatedAnswers = [...answers, newAnswer];
-      setAnswers(updatedAnswers);
-
-      await fetch("/api/assessment/progress", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          sessionId: session.id,
-          currentIndex: currentIdx + 1,
-          answers: updatedAnswers,
-        })
-      });
-
-      if (data.isCorrect) setScore(s => s + 1);
-    } catch (err) {
-      setResult({ isCorrect: false, explanation: "Could not check answer." });
-    } finally {
-      setSubmitting(false);
-    }
+    const newAnswer = {
+      questionId: q.id,
+      topic: q.topic,
+      userAnswer: selected,
+      correctAnswer: q.correct_answer,
+      isCorrect,
+    };
+    const updatedAnswers = [...answers, newAnswer];
+    setAnswers(updatedAnswers);
+    persistProgress({ answers: updatedAnswers, currentIdx: currentIdx + 1 });
+    if (isCorrect) setScore(s => s + 1);
+    setSubmitting(false);
   };
 
   const handleNext = async () => {
+    const completedAnswers = result
+      ? [...answers]
+      : answers;
     if (currentIdx + 1 >= questions.length) {
-      const finalScore = answers.filter(a => a.isCorrect).length + (result?.isCorrect ? 1 : 0);
-      await fetch("/api/assessment/complete", {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          userId,
-          sessionId: session.id,
-          type: sessionType,
-          score: finalScore,
-          total: questions.length,
-          answers,
-        })
-      }).catch(console.error);
+      const finalScore = completedAnswers.filter(a => a.isCorrect).length;
+      persistProgress({ answers: completedAnswers, currentIdx: questions.length, completed: true });
 
       const topicScores = ["quant","varc","lrdi"].map(t => {
-        const tAnswers = answers.filter(a => a.topic === t);
+        const tAnswers = completedAnswers.filter(a => a.topic === t);
         const correct = tAnswers.filter(a => a.isCorrect).length;
         return `${t.toUpperCase()}: ${correct}/${tAnswers.length}`;
       }).join(", ");
@@ -1956,50 +2410,14 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
       setCompleted(true);
       return;
     }
-    setCurrentIdx(i => i + 1);
+    const nextIdx = currentIdx + 1;
+    setCurrentIdx(nextIdx);
+    persistProgress({ answers: completedAnswers, currentIdx: nextIdx });
     setSelected(null);
     setResult(null);
   };
 
   const topicColors = { quant:"#f97316", varc:"#3b82f6", lrdi:"#22c55e" };
-
-  if (loading) return (
-    <div className="page">
-      <div className="page-header">
-        <button onClick={onBack} style={{background:"transparent",border:"none",
-          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
-          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
-            <polyline points="15 18 9 12 15 6"/></svg>
-          Today
-        </button>
-        <div className="page-title">Loading assessment...</div>
-      </div>
-    </div>
-  );
-
-  if (error) return (
-    <div className="page">
-      <div className="page-header">
-        <button onClick={onBack} style={{background:"transparent",border:"none",
-          color:"#f97316",fontSize:15,cursor:"pointer",fontFamily:"inherit",
-          display:"flex",alignItems:"center",gap:4,padding:0,marginBottom:8}}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="#f97316" strokeWidth="2" strokeLinecap="round">
-            <polyline points="15 18 9 12 15 6"/></svg>
-          Today
-        </button>
-        <div className="page-title">Assessment</div>
-      </div>
-      <div className="card" style={{padding:"20px 16px",textAlign:"center"}}>
-        <div style={{color:"#ff453a",marginBottom:8}}>{error}</div>
-        <div style={{fontSize:12,color:"var(--tt)"}}>
-          The question bank may still be seeding. Try again in a few minutes.
-        </div>
-      </div>
-    </div>
-  );
 
   if (completed) return (
     <div className="page">
@@ -2022,7 +2440,7 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
           {sessionType === "weekly" ? "Weekly" : "Daily"} assessment complete
         </div>
         <div style={{fontSize:14,color:"var(--tt)"}}>
-          Vikram has your results. Check the chat.
+          Score: {score}/{questions.length}. Vikram has your results in chat.
         </div>
         <button
           onClick={onBack}
@@ -2127,7 +2545,19 @@ function AssessmentPage({ userId, onBack, setMentorMessages, isSunday, onAutoSen
             }}>
               {result.isCorrect ? "Correct" : "Wrong"}
             </div>
-            <div style={{fontSize:13,color:"var(--ts)",lineHeight:1.6}}>
+          <div style={{fontSize:13,color:"var(--ts)",lineHeight:1.6}}>
+              {!result.isCorrect && (
+                <div style={{marginBottom:8}}>
+                  <strong style={{color:"var(--tp)"}}>Correct answer: </strong>
+                  {result.correctAnswer}
+                </div>
+              )}
+              {!result.isCorrect && result.wrongExplanation && (
+                <div style={{marginBottom:8}}>
+                  <strong style={{color:"var(--tp)"}}>Why your answer is wrong: </strong>
+                  {result.wrongExplanation}
+                </div>
+              )}
               {result.explanation}
             </div>
           </div>
@@ -5188,6 +5618,10 @@ export default function App() {
       return [];
     }
   });
+  const [academicNotes, setAcademicNotes] = useState(() => {
+    return readLocalAcademicNotes();
+  });
+  const [notesSyncMessage, setNotesSyncMessage] = useState("");
   const [sel, setSel] = useState(() => localStorage.getItem("cat_sel_date") || todayKey());
   const [mentorMessages, setMentorMessages] = useState([]);
   const [mentorGreeted, setMentorGreeted] = useState(
@@ -5406,6 +5840,74 @@ export default function App() {
       })
     }).catch(err => console.error("Backlog sync failed:", err.message));
   }, [backlogVideos, backlogConcepts, userId]);
+  useEffect(() => {
+    localStorage.setItem("conquer_academic_notes", JSON.stringify(academicNotes));
+  }, [academicNotes]);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
+    const loadAcademicNotes = async () => {
+      try {
+        const res = await fetch(`/api/academic-notes/${encodeURIComponent(userId)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Notes sync failed");
+        if (data.syncAvailable === false) throw new Error("Notes sync unavailable");
+
+        let backendNotes = Array.isArray(data.notes)
+          ? data.notes.map(normalizeAcademicNote)
+          : [];
+        const migrationKey = `conquer_academic_notes_migrated_${userId}`;
+        const oldLocalNotes = readLocalAcademicNotes();
+
+        if (
+          backendNotes.length === 0 &&
+          oldLocalNotes.length > 0 &&
+          !localStorage.getItem(migrationKey) &&
+          data.syncAvailable !== false
+        ) {
+          for (const note of oldLocalNotes) {
+            const noteText = getNoteText(note).trim();
+            if (!noteText) continue;
+            const migrateRes = await fetch("/api/academic-notes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId, noteText })
+            });
+            if (!migrateRes.ok) {
+              const migrateData = await migrateRes.json().catch(() => ({}));
+              throw new Error(migrateData.error || "Notes migration failed");
+            }
+          }
+          localStorage.setItem(migrationKey, "1");
+
+          const refreshed = await fetch(`/api/academic-notes/${encodeURIComponent(userId)}`);
+          const refreshedData = await refreshed.json().catch(() => ({}));
+          if (!refreshed.ok) throw new Error(refreshedData.error || "Notes reload failed");
+          backendNotes = Array.isArray(refreshedData.notes)
+            ? refreshedData.notes.map(normalizeAcademicNote)
+            : [];
+        }
+
+        if (!cancelled) {
+          setAcademicNotes(backendNotes);
+          setNotesSyncMessage(data.syncAvailable === false
+            ? "Notes are shown from local storage because sync failed."
+            : ""
+          );
+        }
+      } catch (err) {
+        console.error("Academic notes sync failed:", err?.message || err);
+        if (!cancelled) {
+          setAcademicNotes(readLocalAcademicNotes());
+          setNotesSyncMessage("Notes are shown from local storage because sync failed.");
+        }
+      }
+    };
+
+    loadAcademicNotes();
+    return () => { cancelled = true; };
+  }, [userId]);
   useEffect(() => {
     localStorage.setItem("conquer_timetable", JSON.stringify(weeklyTimetable));
   }, [weeklyTimetable]);
@@ -5783,6 +6285,46 @@ export default function App() {
     }
   };
 
+  const saveAcademicNote = async ({ id, noteText }) => {
+    if (!userId) throw new Error("Missing user ID");
+    const text = noteText?.trim();
+    if (!text) throw new Error("Note text is required");
+
+    const res = await fetch(id ? `/api/academic-notes/${encodeURIComponent(id)}` : "/api/academic-notes", {
+      method: id ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, noteText: text })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.note) throw new Error(data.error || "Could not sync note");
+
+    const savedNote = normalizeAcademicNote(data.note);
+    setAcademicNotes(prev => {
+      const exists = prev.some(note => note.id === savedNote.id);
+      const next = exists
+        ? prev.map(note => note.id === savedNote.id ? savedNote : note)
+        : [savedNote, ...prev];
+      return next.sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)));
+    });
+    setNotesSyncMessage("");
+  };
+
+  const deleteAcademicNote = async (noteId) => {
+    if (!userId) throw new Error("Missing user ID");
+    if (!noteId) throw new Error("Missing note ID");
+
+    const res = await fetch(`/api/academic-notes/${encodeURIComponent(noteId)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not delete note");
+
+    setAcademicNotes(prev => prev.filter(note => note.id !== noteId));
+    setNotesSyncMessage("");
+  };
+
   const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
   const mobileTabs = [
     {id:"today",    lbl:"Today"},
@@ -5964,7 +6506,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onSave={async () => {
           const dayData = data[sel] || defaultDay();
           try {
             await fetch("/api/log/save", {
@@ -6012,6 +6554,16 @@ export default function App() {
             setVideos={setBacklogVideos}
             concepts={backlogConcepts}
             setConcepts={setBacklogConcepts}
+            onBack={() => setTab("today")}
+          />
+        )}
+        {tab === "notes" && (
+          <NotesPage
+            notes={academicNotes}
+            userId={userId}
+            syncMessage={notesSyncMessage}
+            onSaveNote={saveAcademicNote}
+            onDeleteNote={deleteAcademicNote}
             onBack={() => setTab("today")}
           />
         )}
