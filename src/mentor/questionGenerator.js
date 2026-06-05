@@ -14,7 +14,7 @@ const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY
 const TAVILY_TIMEOUT_MS = 8000;
 const ANTHROPIC_TIMEOUT_MS = 90000;
 const GROQ_SMALL_TIMEOUT_MS = 10000;
-const PRELOAD_REFILL_TIMEOUT_MS = 26000;
+const PRELOAD_TOPIC_TIMEOUT_MS = 90000;
 const VALID_DIFFICULTIES = ["medium", "cat_level", "hard"];
 const GENERIC_CONTEXT = {
   quant: "CAT Quant often tests arithmetic, algebra, geometry, number systems, time-work, percentages, ratios, averages, mixtures, and clean multi-step reasoning.",
@@ -476,6 +476,10 @@ export async function refillQuestionBank({ topic, count = 5 } = {}) {
   return refillPromise;
 }
 
+export function isRefillRunning(topic) {
+  return refillLocks.has(String(topic || "").toLowerCase().trim());
+}
+
 export async function refillAllTopics({ countPerTopic = 5 } = {}) {
   const results = [];
   for (const topic of ASSESSMENT_TOPICS) {
@@ -510,7 +514,7 @@ async function getActiveQuestionCount(topic) {
   return count || 0;
 }
 
-export async function preloadDailyQuestionBank({ force = false } = {}) {
+export async function preloadDailyQuestionBank({ force = false, bypassCapacity = false } = {}) {
   const dateKey = getIstDateKey();
   if (!force && lastPreloadDateKey === dateKey) {
     return { dateKey, skipped: true, results: [] };
@@ -521,29 +525,60 @@ export async function preloadDailyQuestionBank({ force = false } = {}) {
   const results = [];
 
   for (const topic of ASSESSMENT_TOPICS) {
+    let activeCount = null;
     try {
-      const active = await getActiveQuestionCount(topic);
+      activeCount = await getActiveQuestionCount(topic);
       const required = dailyCounts[topic] || 0;
-      if (active >= required + 5 && !force) {
-        results.push({ topic, skipped: true, active, requested: 0, inserted: 0, errors: [] });
+      if (activeCount >= required + 5 && !bypassCapacity) {
+        console.log(`[assessment/preload] ${topic} capacity sufficient, skipped`);
+        results.push({
+          topic,
+          skipped: true,
+          reason: "capacity sufficient",
+          activeCount,
+          requested: 0,
+          generated: 0,
+          accepted: 0,
+          inserted: 0,
+          errors: [],
+        });
         continue;
       }
 
+      if (isRefillRunning(topic)) {
+        console.log(`[assessment/preload] ${topic} refill already running`);
+      }
+
+      console.log(`[assessment/preload] ${topic} generating 3`);
       const result = await withTimeout(
         refillQuestionBank({ topic, count: 3 }),
         `preload ${topic}`,
-        PRELOAD_REFILL_TIMEOUT_MS
+        PRELOAD_TOPIC_TIMEOUT_MS
       );
-      results.push({ ...result, active });
+      results.push({
+        ...result,
+        skipped: false,
+        reason: "generated",
+        activeCount,
+      });
     } catch (err) {
+      const message = shortError(err);
+      if (message.includes("timed out")) {
+        console.warn(`[assessment/preload] ${topic} timed out after ${PRELOAD_TOPIC_TIMEOUT_MS}ms`);
+      } else {
+        console.warn(`[assessment/preload] ${topic} failed: ${message}`);
+      }
       results.push({
         topic,
+        skipped: false,
+        reason: "generation failed",
+        activeCount,
         requested: 3,
         generated: 0,
         accepted: 0,
         rejected: 0,
         inserted: 0,
-        errors: [shortError(err)],
+        errors: [message],
       });
     }
   }

@@ -956,8 +956,9 @@ app.get("/api/assessment/session/:userId", async (req, res) => {
 // ── Assessment: manual daily preload ─────────────────────────────────────────
 app.post("/api/assessment/preload", async (req, res) => {
   const force = req.body?.force === true;
+  const bypassCapacity = req.body?.bypassCapacity === true;
   try {
-    const result = await preloadDailyQuestionBank({ force });
+    const result = await preloadDailyQuestionBank({ force, bypassCapacity });
     return res.json(result);
   } catch (err) {
     console.error("[assessment/preload] error:", err?.message?.slice(0, 180));
