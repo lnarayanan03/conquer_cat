@@ -1116,26 +1116,6 @@ app.post("/api/internal/distill", async (req, res) => {
   }
 });
 
-app.post("/api/assessment/save", async (req, res) => {
-  if (!supabase) return res.json({ ok: true });
-  const { userId, weekNumber, questions, answers, score, vikramVerdict } = req.body;
-  if (!userId) return res.status(400).json({ error: "userId is required" });
-  try {
-    await supabase.from("assessments").insert({
-      user_id: userId,
-      week_number: weekNumber ?? null,
-      questions: questions ?? [],
-      answers: answers ?? [],
-      score: score ?? null,
-      vikram_verdict: vikramVerdict ?? null,
-    });
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("[assessment/save] DB error:", err?.message);
-    res.status(500).json({ error: "DB error" });
-  }
-});
-
 app.use(express.static(join(__dirname, "dist")));
 
 app.get("/{*path}", (req, res) => {
