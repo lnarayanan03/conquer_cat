@@ -217,7 +217,13 @@ const defaultDay = () => ({
   sk:false, skm:0, sks:0, skd:"medium",
   vm:false, vmt:"",
   ca:false,
-  iq:"", n:"", backlog:[]
+  iq:"", n:"", backlog:[],
+  officeBefore10:false,
+  gymDone:false, gymMinutes:0,
+  waterLiters:0,
+  contentPosted:false, editingUnder1Hr:false,
+  calories:0, protein:0, carbs:0, fat:0,
+  foodEntries:[],
 });
 
 const MASTERY_PROGRESS_STORAGE_KEY = "conquer_mastery_progress_v1";
@@ -840,13 +846,11 @@ function TodayPage({
   const sleepTimeForCalc = prevDayData?.st || d.st;
   const sleepDuration = getSleepDuration(sleepTimeForCalc, d.wt);
   const hasSleepDuration = sleepDuration !== null;
-  const sleepDurationValid = hasSleepDuration && sleepDuration >= 4 && sleepDuration <= 6;
-  const wakeBeforeTen = !!d.wt && d.wt < "10:00";
-  const sleepWarning = hasSleepDuration && sleepDuration < 4
-    ? "Too little sleep. Minimum 4 hours."
-    : hasSleepDuration && sleepDuration > 6
-      ? "Too much sleep. Maximum 6 hours for CAT prep."
-      : "";
+  const sleepTargetHours = (() => {
+    const day = new Date(date + "T00:00:00").getDay();
+    return day === 0 || day === 6 ? 8 : 5;
+  })();
+  const sleepDurationValid = hasSleepDuration && sleepDuration >= sleepTargetHours;
   const totalMins =
     (d.lc && !d.lc_na ? 120 : 0) +
     (d.as && !d.as_na ? 40 : 0) +
@@ -1044,30 +1048,42 @@ function TodayPage({
         </div>
 
         <div>
-          <div className="sec-label">Vitals</div>
+          <div className="sec-label">Discipline</div>
           <div className="card">
-            <TimePickerWidget
-              label="Wake time"
-              sub="Recommended: 6:00 AM – 8:00 AM"
-              value={d.wt}
-              onChange={v => upd("wt", v)}
-              dotColor={wakeBeforeTen && sleepDurationValid ? "#30d158" : "#ff453a"}
-            />
-            <TimePickerWidget
-              label="Sleep time"
-              sub="Recommended: 10:00 PM – 2:00 AM"
-              value={d.st}
-              onChange={v => upd("st", v)}
-              dotColor={sleepDurationValid ? "#30d158" : "#ff453a"}
-            />
-            {hasSleepDuration && (
-              <div className="sleep-summary">
-                <div className={`sleep-duration-badge${sleepDurationValid ? " valid" : " invalid"}`}>
-                  Sleep: {sleepDuration.toFixed(1)} hrs
-                </div>
-                {sleepWarning && <div className="sleep-warning">{sleepWarning}</div>}
+            <div className="vitals-snap">
+              <div className="vs-chip">
+                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
+                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
+                </span>
+                <span className="vs-key">sleep</span>
               </div>
-            )}
+              <div className="vs-chip">
+                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
+                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
+                </span>
+                <span className="vs-key">gym</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
+                <span className="vs-key">water</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(() => {
+                  const entries = d.foodEntries || [];
+                  const c = entries.length > 0
+                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
+                    : (d.calories||0);
+                  return c > 0 ? c : "—";
+                })()}</span>
+                <span className="vs-key">kcal</span>
+              </div>
+            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
+              Open Vitals
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -3184,41 +3200,41 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
   }, 0);
 
   return (
-    <div className="page">
+    <div className="page progress-page">
       <div className="page-header">
         <div className="page-title">Progress</div>
         <div className="page-sub">CAT 2026 · 99.9%ile target</div>
       </div>
-      <div className="sections">
-        <div className="card" style={{padding:"24px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div className="sections progress-sections">
+        <div className="card progress-days-card">
           <div>
             <div className="big-num">{dl}</div>
-            <div style={{fontSize:11,color:"var(--tt)",marginTop:6,letterSpacing:"0.06em"}}>DAYS REMAINING</div>
+            <div className="progress-days-lbl">Days remaining</div>
           </div>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:18,fontWeight:700,color:"var(--tp)"}}>Day {dn}</div>
-            <div style={{fontSize:12,color:"var(--tt)",marginTop:2}}>of {totalDays}</div>
+          <div className="progress-days-right">
+            <div className="progress-day-num">Day {dn}</div>
+            <div className="progress-day-of">of {totalDays}</div>
           </div>
         </div>
 
         <div>
           <div className="sec-label">Scoreboard</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div className="progress-subj-col">
             {subj.map(s => {
               const pct = Math.min((s.act / s.tar) * 100, 100);
               const nd = Math.ceil((s.tar - s.act) / Math.max(dl, 1));
               return (
-                <div key={s.id} className="card" style={{padding:"14px 16px"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                    <span style={{fontSize:13,fontWeight:600,color:"var(--tp)"}}>{s.lbl}</span>
-                    <span style={{fontSize:13,fontWeight:600,fontVariantNumeric:"tabular-nums",color:"var(--tp)"}}>
-                      {s.act.toLocaleString()} <span style={{color:"var(--tt)",fontWeight:400}}>/ {s.tar.toLocaleString()}</span>
+                <div key={s.id} className="card progress-subj-card">
+                  <div className="progress-subj-head">
+                    <span className="progress-subj-name">{s.lbl}</span>
+                    <span className="progress-subj-val">
+                      {s.act.toLocaleString()} <span className="progress-subj-tar">/ {s.tar.toLocaleString()}</span>
                     </span>
                   </div>
                   <div className="bar-track"><div className="bar-fill" style={{width:`${pct}%`}} /></div>
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
-                    <span style={{fontSize:11,color:"var(--tt)"}}>{pct.toFixed(1)}% complete</span>
-                    <span style={{fontSize:11,color: nd <= s.dailyTarget ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
+                  <div className="progress-subj-foot">
+                    <span>{pct.toFixed(1)}% complete</span>
+                    <span style={{color: nd <= s.dailyTarget ? "var(--green)" : AC}}>{nd}/day to stay on track</span>
                   </div>
                 </div>
               );
@@ -3228,7 +3244,7 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
 
         <div>
           <div className="sec-label">Journey Score</div>
-          <div className="card" style={{padding:"16px 10px 10px"}}>
+          <div className="card progress-chart-card">
             {isPhone && (
               <div className="progress-insights">
                 <div className="progress-streak-mini">
@@ -3257,10 +3273,10 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
                 </div>
               </div>
             )}
-            <div style={{display:"flex",gap:16,marginBottom:12,paddingLeft:8,flexWrap:"wrap"}}>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:20,height:2,background:"#f5c518",borderRadius:1}}/><span style={{fontSize:10,color:"var(--tt)"}}>Target</span></div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:20,height:2,background:"#3b82f6",borderRadius:1}}/><span style={{fontSize:10,color:"var(--tt)"}}>Actual</span></div>
-              <span style={{fontSize:10,color:"var(--tt)"}}>Above yellow = ahead of schedule</span>
+            <div className="progress-chart-legend">
+              <div className="progress-chart-legend-item"><div className="progress-legend-swatch" style={{background:"#f5c518"}}/><span>Target</span></div>
+              <div className="progress-chart-legend-item"><div className="progress-legend-swatch" style={{background:"#3b82f6"}}/><span>Actual</span></div>
+              <span className="progress-legend-note">Above yellow = ahead of schedule</span>
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{top:0,right:12,bottom:0,left:-24}}>
@@ -4437,6 +4453,244 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   );
 }
 
+function VitalsPage({ d, upd, date, onBack }) {
+  const water = Number(d.waterLiters) || 0;
+  const foodEntries = Array.isArray(d.foodEntries) ? d.foodEntries : [];
+  const sleepDuration = getSleepDuration(d.st, d.wt);
+  const sleepTargetHours = (() => {
+    const day = new Date(date + "T00:00:00").getDay();
+    return day === 0 || day === 6 ? 8 : 5;
+  })();
+  const sleepValid = sleepDuration !== null && sleepDuration >= sleepTargetHours;
+  const sleepTargetLabel = sleepTargetHours === 8 ? "Target: 8h (weekend)" : "Target: 5h (weekday)";
+
+  const totalMacros = useMemo(() => {
+    if (foodEntries.length > 0) {
+      return {
+        calories: foodEntries.reduce((s,e) => s + (Number(e.calories)||0), 0),
+        protein:  foodEntries.reduce((s,e) => s + (Number(e.protein)||0), 0),
+        carbs:    foodEntries.reduce((s,e) => s + (Number(e.carbs)||0), 0),
+        fat:      foodEntries.reduce((s,e) => s + (Number(e.fat)||0), 0),
+      };
+    }
+    return { calories: d.calories||0, protein: d.protein||0, carbs: d.carbs||0, fat: d.fat||0 };
+  }, [foodEntries, d.calories, d.protein, d.carbs, d.fat]);
+
+  const addFood = () => upd("foodEntries", [...foodEntries, {
+    id: String(Date.now()), name: "", qty: "", calories: 0, protein: 0, carbs: 0, fat: 0,
+  }]);
+  const removeFood = (id) => upd("foodEntries", foodEntries.filter(e => e.id !== id));
+  const updateFood = (id, field, val) =>
+    upd("foodEntries", foodEntries.map(e => e.id === id ? {...e, [field]: val} : e));
+
+  const fmt = date
+    ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long" })
+    : "";
+
+  return (
+    <div className="page vitals-page">
+      <div className="page-header">
+        <button onClick={onBack} style={{
+          background:"transparent", border:"none", color:"#f97316", fontSize:15,
+          cursor:"pointer", fontFamily:"inherit", display:"flex",
+          alignItems:"center", gap:4, padding:0, marginBottom:8,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Today
+        </button>
+        <div className="page-title">Vitals</div>
+        <div className="page-sub">{fmt}</div>
+      </div>
+
+      <div className="sec-label">Sleep</div>
+      <div className="card">
+        <TimePickerWidget
+          label="Wake time"
+          sub="Recommended: 6–8 AM"
+          value={d.wt}
+          onChange={v => upd("wt", v)}
+          dotColor={sleepValid ? "#30d158" : "#ff453a"}
+        />
+        <TimePickerWidget
+          label="Sleep time"
+          sub="Recommended: 10 PM–2 AM"
+          value={d.st}
+          onChange={v => upd("st", v)}
+          dotColor={sleepValid ? "#30d158" : "#ff453a"}
+        />
+        <div style={{padding:"8px 16px 12px",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:"var(--tt)"}}>{sleepTargetLabel}</span>
+          {sleepDuration !== null && (
+            <>
+              <span style={{
+                fontSize:13, fontWeight:800,
+                color: sleepValid ? "#30d158" : "#ff453a",
+                fontVariantNumeric:"tabular-nums",
+              }}>{sleepDuration.toFixed(1)} hrs</span>
+              {!sleepValid && sleepDuration < sleepTargetHours && (
+                <span style={{fontSize:11,color:"#ff453a"}}>
+                  {`Too little sleep. Target ${sleepTargetHours}h.`}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="sec-label">Habits</div>
+      <div className="card">
+        <div className="card-row">
+          <div>
+            <div className="row-label">Office before 10 AM</div>
+            <div className="row-sub">Punctuality streak</div>
+          </div>
+          <Tog v={!!d.officeBefore10} onChange={v=>upd("officeBefore10",v)} />
+        </div>
+        <div className="card-row">
+          <div>
+            <div className="row-label">Gym</div>
+            <div className="row-sub">Physical training</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {!!d.gymDone && (
+              <>
+                <input
+                  type="number"
+                  className="time-select"
+                  min="0"
+                  step="5"
+                  inputMode="numeric"
+                  value={d.gymMinutes||0}
+                  onChange={e=>upd("gymMinutes",e.target.value===""?0:Number(e.target.value))}
+                  style={{width:58,textAlign:"center"}}
+                />
+                <span style={{fontSize:11,color:"var(--tt)",flexShrink:0}}>min</span>
+              </>
+            )}
+            <Tog v={!!d.gymDone} onChange={v=>{upd("gymDone",v);if(!v)upd("gymMinutes",0);}} />
+          </div>
+        </div>
+        <div className="card-row">
+          <div>
+            <div className="row-label">Content posted</div>
+            <div className="row-sub">Study / social content</div>
+          </div>
+          <Tog v={!!d.contentPosted} onChange={v=>upd("contentPosted",v)} />
+        </div>
+        <div className="card-row">
+          <div>
+            <div className="row-label">Editing under 1 hour</div>
+            <div className="row-sub">Content editing discipline</div>
+          </div>
+          <Tog v={!!d.editingUnder1Hr} onChange={v=>upd("editingUnder1Hr",v)} />
+        </div>
+      </div>
+
+      <div className="sec-label">Water</div>
+      <div className="card">
+        <div className="vtube-row">
+          <div>
+            <div className="row-label">Water intake</div>
+            <div className="row-sub">+0.5L per tap · 4L daily target</div>
+          </div>
+          <span className="vtube-val">{Number.isInteger(water) ? water : water.toFixed(1)} / 4L</span>
+        </div>
+        <div className="vtube-controls">
+          <div className="vtube" role="progressbar" aria-valuenow={water} aria-valuemin={0} aria-valuemax={4} aria-label="Water intake">
+            <div className="vtube-fill" style={{width:`${(water/4)*100}%`}} />
+          </div>
+          <button type="button" className="vtube-btn" aria-label="Decrease water"
+            onClick={()=>upd("waterLiters",+(Math.max(0,water-0.5)).toFixed(1))}
+            disabled={water<=0}>−</button>
+          <button type="button" className="vtube-btn" aria-label="Increase water"
+            onClick={()=>upd("waterLiters",+(Math.min(4,water+0.5)).toFixed(1))}
+            disabled={water>=4}>+</button>
+        </div>
+      </div>
+
+      <div className="sec-label">Food</div>
+      <div className="card">
+        {foodEntries.length === 0 && (
+          <div className="food-empty-msg">No food logged yet. Tap Add Food below.</div>
+        )}
+        {foodEntries.map((entry, idx) => (
+          <div key={entry.id} className={`food-entry${idx > 0 ? " food-entry-sep" : ""}`}>
+            <div className="food-entry-head">
+              <input
+                type="text"
+                className="food-name-input"
+                placeholder="Food name"
+                value={entry.name}
+                onChange={e=>updateFood(entry.id,"name",e.target.value)}
+              />
+              <input
+                type="text"
+                className="food-qty-input"
+                placeholder="qty"
+                value={entry.qty}
+                onChange={e=>updateFood(entry.id,"qty",e.target.value)}
+              />
+              <button type="button" className="food-remove-btn" aria-label="Remove food" onClick={()=>removeFood(entry.id)}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div className="food-macros-row">
+              {[
+                {f:"calories",lbl:"kcal"},
+                {f:"protein",lbl:"pro"},
+                {f:"carbs",lbl:"carbs"},
+                {f:"fat",lbl:"fat"},
+              ].map(m => (
+                <div key={m.f} className="food-macro-cell">
+                  <input
+                    type="number"
+                    className="food-macro-input"
+                    min="0"
+                    inputMode="numeric"
+                    value={entry[m.f]||0}
+                    onChange={e=>updateFood(entry.id,m.f,e.target.value===""?0:Number(e.target.value))}
+                  />
+                  <span className="food-macro-lbl">{m.lbl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="add-food-btn" onClick={addFood}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Add Food
+      </button>
+
+      {(foodEntries.length > 0 || totalMacros.calories > 0 || totalMacros.protein > 0) && (
+        <div className="card macro-total-card">
+          <div className="macro-total-head">Daily Totals</div>
+          <div className="macro-grid">
+            {[
+              {lbl:"Calories",unit:"kcal",val:totalMacros.calories},
+              {lbl:"Protein",unit:"g",val:totalMacros.protein},
+              {lbl:"Carbs",unit:"g",val:totalMacros.carbs},
+              {lbl:"Fat",unit:"g",val:totalMacros.fat},
+            ].map(m => (
+              <div key={m.lbl} className="macro-cell">
+                <div style={{fontSize:16,fontWeight:900,color:"var(--tp)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{m.val}</div>
+                <div className="macro-name">{m.lbl}</div>
+                <div className="macro-unit">{m.unit}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfilePage({
   userName, userId,
   startDate, dayNumber, totalDays, setTab,
@@ -4711,6 +4965,31 @@ function ProfilePage({
             </div>
           </div>
         )}
+
+        <div
+          className="card"
+          onClick={() => setTab("vitals")}
+          style={{cursor:"pointer", marginBottom:10}}
+        >
+          <button
+            type="button"
+            onClick={() => setTab("vitals")}
+            style={{
+              display:"flex", alignItems:"center", justifyContent:"space-between",
+              width:"100%", padding:"14px 16px", background:"transparent",
+              border:"none", cursor:"pointer", fontFamily:"inherit",
+              textAlign:"left", boxSizing:"border-box",
+            }}
+          >
+            <div style={{flex:1,minWidth:0}}>
+              <div className="row-label">Daily Vitals &amp; Discipline</div>
+              <div className="row-sub">Gym · Water · Food · Habits</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        </div>
 
         <div
           className="card"
@@ -7344,6 +7623,14 @@ export default function App() {
             setMentorMessages={setMentorMessages}
             isSunday={isSundayIST}
             onAutoSend={sendToVikram}
+          />
+        )}
+        {tab==="vitals" && (
+          <VitalsPage
+            d={data[sel] || defaultDay()}
+            upd={(f,v)=>upd(sel,f,v)}
+            date={sel}
+            onBack={() => setTab("today")}
           />
         )}
         {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} />}
