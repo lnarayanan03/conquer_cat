@@ -371,6 +371,22 @@ const CAT_MASTERY_SYLLABUS = [
   },
 ];
 
+const EL_SOURCES = ["Practice", "Assignment", "Mock", "Class", "VARC RC", "LRDI Set", "Other"];
+const EL_RETRY_STATUSES = ["Not retried", "Retry needed", "Retried wrong", "Retried correct"];
+const EL_MISTAKE_TYPES = {
+  quant: ["Concept gap", "Formula gap", "Setup error", "Calculation error", "Time pressure", "Silly mistake"],
+  lrdi:  ["Set selection", "Case setup", "Condition missed", "Arrangement error", "Calculation error", "Time pressure"],
+  varc:  ["Option trap", "Main idea miss", "Tone miss", "Inference miss", "Para-jumble logic", "Vocabulary/context"],
+  general: ["Silly mistake", "Time pressure", "Did not review", "Other"],
+};
+
+function getElMistakeTypes(sectionId) {
+  const sec = EL_MISTAKE_TYPES[sectionId] || [];
+  const gen = EL_MISTAKE_TYPES.general;
+  const seen = new Set();
+  return [...sec, ...gen].filter(t => seen.has(t) ? false : seen.add(t));
+}
+
 function defaultChapterMastery() {
   return {
     pillars: { ...MASTERY_PILLAR_DEFAULTS },
@@ -887,7 +903,7 @@ function TodayPage({
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   todayLiveLabel, todayAppLabel, isSundayIST, theme, onOpenWatchingBacklog,
-  masteryProgress = {},
+  masteryProgress = {}, onOpenErrorLog,
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -1101,46 +1117,6 @@ function TodayPage({
         </div>
       </div>
       <div className="sections">
-        <div>
-          <div className="sec-label">Discipline</div>
-          <div className="card">
-            <div className="vitals-snap">
-              <div className="vs-chip">
-                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
-                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
-                </span>
-                <span className="vs-key">sleep</span>
-              </div>
-              <div className="vs-chip">
-                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
-                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
-                </span>
-                <span className="vs-key">gym</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
-                <span className="vs-key">water</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(() => {
-                  const entries = d.foodEntries || [];
-                  const c = entries.length > 0
-                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
-                    : (d.calories||0);
-                  return c > 0 ? c : "—";
-                })()}</span>
-                <span className="vs-key">kcal</span>
-              </div>
-            </div>
-            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
-              Open Vitals
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
         {/* Effort Score v2 */}
         <div>
           <div className="sec-label">Today's Effort</div>
@@ -1231,11 +1207,63 @@ function TodayPage({
                   ))}
                 </div>
                 <div className="mission-cfg">{getChapterConfigSummary(missionChP.config)}</div>
+                <button
+                  type="button"
+                  className="mission-errlog-btn"
+                  onClick={() => onOpenErrorLog?.({
+                    sectionId: d.missionSectionId || "",
+                    unitId: d.missionUnitId || "",
+                    chapterId: d.missionChapterId || "",
+                  })}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Add Error
+                </button>
               </div>
             )}
             {!missionChapterObj && (
               <div className="mission-empty">Select section → unit → chapter to set your focus</div>
             )}
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Discipline</div>
+          <div className="card">
+            <div className="vitals-snap">
+              <div className="vs-chip">
+                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
+                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
+                </span>
+                <span className="vs-key">sleep</span>
+              </div>
+              <div className="vs-chip">
+                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
+                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
+                </span>
+                <span className="vs-key">gym</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
+                <span className="vs-key">water</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(() => {
+                  const entries = d.foodEntries || [];
+                  const c = entries.length > 0
+                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
+                    : (d.calories||0);
+                  return c > 0 ? c : "—";
+                })()}</span>
+                <span className="vs-key">kcal</span>
+              </div>
+            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
+              Open Vitals
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -3417,7 +3445,7 @@ function MasteryWorkspaceBlock({ title, status, pillarActive, onTogglePillar, ch
   );
 }
 
-function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateConfig }) {
+function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateConfig, onOpenErrorLog, errorLog }) {
   useEffect(() => {
     if (!target) return undefined;
     const onKeyDown = (event) => {
@@ -3539,6 +3567,23 @@ function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateC
                 onChange={value => updateConfig("errorLogCount", value)}
               />
             </div>
+            {(() => {
+              const trackerCount = (errorLog||[]).filter(e => e.chapterId === target.chapter.id).length;
+              return (
+                <button
+                  type="button"
+                  className="mastery-errlog-link"
+                  onClick={() => onOpenErrorLog?.({
+                    sectionId: target.section.id,
+                    unitId: target.unit.id,
+                    chapterId: target.chapter.id,
+                  })}
+                >
+                  {trackerCount > 0 ? `${trackerCount} tracker entr${trackerCount===1?"y":"ies"} · ` : ""}Open Error Log
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              );
+            })()}
           </MasteryWorkspaceBlock>
         </div>
       </aside>
@@ -3546,7 +3591,7 @@ function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateC
   );
 }
 
-function MasteryMapPage({ progress, setProgress }) {
+function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
   const allChapters = useMemo(
     () => CAT_MASTERY_SYLLABUS.flatMap(section => section.units.flatMap(unit => unit.chapters)),
     []
@@ -3807,6 +3852,8 @@ function MasteryMapPage({ progress, setProgress }) {
         onClose={() => setWorkspaceTarget(null)}
         onUpdatePillar={updatePillar}
         onUpdateConfig={updateChapterConfig}
+        onOpenErrorLog={onOpenErrorLog}
+        errorLog={errorLog}
       />
     </div>
   );
@@ -4497,6 +4544,231 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         </button>
       )}
     </>
+  );
+}
+
+function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
+  const makeBlankForm = useCallback(() => ({
+    sectionId: prefill?.sectionId || "",
+    unitId: prefill?.unitId || "",
+    chapterId: prefill?.chapterId || "",
+    source: "",
+    mistakeType: "",
+    questionRef: "",
+    myMistake: "",
+    correctApproach: "",
+    takeaway: "",
+    retryStatus: "Not retried",
+    fixed: false,
+  }), [prefill]);
+
+  const [showForm, setShowForm] = useState(!!(prefill?.chapterId) || entries.length === 0);
+  const [form, setForm] = useState(makeBlankForm);
+  const [editId, setEditId] = useState(null);
+  const [sectionFilter, setSectionFilter] = useState(prefill?.sectionId || "");
+  const [fixedFilter, setFixedFilter] = useState("all");
+  const [retryFilter, setRetryFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (prefill?.chapterId) {
+      setForm(f => ({ ...f, sectionId: prefill.sectionId || f.sectionId, unitId: prefill.unitId || f.unitId, chapterId: prefill.chapterId || f.chapterId }));
+      setShowForm(true);
+    }
+  }, [prefill]);
+
+  const sf = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const formSection = CAT_MASTERY_SYLLABUS.find(s => s.id === form.sectionId);
+  const formUnit = formSection?.units.find(u => u.id === form.unitId);
+  const mistakeTypes = getElMistakeTypes(form.sectionId);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!form.myMistake.trim()) return;
+    const now = new Date().toISOString();
+    if (editId) {
+      onUpdate({ ...form, id: editId, updatedAt: now });
+      setEditId(null);
+    } else {
+      onAdd({ ...form, id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, date: new Date().toISOString().split("T")[0], createdAt: now, updatedAt: now });
+    }
+    setForm(makeBlankForm());
+    setShowForm(false);
+  };
+
+  const handleEdit = (entry) => {
+    setForm({ sectionId: entry.sectionId || "", unitId: entry.unitId || "", chapterId: entry.chapterId || "", source: entry.source || "", mistakeType: entry.mistakeType || "", questionRef: entry.questionRef || "", myMistake: entry.myMistake || "", correctApproach: entry.correctApproach || "", takeaway: entry.takeaway || "", retryStatus: entry.retryStatus || "Not retried", fixed: !!entry.fixed });
+    setEditId(entry.id);
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setForm(makeBlankForm());
+    setEditId(null);
+    setShowForm(false);
+  };
+
+  const getChapterLabel = (chapterId) => {
+    for (const sec of CAT_MASTERY_SYLLABUS) for (const u of sec.units) { const ch = u.chapters.find(c => c.id === chapterId); if (ch) return ch.label; }
+    return chapterId || "—";
+  };
+
+  const filtered = entries.filter(e => {
+    if (sectionFilter && e.sectionId !== sectionFilter) return false;
+    if (fixedFilter === "fixed" && !e.fixed) return false;
+    if (fixedFilter === "open" && e.fixed) return false;
+    if (retryFilter !== "all" && e.retryStatus !== retryFilter) return false;
+    if (search) { const q = search.toLowerCase(); return (e.myMistake||"").toLowerCase().includes(q) || (e.takeaway||"").toLowerCase().includes(q) || (e.correctApproach||"").toLowerCase().includes(q) || (e.chapterId||"").toLowerCase().includes(q); }
+    return true;
+  });
+
+  const retryColor = { "Not retried": "", "Retry needed": "el-retry-needed", "Retried wrong": "el-retry-wrong", "Retried correct": "el-retry-ok" };
+
+  return (
+    <div className="page el-page">
+      <div className="page-header">
+        <button onClick={onBack} style={{ background:"transparent", border:"none", color:"var(--ac)", fontSize:15, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4, padding:0, marginBottom:8 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Error Log</div>
+        <div className="page-sub">Weak points · Retry · Fix</div>
+      </div>
+
+      <div className="sections">
+        <div className="el-top-row">
+          <span className="el-count-lbl">{entries.length} total · {entries.filter(e=>e.fixed).length} fixed</span>
+          <button type="button" className="el-add-toggle" onClick={() => showForm ? handleCancel() : setShowForm(true)}>
+            {showForm ? "Cancel" : "+ Add Error"}
+          </button>
+        </div>
+
+        {showForm && (
+          <div>
+            <div className="sec-label">{editId ? "Edit Error" : "Log Error"}</div>
+            <div className="card el-form-card">
+              <form onSubmit={handleSubmit}>
+                <div className="mission-selectors el-selectors">
+                  <select className="mission-select" value={form.sectionId} onChange={e => { const v=e.target.value; setForm(f=>({...f, sectionId:v, unitId:"", chapterId:"", mistakeType:""})); }}>
+                    <option value="">Section...</option>
+                    {CAT_MASTERY_SYLLABUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={form.unitId} disabled={!formSection} onChange={e => { const v=e.target.value; setForm(f=>({...f, unitId:v, chapterId:""})); }}>
+                    <option value="">Unit...</option>
+                    {(formSection?.units||[]).map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={form.chapterId} disabled={!formUnit} onChange={e => sf("chapterId", e.target.value)}>
+                    <option value="">Chapter...</option>
+                    {(formUnit?.chapters||[]).map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+
+                <div className="el-two-col">
+                  <select className="mission-select" value={form.source} onChange={e => sf("source", e.target.value)}>
+                    <option value="">Source...</option>
+                    {EL_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <select className="mission-select" value={form.mistakeType} onChange={e => sf("mistakeType", e.target.value)}>
+                    <option value="">Type...</option>
+                    {mistakeTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+
+                <div className="el-two-col">
+                  <select className="mission-select" value={form.retryStatus} onChange={e => sf("retryStatus", e.target.value)}>
+                    {EL_RETRY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <label className="el-fixed-row">
+                    <Tog v={form.fixed} onChange={v => sf("fixed", v)} />
+                    <span className="el-fixed-lbl">Fixed</span>
+                  </label>
+                </div>
+
+                <div className="el-field">
+                  <div className="el-field-lbl">My mistake *</div>
+                  <textarea className="textarea" required value={form.myMistake} onChange={e => sf("myMistake", e.target.value)} rows={2} placeholder="What went wrong..." />
+                </div>
+                <div className="el-field">
+                  <div className="el-field-lbl">Correct approach</div>
+                  <textarea className="textarea" value={form.correctApproach} onChange={e => sf("correctApproach", e.target.value)} rows={2} placeholder="The right method..." />
+                </div>
+                <div className="el-field">
+                  <div className="el-field-lbl">Takeaway</div>
+                  <textarea className="textarea" value={form.takeaway} onChange={e => sf("takeaway", e.target.value)} rows={2} placeholder="Key lesson..." />
+                </div>
+                <div className="el-field">
+                  <div className="el-field-lbl">Question ref</div>
+                  <input className="el-input" type="text" value={form.questionRef} onChange={e => sf("questionRef", e.target.value)} placeholder="e.g. Mock 3 Q14 (optional)" />
+                </div>
+
+                <button type="submit" className="el-submit-btn">{editId ? "Update" : "Save Error"}</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div>
+          <div className="sec-label">Filter</div>
+          <div className="card el-filters-card">
+            <input className="el-search" type="text" placeholder="Search mistakes, takeaways..." value={search} onChange={e => setSearch(e.target.value)} />
+            <div className="el-filter-row">
+              <select className="mission-select" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+                <option value="">All sections</option>
+                {CAT_MASTERY_SYLLABUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+              <select className="mission-select" value={fixedFilter} onChange={e => setFixedFilter(e.target.value)}>
+                <option value="all">Fixed: All</option>
+                <option value="open">Open</option>
+                <option value="fixed">Fixed ✓</option>
+              </select>
+              <select className="mission-select" value={retryFilter} onChange={e => setRetryFilter(e.target.value)}>
+                <option value="all">Retry: All</option>
+                {EL_RETRY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Entries ({filtered.length})</div>
+          {filtered.length === 0 ? (
+            <div className="card el-empty">{entries.length === 0 ? "No errors logged yet. Add one above." : "No entries match the current filters."}</div>
+          ) : (
+            <div className="el-list">
+              {[...filtered].reverse().map(entry => (
+                <div key={entry.id} className={`card el-card${entry.fixed ? " el-card-fixed" : ""}`}>
+                  <div className="el-card-head">
+                    <div className="el-card-meta">
+                      <span className="el-card-chapter">{getChapterLabel(entry.chapterId)}</span>
+                      {entry.mistakeType && <span className="el-badge el-badge-type">{entry.mistakeType}</span>}
+                    </div>
+                    <div className="el-card-actions">
+                      <button type="button" className="el-action-btn" onClick={() => handleEdit(entry)} aria-label="Edit">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button type="button" className="el-action-btn el-action-del" onClick={() => { if (window.confirm("Delete this error entry?")) onDelete(entry.id); }} aria-label="Delete">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="el-card-row2">
+                    {entry.source && <span className="el-card-source">{entry.source}</span>}
+                    <span className="el-card-date">{entry.date}</span>
+                  </div>
+                  {entry.myMistake && <div className="el-card-mistake">{entry.myMistake}</div>}
+                  {entry.takeaway && <div className="el-card-takeaway">↳ {entry.takeaway}</div>}
+                  <div className="el-card-footer">
+                    <span className={`el-badge el-badge-retry${retryColor[entry.retryStatus] ? " "+retryColor[entry.retryStatus] : ""}`}>{entry.retryStatus}</span>
+                    {entry.fixed && <span className="el-badge el-badge-fixed">Fixed ✓</span>}
+                    {entry.questionRef && <span className="el-card-qref">{entry.questionRef}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -6824,6 +7096,11 @@ export default function App() {
     }
   });
   const [backlogFocusTarget, setBacklogFocusTarget] = useState(null);
+  const [errorLog, setErrorLog] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("conquer_error_log_v1") || "[]"); }
+    catch { return []; }
+  });
+  const [errorLogPrefill, setErrorLogPrefill] = useState(null);
   const [academicNotes, setAcademicNotes] = useState(() => {
     return readLocalAcademicNotes();
   });
@@ -7034,6 +7311,9 @@ export default function App() {
     workExpYears, workExpMonths, workCompany, workRole, userId,
     targetPercentile,
   ]);
+  useEffect(() => {
+    localStorage.setItem("conquer_error_log_v1", JSON.stringify(errorLog));
+  }, [errorLog]);
   useEffect(() => {
     localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
     localStorage.setItem("conquer_backlog_concepts", JSON.stringify(backlogConcepts));
@@ -7722,7 +8002,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} onOpenWatchingBacklog={(target) => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} onOpenWatchingBacklog={(target) => {
           setBacklogFocusTarget(target);
           setTab("backlog");
         }} onSave={async () => {
@@ -7851,7 +8131,17 @@ export default function App() {
             onBack={() => setTab("today")}
           />
         )}
-        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} />}
+        {tab==="error-log" && (
+          <ErrorLogPage
+            entries={errorLog}
+            prefill={errorLogPrefill}
+            onBack={() => { setErrorLogPrefill(null); setTab("today"); }}
+            onAdd={entry => setErrorLog(prev => [...prev, entry])}
+            onUpdate={entry => setErrorLog(prev => prev.map(e => e.id === entry.id ? entry : e))}
+            onDelete={id => setErrorLog(prev => prev.filter(e => e.id !== id))}
+          />
+        )}
+        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} setTab={setTab} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="profile" && (
