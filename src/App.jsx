@@ -232,9 +232,12 @@ const MASTERY_PILLAR_DEFAULTS = {
   errorLog: false,
 };
 const MASTERY_CONFIG_DEFAULTS = {
-  learnLiveConceptClasses: 0,
-  applicationClasses: 0,
-  assignments: 0,
+  learnLiveConceptTotal: 0,
+  learnLiveConceptDone: 0,
+  applicationClassesTotal: 0,
+  applicationClassesDone: 0,
+  assignmentsTotal: 0,
+  assignmentsDone: 0,
   totalPracticeQuestions: 0,
   questionsCompleted: 0,
   errorLogCount: 0,
@@ -367,11 +370,49 @@ function defaultChapterMastery() {
   };
 }
 
+const toNonNegativeInt = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.floor(n));
+};
+
+const readConfigNumber = (config, ...keys) => {
+  for (const key of keys) {
+    const value = config?.[key];
+    if (value !== undefined && value !== null && value !== "") {
+      return toNonNegativeInt(value);
+    }
+  }
+  return 0;
+};
+
+function normalizeMasteryConfig(value) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const next = {
+    learnLiveConceptTotal: readConfigNumber(raw, "learnLiveConceptTotal", "learnLiveConceptClasses"),
+    learnLiveConceptDone: readConfigNumber(raw, "learnLiveConceptDone"),
+    applicationClassesTotal: readConfigNumber(raw, "applicationClassesTotal", "applicationClasses"),
+    applicationClassesDone: readConfigNumber(raw, "applicationClassesDone"),
+    assignmentsTotal: readConfigNumber(raw, "assignmentsTotal", "assignments"),
+    assignmentsDone: readConfigNumber(raw, "assignmentsDone"),
+    totalPracticeQuestions: readConfigNumber(raw, "totalPracticeQuestions"),
+    questionsCompleted: readConfigNumber(raw, "questionsCompleted"),
+    errorLogCount: readConfigNumber(raw, "errorLogCount"),
+  };
+
+  next.learnLiveConceptDone = Math.min(next.learnLiveConceptDone, next.learnLiveConceptTotal);
+  next.applicationClassesDone = Math.min(next.applicationClassesDone, next.applicationClassesTotal);
+  next.assignmentsDone = Math.min(next.assignmentsDone, next.assignmentsTotal);
+  next.questionsCompleted = Math.min(next.questionsCompleted, next.totalPracticeQuestions);
+
+  return next;
+}
+
 function normalizeChapterMastery(value) {
   const base = defaultChapterMastery();
   return {
     pillars: { ...base.pillars, ...(value?.pillars || {}) },
-    config: { ...base.config, ...(value?.config || {}) },
+    config: normalizeMasteryConfig(value?.config),
   };
 }
 
@@ -423,6 +464,19 @@ function getMasteryAggregate(chapters, progress) {
     completedChapters,
     totalChapters: chapters.length,
   };
+}
+
+function formatMasteryPair(done, total) {
+  return total > 0 ? `${done}/${total}` : "-";
+}
+
+function getChapterConfigSummary(config) {
+  const normalized = normalizeMasteryConfig(config);
+  return [
+    `Learn ${formatMasteryPair(normalized.learnLiveConceptDone, normalized.learnLiveConceptTotal)}`,
+    `Q ${formatMasteryPair(normalized.questionsCompleted, normalized.totalPracticeQuestions)}`,
+    `Err ${normalized.errorLogCount > 0 ? normalized.errorLogCount : "-"}`,
+  ].join(" · ");
 }
 
 function getCurrentWatchingBacklog(videos = [], concepts = []) {
@@ -3260,6 +3314,175 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
   );
 }
 
+function MasteryNumberInput({ label, value, onChange, max }) {
+  const displayValue = value > 0 ? value : "";
+  return (
+    <label className="mastery-num-field">
+      <span>{label}</span>
+      <input
+        type="number"
+        min="0"
+        max={max ?? undefined}
+        inputMode="numeric"
+        value={displayValue}
+        placeholder="0"
+        onChange={e => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+function MasteryWorkspaceBlock({ title, status, pillarActive, onTogglePillar, children }) {
+  return (
+    <section className="mastery-workspace-block">
+      <div className="mastery-workspace-block-head">
+        <div>
+          <h3>{title}</h3>
+          <span>{status}</span>
+        </div>
+        <button
+          type="button"
+          className={`mastery-workspace-pillar${pillarActive ? " active" : ""}`}
+          aria-pressed={pillarActive}
+          onClick={onTogglePillar}
+        >
+          {pillarActive ? "Done" : "Mark done"}
+        </button>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateConfig }) {
+  useEffect(() => {
+    if (!target) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [target, onClose]);
+
+  if (!target) return null;
+
+  const chapterProgress = getChapterMastery(progress, target.chapter.id);
+  const { pillars, config } = chapterProgress;
+  const updateConfig = (field, value) => onUpdateConfig(target.chapter.id, field, value);
+  const togglePillar = (pillarId) => onUpdatePillar(target.chapter.id, pillarId, !pillars[pillarId]);
+
+  return (
+    <div className="mastery-workspace-backdrop" role="presentation" onClick={onClose}>
+      <aside
+        className="mastery-workspace"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mastery-workspace-title"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="mastery-workspace-head">
+          <div className="mastery-workspace-kicker">
+            <span>{target.section.label}</span>
+            <span>{target.unit.label}</span>
+          </div>
+          <button type="button" className="mastery-workspace-close" onClick={onClose} aria-label="Close chapter workspace">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <h2 id="mastery-workspace-title">{target.chapter.label}</h2>
+        <div className="mastery-workspace-sub">
+          Updates save immediately to this device.
+        </div>
+
+        <div className="mastery-workspace-content">
+          <MasteryWorkspaceBlock
+            title="Learn"
+            status={`${formatMasteryPair(config.learnLiveConceptDone, config.learnLiveConceptTotal)} classes`}
+            pillarActive={!!pillars.learn}
+            onTogglePillar={() => togglePillar("learn")}
+          >
+            <div className="mastery-input-grid">
+              <MasteryNumberInput
+                label="Classes total"
+                value={config.learnLiveConceptTotal}
+                onChange={value => updateConfig("learnLiveConceptTotal", value)}
+              />
+              <MasteryNumberInput
+                label="Completed"
+                value={config.learnLiveConceptDone}
+                max={config.learnLiveConceptTotal}
+                onChange={value => updateConfig("learnLiveConceptDone", value)}
+              />
+            </div>
+          </MasteryWorkspaceBlock>
+
+          <MasteryWorkspaceBlock
+            title="Practice"
+            status={`${formatMasteryPair(config.questionsCompleted, config.totalPracticeQuestions)} questions`}
+            pillarActive={!!pillars.practice}
+            onTogglePillar={() => togglePillar("practice")}
+          >
+            <div className="mastery-input-grid">
+              <MasteryNumberInput
+                label="App total"
+                value={config.applicationClassesTotal}
+                onChange={value => updateConfig("applicationClassesTotal", value)}
+              />
+              <MasteryNumberInput
+                label="App done"
+                value={config.applicationClassesDone}
+                max={config.applicationClassesTotal}
+                onChange={value => updateConfig("applicationClassesDone", value)}
+              />
+              <MasteryNumberInput
+                label="Assignments total"
+                value={config.assignmentsTotal}
+                onChange={value => updateConfig("assignmentsTotal", value)}
+              />
+              <MasteryNumberInput
+                label="Assignments done"
+                value={config.assignmentsDone}
+                max={config.assignmentsTotal}
+                onChange={value => updateConfig("assignmentsDone", value)}
+              />
+              <MasteryNumberInput
+                label="Questions total"
+                value={config.totalPracticeQuestions}
+                onChange={value => updateConfig("totalPracticeQuestions", value)}
+              />
+              <MasteryNumberInput
+                label="Questions done"
+                value={config.questionsCompleted}
+                max={config.totalPracticeQuestions}
+                onChange={value => updateConfig("questionsCompleted", value)}
+              />
+            </div>
+          </MasteryWorkspaceBlock>
+
+          <MasteryWorkspaceBlock
+            title="Error Log"
+            status={config.errorLogCount > 0 ? `${config.errorLogCount} errors logged` : "No errors logged"}
+            pillarActive={!!pillars.errorLog}
+            onTogglePillar={() => togglePillar("errorLog")}
+          >
+            <div className="mastery-input-grid one">
+              <MasteryNumberInput
+                label="Error count"
+                value={config.errorLogCount}
+                onChange={value => updateConfig("errorLogCount", value)}
+              />
+            </div>
+          </MasteryWorkspaceBlock>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
 function MasteryMapPage({ progress, setProgress }) {
   const allChapters = useMemo(
     () => CAT_MASTERY_SYLLABUS.flatMap(section => section.units.flatMap(unit => unit.chapters)),
@@ -3276,6 +3499,7 @@ function MasteryMapPage({ progress, setProgress }) {
 
   const [selectedSection, setSelectedSection] = useState("all");
   const [expandedUnits, setExpandedUnits] = useState(() => new Set());
+  const [workspaceTarget, setWorkspaceTarget] = useState(null);
 
   const getInitialExpanded = useCallback((sectionId) => {
     if (sectionId === "all") return new Set();
@@ -3310,6 +3534,19 @@ function MasteryMapPage({ progress, setProgress }) {
         [chapterId]: {
           ...current,
           pillars: { ...current.pillars, [pillarId]: checked },
+        },
+      };
+    });
+  };
+
+  const updateChapterConfig = (chapterId, field, value) => {
+    setProgress(prev => {
+      const current = normalizeChapterMastery(prev?.[chapterId]);
+      return {
+        ...prev,
+        [chapterId]: {
+          ...current,
+          config: normalizeMasteryConfig({ ...current.config, [field]: value }),
         },
       };
     });
@@ -3442,9 +3679,21 @@ function MasteryMapPage({ progress, setProgress }) {
                         <div key={chapter.id} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}`}>
                           <div className="mastery-ch-top">
                             <span className="mastery-ch-name">{chapter.label}</span>
-                            <span className={`mastery-ch-count${chS.pct === 100 ? " done" : chS.completed > 0 ? " partial" : ""}`}>
-                              {chS.completed}/{chS.total}
-                            </span>
+                            <div className="mastery-ch-actions">
+                              <span className={`mastery-ch-count${chS.pct === 100 ? " done" : chS.completed > 0 ? " partial" : ""}`}>
+                                {chS.completed}/{chS.total}
+                              </span>
+                              <button
+                                type="button"
+                                className="mastery-config-btn"
+                                onClick={() => setWorkspaceTarget({ section, unit, chapter })}
+                              >
+                                Configure
+                              </button>
+                            </div>
+                          </div>
+                          <div className="mastery-ch-config-summary">
+                            {getChapterConfigSummary(chP.config)}
                           </div>
                           <div className="mastery-ch-bar-wrap">
                             <div
@@ -3489,6 +3738,13 @@ function MasteryMapPage({ progress, setProgress }) {
           })}
         </div>
       ))}
+      <ChapterWorkspace
+        target={workspaceTarget}
+        progress={progress}
+        onClose={() => setWorkspaceTarget(null)}
+        onUpdatePillar={updatePillar}
+        onUpdateConfig={updateChapterConfig}
+      />
     </div>
   );
 }
