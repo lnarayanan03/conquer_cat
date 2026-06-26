@@ -5268,8 +5268,22 @@ function ProfilePage({
     { label:"Learn", val:profileEffort.breakdown.learn, max:30, copy:"Mission selected, chapter Learn pillar, and configured class completion." },
     { label:"Practice", val:profileEffort.breakdown.practice, max:25, copy:"Quant, VARC, and LRDI practice counts weighted by today's mission section." },
     { label:"Error Log", val:profileEffort.breakdown.errorLog, max:15, copy:"Mission chapter error count and Error Log pillar completion." },
-    { label:"Discipline", val:profileEffort.breakdown.discipline, max:30, copy:"Sleep target, office, gym, water, food, content, and editing discipline." },
+    { label:"Discipline", val:profileEffort.breakdown.discipline, max:30, copy:"Sleep, routine, water, food, gym, and creator discipline." },
   ];
+  const effortStatus = profileEffort.total >= 80
+    ? "Excellent"
+    : profileEffort.total >= 50
+      ? "Solid"
+      : profileEffort.total >= 25
+        ? "Building"
+        : "Needs action";
+  const effortColor = profileEffort.total >= 80
+    ? "#30d158"
+    : profileEffort.total >= 50
+      ? "var(--ac)"
+      : profileEffort.total >= 25
+        ? "#f59e0b"
+        : "var(--tt)";
   const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"];
   const chipStyle = (active) => ({
     padding:"6px 14px", borderRadius:20,
@@ -5392,42 +5406,78 @@ function ProfilePage({
 
         <div>
           <div className="sec-label">Effort</div>
-          <div className="card" style={{padding:"14px 16px"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+          <div
+            className="card"
+            role="button"
+            tabIndex={0}
+            onClick={() => setShowEffortSplit(v => !v)}
+            onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setShowEffortSplit(v => !v);
+              }
+            }}
+            style={{
+              padding:"16px",
+              cursor:"pointer",
+              overflow:"hidden",
+              background:"linear-gradient(135deg, rgba(249,115,22,0.18), var(--s1) 48%, rgba(48,209,88,0.08))",
+              border:"1px solid rgba(249,115,22,0.24)",
+              boxShadow:"0 16px 34px rgba(0,0,0,0.18)",
+            }}
+          >
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
               <div style={{flex:1,minWidth:0}}>
-                <div className="row-label">Effort Score Calculation</div>
+                <div style={{fontSize:18,fontWeight:900,color:"var(--tp)",lineHeight:1.1}}>Effort Score</div>
                 <div className="row-sub">
+                  Today's CAT execution score
+                </div>
+              </div>
+              <div style={{fontSize:11,color:effortColor,fontWeight:900,letterSpacing:"0.08em",textTransform:"uppercase",padding:"5px 9px",border:"1px solid rgba(249,115,22,0.22)",borderRadius:999,background:"rgba(0,0,0,0.08)"}}>
+                {effortStatus}
+              </div>
+            </div>
+
+            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:14,marginTop:18}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:46,fontWeight:950,color:"var(--tp)",lineHeight:0.95,letterSpacing:0}}>
+                  {profileEffort.total}<span style={{fontSize:17,color:"var(--tt)",fontWeight:800}}>/100</span>
+                </div>
+                <div style={{fontSize:11,color:"var(--tt)",marginTop:6}}>
                   {selectedDate
-                    ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { day:"numeric", month:"short", weekday:"short" })
-                    : "Selected day"} · v2 split-up
+                    ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { weekday:"short", day:"numeric", month:"short" })
+                    : "Selected day"}
                 </div>
               </div>
               <button
                 type="button"
-                className="vs-open-btn"
-                onClick={() => setShowEffortSplit(v => !v)}
-                style={{marginTop:0,width:"auto",flex:"0 1 auto"}}
+                onClick={e => {
+                  e.stopPropagation();
+                  setShowEffortSplit(v => !v);
+                }}
+                style={{
+                  border:"1px solid rgba(249,115,22,0.35)",
+                  background:"rgba(249,115,22,0.1)",
+                  color:"#f97316",
+                  borderRadius:999,
+                  padding:"8px 12px",
+                  fontSize:12,
+                  fontWeight:800,
+                  fontFamily:"inherit",
+                  cursor:"pointer",
+                  whiteSpace:"nowrap",
+                }}
               >
-                {showEffortSplit ? "Hide Split-up" : "Calculate / View Split-up"}
+                {showEffortSplit ? "Hide Split-up" : "View Split-up"}
               </button>
+            </div>
+
+            <div className="bar-track es2-bar" style={{marginTop:14}}>
+              <div className="bar-fill" style={{width:`${profileEffort.total}%`,background:effortColor}}/>
             </div>
 
             {showEffortSplit && (
               <div style={{marginTop:14,borderTop:"1px solid var(--b1)",paddingTop:14}}>
-                <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,marginBottom:10}}>
-                  <div>
-                    <div style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:800}}>Total Score</div>
-                    <div style={{fontSize:34,fontWeight:900,color:"var(--tp)",lineHeight:1}}>
-                      {profileEffort.total}<span style={{fontSize:15,color:"var(--tt)",fontWeight:700}}>/100</span>
-                    </div>
-                  </div>
-                  <div style={{fontSize:12,color:profileEffort.total>=80?"#30d158":profileEffort.total>=50?"var(--ac)":profileEffort.total>=25?"#f59e0b":"var(--tt)",fontWeight:800}}>
-                    {profileEffort.total>=80?"Excellent":profileEffort.total>=50?"Solid":profileEffort.total>=25?"Building":"Needs action"}
-                  </div>
-                </div>
-                <div className="bar-track es2-bar">
-                  <div className="bar-fill" style={{width:`${profileEffort.total}%`,background:profileEffort.total>=80?"#30d158":profileEffort.total>=50?"var(--ac)":profileEffort.total>=25?"#f59e0b":"var(--ts)"}}/>
-                </div>
                 <div style={{display:"grid",gap:10,marginTop:12}}>
                   {effortRows.map(row => (
                     <div key={row.label} style={{display:"grid",gap:5}}>
@@ -5441,6 +5491,10 @@ function ProfilePage({
                       <div style={{fontSize:11,color:"var(--tt)",lineHeight:1.45}}>{row.copy}</div>
                     </div>
                   ))}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,paddingTop:6,borderTop:"1px solid var(--b1)"}}>
+                    <span style={{fontSize:13,fontWeight:900,color:"var(--tp)"}}>Total</span>
+                    <span style={{fontSize:14,fontWeight:950,color:"var(--tp)",fontVariantNumeric:"tabular-nums"}}>{profileEffort.total}/100</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -5582,31 +5636,6 @@ function ProfilePage({
             </div>
           </div>
         )}
-
-        <div
-          className="card"
-          onClick={() => setTab("vitals")}
-          style={{cursor:"pointer", marginBottom:10}}
-        >
-          <button
-            type="button"
-            onClick={() => setTab("vitals")}
-            style={{
-              display:"flex", alignItems:"center", justifyContent:"space-between",
-              width:"100%", padding:"14px 16px", background:"transparent",
-              border:"none", cursor:"pointer", fontFamily:"inherit",
-              textAlign:"left", boxSizing:"border-box",
-            }}
-          >
-            <div style={{flex:1,minWidth:0}}>
-              <div className="row-label">Daily Vitals &amp; Discipline</div>
-              <div className="row-sub">Gym · Water · Food · Habits</div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-              <polyline points="9 18 15 12 9 6"/>
-            </svg>
-          </button>
-        </div>
 
         <div
           className="card"
