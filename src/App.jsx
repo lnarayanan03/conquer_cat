@@ -1117,6 +1117,46 @@ function TodayPage({
         </div>
       </div>
       <div className="sections">
+        <div>
+          <div className="sec-label">Discipline</div>
+          <div className="card">
+            <div className="vitals-snap">
+              <div className="vs-chip">
+                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
+                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
+                </span>
+                <span className="vs-key">sleep</span>
+              </div>
+              <div className="vs-chip">
+                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
+                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
+                </span>
+                <span className="vs-key">gym</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
+                <span className="vs-key">water</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(() => {
+                  const entries = d.foodEntries || [];
+                  const c = entries.length > 0
+                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
+                    : (d.calories||0);
+                  return c > 0 ? c : "—";
+                })()}</span>
+                <span className="vs-key">kcal</span>
+              </div>
+            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
+              Open Vitals
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {/* Effort Score v2 */}
         <div>
           <div className="sec-label">Today's Effort</div>
@@ -1228,348 +1268,41 @@ function TodayPage({
         </div>
 
         <div>
-          <div className="sec-label">Discipline</div>
-          <div className="card">
-            <div className="vitals-snap">
-              <div className="vs-chip">
-                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
-                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
-                </span>
-                <span className="vs-key">sleep</span>
-              </div>
-              <div className="vs-chip">
-                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
-                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
-                </span>
-                <span className="vs-key">gym</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
-                <span className="vs-key">water</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(() => {
-                  const entries = d.foodEntries || [];
-                  const c = entries.length > 0
-                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
-                    : (d.calories||0);
-                  return c > 0 ? c : "—";
-                })()}</span>
-                <span className="vs-key">kcal</span>
+          <div className="sec-label">Daily Work</div>
+          <div className="card hub-snap-card">
+            <div className="hub-snap-body">
+              <div className="dw-snap-row">
+                <div className="dw-snap-stat">
+                  <span className="dw-snap-val">
+                    {[d.lc&&!d.lc_na, d.as&&!d.as_na, d.ap&&!d.ap_na, d.vp&&!d.vp_na].filter(Boolean).length}
+                    /{[!d.lc_na, !d.as_na, !d.ap_na, !d.vp_na].filter(Boolean).length}
+                  </span>
+                  <span className="dw-snap-key">sessions</span>
+                </div>
+                {mode !== "interview" && (
+                  <div className="dw-snap-stat">
+                    <span className="dw-snap-val">
+                      {(+d.q||0) > 0 || (+d.v||0) > 0 || (+d.l||0) > 0
+                        ? `${+d.q||0}Q ${+d.v||0}V ${+d.l||0}L`
+                        : "—"}
+                    </span>
+                    <span className="dw-snap-key">practice</span>
+                  </div>
+                )}
+                {totalMins > 0 && (
+                  <div className="dw-snap-stat">
+                    <span className="dw-snap-val">{totalDisplay}</span>
+                    <span className="dw-snap-key">studied</span>
+                  </div>
+                )}
               </div>
             </div>
-            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
-              Open Vitals
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("daily-work")}>
+              Open Work Log
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
         </div>
-
-        <div>
-          <div className="sec-label">Sessions</div>
-          <div className="card">
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "12px 16px",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-            }}>
-              <button
-                onClick={() => { const n=!d.lc_na; upd("lc_na",n); if(n) upd("lc",false); }}
-                style={{
-                  flexShrink: 0,
-                  flexGrow: 0,
-                  width: 36,
-                  boxSizing: "border-box",
-                  padding: "4px 8px",
-                  borderRadius: 20,
-                  border: d.lc_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
-                  background: d.lc_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.lc_na ? "var(--tt)" : "var(--tt)",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
-              >N/A</button>
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-              }}>
-                <div className="row-label" style={{
-                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>Live Class</div>
-                <div className="row-sub" style={{
-                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>{todayLiveLabel || "2 hrs · iQuanta live"}</div>
-              </div>
-              <div style={{
-                flexShrink: 0,
-                flexGrow: 0,
-                marginLeft: "auto",
-                opacity: d.lc_na ? 0.35 : 1,
-                pointerEvents: d.lc_na ? "none" : "auto",
-              }}>
-                <Tog v={d.lc} onChange={v=>{upd("lc",v);if(v)upd("lc_na",false);}} />
-              </div>
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "12px 16px",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-              borderTop: "1px solid var(--b1)",
-            }}>
-              <button
-                onClick={() => { const n=!d.as_na; upd("as_na",n); if(n) upd("as",false); }}
-                style={{
-                  flexShrink: 0,
-                  flexGrow: 0,
-                  width: 36,
-                  boxSizing: "border-box",
-                  padding: "4px 8px",
-                  borderRadius: 20,
-                  border: d.as_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
-                  background: d.as_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.as_na ? "var(--tt)" : "var(--tt)",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
-              >N/A</button>
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-              }}>
-                <div className="row-label" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>Afternoon session</div>
-                <div className="row-sub" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>40 min session</div>
-              </div>
-              <div style={{
-                flexShrink: 0,
-                flexGrow: 0,
-                marginLeft: "auto",
-                opacity: d.as_na ? 0.35 : 1,
-                pointerEvents: d.as_na ? "none" : "auto",
-              }}>
-                <Tog v={d.as} onChange={v=>{upd("as",v);if(v)upd("as_na",false);}} />
-              </div>
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "12px 16px",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-              borderTop: "1px solid var(--b1)",
-            }}>
-              <button
-                onClick={() => { const n=!d.ap_na; upd("ap_na",n); if(n) upd("ap",false); }}
-                style={{
-                  flexShrink: 0,
-                  flexGrow: 0,
-                  width: 36,
-                  boxSizing: "border-box",
-                  padding: "4px 8px",
-                  borderRadius: 20,
-                  border: d.ap_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
-                  background: d.ap_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.ap_na ? "var(--tt)" : "var(--tt)",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
-              >N/A</button>
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-              }}>
-                <div className="row-label" style={{
-                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>Application Class</div>
-                <div className="row-sub" style={{
-                  whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis"
-                }}>{todayAppLabel || "10PM - 12AM · Application class"}</div>
-              </div>
-              <div style={{
-                flexShrink: 0,
-                flexGrow: 0,
-                marginLeft: "auto",
-                opacity: d.ap_na ? 0.35 : 1,
-                pointerEvents: d.ap_na ? "none" : "auto",
-              }}>
-                <Tog v={d.ap} onChange={v=>{upd("ap",v);if(v)upd("ap_na",false);}} />
-              </div>
-            </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "12px 16px",
-              gap: 10,
-              width: "100%",
-              boxSizing: "border-box",
-              borderTop: "1px solid var(--b1)",
-            }}>
-              <button
-                onClick={() => { const n=!d.vp_na; upd("vp_na",n); if(n) upd("vp",false); }}
-                style={{
-                  flexShrink: 0,
-                  flexGrow: 0,
-                  width: 36,
-                  boxSizing: "border-box",
-                  padding: "4px 8px",
-                  borderRadius: 20,
-                  border: d.vp_na ? "1px solid var(--tt)" : "1px solid var(--b2)",
-                  background: d.vp_na ? "rgba(110,110,115,0.15)" : "transparent",
-                  color: d.vp_na ? "var(--tt)" : "var(--tt)",
-                  fontSize: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1,
-                  whiteSpace: "nowrap",
-                }}
-              >N/A</button>
-              <div style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-              }}>
-                <div className="row-label" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>VARC passage</div>
-                <div className="row-sub" style={{
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}>20 min passage</div>
-              </div>
-              <div style={{
-                flexShrink: 0,
-                flexGrow: 0,
-                marginLeft: "auto",
-                opacity: d.vp_na ? 0.35 : 1,
-                pointerEvents: d.vp_na ? "none" : "auto",
-              }}>
-                <Tog v={d.vp} onChange={v=>{upd("vp",v);if(v)upd("vp_na",false);}} />
-              </div>
-            </div>
-            <div className="card-row" style={{borderTop:"1px solid var(--b1)"}}>
-              <div>
-                <div className="row-label">Personal practice</div>
-                <div className="row-sub">Additional self-study</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <select
-                  className="time-select"
-                  value={d.ph || 0}
-                  onChange={e => upd("ph", Number(e.target.value))}
-                  style={{minWidth:52}}
-                >
-                  {[0,1,2,3,4,5,6,7,8,9,10].map(h => (
-                    <option key={h} value={h}>{h}h</option>
-                  ))}
-                </select>
-                <select
-                  className="time-select"
-                  value={d.pm || 0}
-                  onChange={e => upd("pm", Number(e.target.value))}
-                  style={{minWidth:58}}
-                >
-                  {[0,10,20,30,40,50].map(m => (
-                    <option key={m} value={m}>{String(m).padStart(2,"0")}m</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{
-              display:"flex", justifyContent:"space-between",
-              alignItems:"center", padding:"12px 16px",
-              borderTop:"1px solid var(--b1)", marginTop:4
-            }}>
-              <span style={{fontSize:11,color:"var(--tt)",
-                letterSpacing:"0.06em",textTransform:"uppercase"}}>
-                Total Studied
-              </span>
-              <span style={{fontSize:16,fontWeight:700,
-                color: totalMins >= 240 ? "#30d158"
-                  : totalMins >= 120 ? "#f97316"
-                    : "var(--tp)"
-              }}>{totalDisplay}</span>
-            </div>
-          </div>
-        </div>
-
-        {mode === "interview" ? (
-          <div>
-            <div className="sec-label">Interview Prep</div>
-            <div className="card">
-              <div className="card-row">
-                <div><div className="row-label">Mock PI done today</div><div className="row-sub">Simulate the real thing</div></div>
-                <Tog v={d.mockPI} onChange={v=>upd("mockPI",v)} />
-              </div>
-              <div className="card-row">
-                <div><div className="row-label">WAT practice done</div><div className="row-sub">Written Ability Test</div></div>
-                <Tog v={d.watDone} onChange={v=>upd("watDone",v)} />
-              </div>
-            </div>
-            <div style={{marginTop:10}} className="card">
-              <textarea className="textarea" placeholder="Topics revised today — acads, current affairs, SOP, hobbies..." value={d.topicsRevised||""} onChange={e=>upd("topicsRevised",e.target.value)} rows={3} />
-            </div>
-          </div>
-        ) : (
-          <div>
-            <div className="sec-label">Today's work</div>
-            <div className="card">
-              {[{lbl:"Quant",sub:"Target: 10",f:"q",t:10},{lbl:"VARC sets",sub:"Target: 5",f:"v",t:5},{lbl:"LRDI sets",sub:"Target: 5",f:"l",t:5},{lbl:"VARC Para Reading",sub:"Target: 1 passage",f:"vp_count",t:1}].map(r => {
-                const val = +d[r.f] || 0;
-                const met = val >= r.t;
-                return (
-                  <div className="card-row" key={r.f}>
-                    <div><div className="row-label">{r.lbl}</div><div className="row-sub">{r.sub}</div></div>
-                    <div className="counter">
-                      <button className="ctr-btn" onClick={() => upd(r.f, Math.max(0, val-1))}>−</button>
-                      <span className="ctr-num" style={{color: met ? "var(--green)" : val > 0 ? AC : "var(--ts)"}}>{val}</span>
-                      <button className="ctr-btn" onClick={() => upd(r.f, val+1)}>+</button>
-                      <span className="ctr-target">/{r.t}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         <div>
           <div className="sec-label">Sudoku</div>
@@ -1688,7 +1421,15 @@ function TodayPage({
 
         <div>
           <div className="sec-label">Journal</div>
-          <div className="card"><textarea className="textarea" placeholder="Journal — what did you study? focus level? what needs work tomorrow?" value={d.n||""} onChange={e=>upd("n",e.target.value)} rows={3} /></div>
+          <div className="card">
+            <textarea
+              className="textarea"
+              placeholder="Journal — what did you study, what slipped, what to fix tomorrow?"
+              value={d.n||""}
+              onChange={e=>upd("n",e.target.value)}
+              rows={3}
+            />
+          </div>
         </div>
 
         {showApplicationToggle && (
@@ -4547,6 +4288,152 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   );
 }
 
+function DailyWorkPage({ d, upd, mode, todayLiveLabel, todayAppLabel, onBack }) {
+  const totalMins =
+    (d.lc && !d.lc_na ? 120 : 0) +
+    (d.as && !d.as_na ? 40 : 0) +
+    (d.ap && !d.ap_na ? 120 : 0) +
+    (d.vp && !d.vp_na ? 20 : 0) +
+    ((+d.ph||0) * 60) +
+    (+d.pm||0);
+  const totalHrs = Math.floor(totalMins / 60);
+  const totalMinRem = totalMins % 60;
+  const totalDisplay = totalHrs > 0 && totalMinRem > 0
+    ? `${totalHrs}h ${totalMinRem}m`
+    : totalHrs > 0 ? `${totalHrs}h` : `${totalMinRem}m`;
+
+  const naBtn = (field, dependentField) => (
+    <button
+      onClick={() => { const n = !d[field]; upd(field, n); if (n) upd(dependentField, false); }}
+      className="dw-na-btn"
+      style={{ border: d[field] ? "1px solid var(--tt)" : "1px solid var(--b2)", background: d[field] ? "rgba(110,110,115,0.15)" : "transparent" }}
+    >N/A</button>
+  );
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button
+          onClick={onBack}
+          style={{ background:"transparent", border:"none", color:"var(--ac)", fontSize:15, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4, padding:0, marginBottom:8 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">Daily Work Log</div>
+        <div className="page-sub">Sessions · Practice · Study Time</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Sessions</div>
+          <div className="card">
+            <div className="dw-session-row">
+              {naBtn("lc_na", "lc")}
+              <div className="dw-session-info">
+                <div className="row-label">Live Class</div>
+                <div className="row-sub">{todayLiveLabel || "2 hrs · iQuanta live"}</div>
+              </div>
+              <div style={{ marginLeft:"auto", opacity: d.lc_na ? 0.35 : 1, pointerEvents: d.lc_na ? "none" : "auto" }}>
+                <Tog v={d.lc} onChange={v=>{upd("lc",v);if(v)upd("lc_na",false);}} />
+              </div>
+            </div>
+            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
+              {naBtn("as_na", "as")}
+              <div className="dw-session-info">
+                <div className="row-label">Afternoon Session</div>
+                <div className="row-sub">40 min session</div>
+              </div>
+              <div style={{ marginLeft:"auto", opacity: d.as_na ? 0.35 : 1, pointerEvents: d.as_na ? "none" : "auto" }}>
+                <Tog v={d.as} onChange={v=>{upd("as",v);if(v)upd("as_na",false);}} />
+              </div>
+            </div>
+            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
+              {naBtn("ap_na", "ap")}
+              <div className="dw-session-info">
+                <div className="row-label">Application Class</div>
+                <div className="row-sub">{todayAppLabel || "10PM - 12AM · Application class"}</div>
+              </div>
+              <div style={{ marginLeft:"auto", opacity: d.ap_na ? 0.35 : 1, pointerEvents: d.ap_na ? "none" : "auto" }}>
+                <Tog v={d.ap} onChange={v=>{upd("ap",v);if(v)upd("ap_na",false);}} />
+              </div>
+            </div>
+            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
+              {naBtn("vp_na", "vp")}
+              <div className="dw-session-info">
+                <div className="row-label">VARC Passage</div>
+                <div className="row-sub">20 min passage</div>
+              </div>
+              <div style={{ marginLeft:"auto", opacity: d.vp_na ? 0.35 : 1, pointerEvents: d.vp_na ? "none" : "auto" }}>
+                <Tog v={d.vp} onChange={v=>{upd("vp",v);if(v)upd("vp_na",false);}} />
+              </div>
+            </div>
+            <div className="card-row" style={{borderTop:"1px solid var(--b1)"}}>
+              <div>
+                <div className="row-label">Personal practice</div>
+                <div className="row-sub">Additional self-study</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <select className="time-select" value={d.ph||0} onChange={e=>upd("ph",Number(e.target.value))} style={{minWidth:52}}>
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(h=><option key={h} value={h}>{h}h</option>)}
+                </select>
+                <select className="time-select" value={d.pm||0} onChange={e=>upd("pm",Number(e.target.value))} style={{minWidth:58}}>
+                  {[0,10,20,30,40,50].map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}m</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderTop:"1px solid var(--b1)"}}>
+              <span style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase"}}>Total Studied</span>
+              <span style={{fontSize:16,fontWeight:700,color:totalMins>=240?"#30d158":totalMins>=120?"#f97316":"var(--tp)"}}>{totalDisplay}</span>
+            </div>
+          </div>
+        </div>
+
+        {mode === "interview" ? (
+          <div>
+            <div className="sec-label">Interview Prep</div>
+            <div className="card">
+              <div className="card-row">
+                <div><div className="row-label">Mock PI done today</div><div className="row-sub">Simulate the real thing</div></div>
+                <Tog v={d.mockPI} onChange={v=>upd("mockPI",v)} />
+              </div>
+              <div className="card-row">
+                <div><div className="row-label">WAT practice done</div><div className="row-sub">Written Ability Test</div></div>
+                <Tog v={d.watDone} onChange={v=>upd("watDone",v)} />
+              </div>
+            </div>
+            <div style={{marginTop:10}} className="card">
+              <textarea className="textarea" placeholder="Topics revised today — acads, current affairs, SOP, hobbies..." value={d.topicsRevised||""} onChange={e=>upd("topicsRevised",e.target.value)} rows={3} />
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div className="sec-label">Practice</div>
+            <div className="card">
+              {[{lbl:"Quant",sub:"Target: 10",f:"q",t:10},{lbl:"VARC sets",sub:"Target: 5",f:"v",t:5},{lbl:"LRDI sets",sub:"Target: 5",f:"l",t:5},{lbl:"VARC Para Reading",sub:"Target: 1 passage",f:"vp_count",t:1}].map(r => {
+                const val = +d[r.f] || 0;
+                const met = val >= r.t;
+                return (
+                  <div className="card-row" key={r.f}>
+                    <div><div className="row-label">{r.lbl}</div><div className="row-sub">{r.sub}</div></div>
+                    <div className="counter">
+                      <button className="ctr-btn" onClick={() => upd(r.f, Math.max(0, val-1))}>−</button>
+                      <span className="ctr-num" style={{color: met ? "var(--green)" : val > 0 ? AC : "var(--ts)"}}>{val}</span>
+                      <button className="ctr-btn" onClick={() => upd(r.f, val+1)}>+</button>
+                      <span className="ctr-target">/{r.t}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
 function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
   const makeBlankForm = useCallback(() => ({
     sectionId: prefill?.sectionId || "",
@@ -4907,18 +4794,6 @@ function IQuantaHubPage({
           </div>
         </div>
 
-        <div>
-          <div className="sec-label">iQuanta Notes</div>
-          <div className="card">
-            <textarea
-              className="textarea"
-              placeholder="Topics covered, videos watched, concepts to revisit..."
-              value={iq || ""}
-              onChange={e => onIqChange(e.target.value)}
-              rows={5}
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -8112,6 +7987,16 @@ export default function App() {
             d={data[sel] || defaultDay()}
             upd={(f,v)=>upd(sel,f,v)}
             date={sel}
+            onBack={() => setTab("today")}
+          />
+        )}
+        {tab==="daily-work" && (
+          <DailyWorkPage
+            d={data[sel] || defaultDay()}
+            upd={(f,v) => upd(sel,f,v)}
+            mode={mode}
+            todayLiveLabel={todayLiveLabel}
+            todayAppLabel={todayAppLabel}
             onBack={() => setTab("today")}
           />
         )}
