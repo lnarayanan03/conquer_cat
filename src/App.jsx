@@ -3742,7 +3742,12 @@ function buildMentorContext({ date, dayData, masteryProgress = {}, errorLog = []
     outer: for (const sec of CAT_MASTERY_SYLLABUS) {
       for (const unit of sec.units) {
         const ch = unit.chapters.find(c => c.id === missionChapterId);
-        if (ch) { missionSectionName = sec.name; missionUnitName = unit.name; missionChapterName = ch.name; break outer; }
+        if (ch) {
+          missionSectionName = sec.label || sec.name || sec.id;
+          missionUnitName = unit.label || unit.name || unit.id;
+          missionChapterName = ch.label || ch.name || ch.id;
+          break outer;
+        }
       }
     }
   }
@@ -3779,7 +3784,12 @@ function buildMentorContext({ date, dayData, masteryProgress = {}, errorLog = []
         totalChapters++;
         const chP = getChapterMastery(masteryProgress, ch.id);
         if (chP.pillars.learn && chP.pillars.practice && chP.pillars.errorLog) completedChapters++;
-        else if (incompleteChapters.length < 5) incompleteChapters.push({ id: ch.id, name: ch.name, section: sec.name, pillars: chP.pillars });
+        else if (incompleteChapters.length < 5) incompleteChapters.push({
+          id: ch.id,
+          name: ch.label || ch.name || ch.id,
+          section: sec.label || sec.name || sec.id,
+          pillars: chP.pillars
+        });
       }
     }
   }
