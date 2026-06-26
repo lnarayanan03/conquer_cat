@@ -3726,273 +3726,376 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
 }
 
 
-function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, userId, startDate, interviewDate, catResult, catPercentile, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache, category, primaryDegree, secondaryDegrees, workExpYears, workExpMonths, workCompany, workRole, calcResult, targetPercentile }) {
+// ── MENTOR CONTEXT BUILDER ──────────────────────────────────────────────────
+function buildMentorContext({ date, dayData, masteryProgress = {}, errorLog = [], backlogVideos = [], backlogConcepts = [], academicNotes = [] }) {
+  const d = dayData || defaultDay();
+
+  const ev2 = calculateEffortScoreV2({ dayData: d, masteryProgress, date });
+  const effortTotal = ev2.total;
+  const effortBreakdown = ev2.breakdown;
+
+  const missionChapterId = d.missionChapterId || "";
+  const missionSectionId = d.missionSectionId || "";
+  const missionUnitId = d.missionUnitId || "";
+  let missionSectionName = "", missionUnitName = "", missionChapterName = "";
+  if (missionChapterId) {
+    outer: for (const sec of CAT_MASTERY_SYLLABUS) {
+      for (const unit of sec.units) {
+        const ch = unit.chapters.find(c => c.id === missionChapterId);
+        if (ch) { missionSectionName = sec.name; missionUnitName = unit.name; missionChapterName = ch.name; break outer; }
+      }
+    }
+  }
+  const chMastery = missionChapterId ? getChapterMastery(masteryProgress, missionChapterId) : null;
+  const missionPillars = chMastery ? chMastery.pillars : { learn: false, practice: false, errorLog: false };
+
+  const sleepDay = date ? new Date(date + "T00:00:00").getDay() : new Date().getDay();
+  const sleepTarget = (sleepDay === 0 || sleepDay === 6) ? 8 : 5;
+  const sleepDur = getSleepDuration(d.st, d.wt);
+  const hasSleep = sleepDur !== null && isFinite(sleepDur);
+  const foodEntries = Array.isArray(d.foodEntries) ? d.foodEntries : [];
+  const kcal = foodEntries.length > 0 ? foodEntries.reduce((s, e) => s + (Number(e.calories) || 0), 0) : (+d.calories || 0);
+
+  const sessions = [
+    { done: !!(d.lc && !d.lc_na), na: !!d.lc_na },
+    { done: !!(d.as && !d.as_na), na: !!d.as_na },
+    { done: !!(d.ap && !d.ap_na), na: !!d.ap_na },
+    { done: !!(d.vp && !d.vp_na), na: !!d.vp_na },
+  ];
+  const sessionsDone = sessions.filter(s => s.done).length;
+  const sessionsAvail = sessions.filter(s => !s.na).length;
+  const totalMins = (d.lc && !d.lc_na ? 120 : 0) + (d.as && !d.as_na ? 40 : 0) + (d.ap && !d.ap_na ? 120 : 0) + (d.vp && !d.vp_na ? 20 : 0) + ((+d.ph || 0) * 60) + (+d.pm || 0);
+
+  const openErrors = errorLog.filter(e => !e.fixed).length;
+  const retryNeeded = errorLog.filter(e => e.retryStatus === "Retry needed" || e.retryStatus === "Retried wrong").length;
+  const fixedErrors = errorLog.filter(e => e.fixed).length;
+  const missionErrors = missionChapterId ? errorLog.filter(e => e.chapterId === missionChapterId && !e.fixed).length : 0;
+
+  let totalChapters = 0, completedChapters = 0;
+  const incompleteChapters = [];
+  for (const sec of CAT_MASTERY_SYLLABUS) {
+    for (const unit of sec.units) {
+      for (const ch of unit.chapters) {
+        totalChapters++;
+        const chP = getChapterMastery(masteryProgress, ch.id);
+        if (chP.pillars.learn && chP.pillars.practice && chP.pillars.errorLog) completedChapters++;
+        else if (incompleteChapters.length < 5) incompleteChapters.push({ id: ch.id, name: ch.name, section: sec.name, pillars: chP.pillars });
+      }
+    }
+  }
+  const masteryPct = totalChapters > 0 ? Math.round((completedChapters / totalChapters) * 100) : 0;
+
+  const pendingVideos = backlogVideos.filter(v => !v.checked).length;
+  const pendingConcepts = backlogConcepts.filter(c => !c.checked).length;
+  const watchingEntry = getCurrentWatchingBacklog(backlogVideos, backlogConcepts);
+
+  const latestNote = [...academicNotes].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0))[0];
+  const notePreview = latestNote ? (latestNote.note_text || "").slice(0, 80) : "";
+
+  return {
+    date,
+    effortTotal,
+    effortBreakdown,
+    mission: { chapterId: missionChapterId, sectionId: missionSectionId, unitId: missionUnitId, sectionName: missionSectionName, unitName: missionUnitName, chapterName: missionChapterName, pillars: missionPillars },
+    vitals: { sleepDur: hasSleep ? sleepDur : null, sleepTarget, gymDone: !!d.gymDone, waterLiters: +d.waterLiters || 0, kcal },
+    work: { sessionsDone, sessionsAvail, qCount: +d.q || 0, vCount: +d.v || 0, lCount: +d.l || 0, vpCount: +d.vp_count || 0, totalMins },
+    errors: { total: errorLog.length, openErrors, retryNeeded, fixedErrors, missionErrors },
+    mastery: { masteryPct, completedChapters, totalChapters, incompleteChapters },
+    backlog: { pendingVideos, pendingConcepts, watchingEntry },
+    notePreview,
+    journal: (d.n || "").trim(),
+  };
+}
+
+function getCATMentorReply(message, ctx) {
+  const msg = message.toLowerCase();
+  const { effortTotal, effortBreakdown, mission, vitals, work, errors, mastery, backlog } = ctx;
+  const { learn, practice: practiceScore, errorLog: elScore, discipline: discScore } = effortBreakdown;
+  const missionLine = mission.chapterName ? `${mission.chapterName} (${mission.sectionName})` : null;
+  const secLabel = mission.sectionId === "quant" ? "10 Quant" : mission.sectionId === "varc" ? "5 VARC sets" : mission.sectionId === "lrdi" ? "5 LRDI sets" : "practice questions";
+
+  const isWhatNow  = /what.*do now|do now|what next|next step|where.*start|get started|right now/.test(msg);
+  const isScoreLow = /score.*low|why.*score|score.*why|effort.*low|low.*score|improve.*score|bad score/.test(msg);
+  const isPlanDay  = /plan.*day|day.*plan|plan.*hour|next.*hour|2 hour|two hour|schedule|what.*plan/.test(msg);
+  const isStudy    = /what.*study|study.*what|which.*chapter|which topic|study plan/.test(msg);
+  const isWeak     = /weak|weakness|struggle|bad at|worst|not good/.test(msg);
+  const isBacklog  = /backlog|pending video|pending concept|catch up|clearing backlog/.test(msg);
+  const isErrors   = /error|mistake|review.*error|retry|wrong question|error log/.test(msg);
+  const isDisc     = /discipline|sleep|gym|water|vitals|health|lifestyle|rest|habits/.test(msg);
+  const isMock     = /mock|full test|cat mock|full length|practice advice/.test(msg);
+  const anyIntent  = isWhatNow || isScoreLow || isPlanDay || isStudy || isWeak || isBacklog || isErrors || isDisc || isMock;
+
+  if (isWhatNow || (!anyIntent && msg.length < 30)) {
+    if (!mission.chapterId) return "No mission set for today. Open Today and set a mission chapter — that's step zero before anything else.";
+    if (discScore < 12) return `Discipline score is ${discScore}/30. Log sleep, water, gym in Vitals first — discipline is 30 points of your score and it compounds.`;
+    if (practiceScore < 10) return `Practice is low (${practiceScore}/25). Open Work Log and do ${secLabel} from ${missionLine}. Log every wrong attempt in Error Log.`;
+    if (errors.retryNeeded > 0) return `${errors.retryNeeded} error${errors.retryNeeded > 1 ? "s" : ""} flagged for retry. Fix those before doing new questions.`;
+    if (work.sessionsDone < work.sessionsAvail) return `${work.sessionsDone}/${work.sessionsAvail} sessions done. Open Work Log, complete remaining sessions.`;
+    return `Score: ${effortTotal}/100. Mission: ${missionLine}. You're on track — keep pushing practice and complete mission pillars in the Map.`;
+  }
+
+  if (isScoreLow) {
+    const parts = [];
+    if (learn < 20)        parts.push(`• Learn: ${learn}/30 — mission pillar not marked done yet`);
+    if (practiceScore < 15) parts.push(`• Practice: ${practiceScore}/25 — Q${work.qCount} V${work.vCount} L${work.lCount} today`);
+    if (elScore < 8)        parts.push(`• Error Log: ${elScore}/15 — log more errors for mission chapter`);
+    if (discScore < 20)     parts.push(`• Discipline: ${discScore}/30 — sleep/gym/water incomplete`);
+    if (parts.length === 0) return `Score is ${effortTotal}/100. Breakdown — Learn: ${learn}/30, Practice: ${practiceScore}/25, Errors: ${elScore}/15, Discipline: ${discScore}/30. Push Error Log and Discipline for the last points.`;
+    return `Score: ${effortTotal}/100. Weak areas:\n${parts.join("\n")}\n\nFix the top one first.`;
+  }
+
+  if (isPlanDay) {
+    if (!mission.chapterId) return "Set a mission chapter first. Without that there is nothing to plan around.";
+    const steps = [];
+    if (!mission.pillars.learn)    steps.push(`→ Complete chapter content for ${missionLine}, then mark Learn done in Map`);
+    if (work.sessionsDone < work.sessionsAvail) steps.push(`→ Finish ${work.sessionsAvail - work.sessionsDone} session${work.sessionsAvail - work.sessionsDone > 1 ? "s" : ""} in Work Log`);
+    steps.push(`→ Do ${secLabel} — log every wrong one in Error Log`);
+    if (errors.retryNeeded > 0) steps.push(`→ Retry ${errors.retryNeeded} flagged error${errors.retryNeeded > 1 ? "s" : ""}`);
+    if (vitals.sleepDur === null) steps.push(`→ Log sleep in Vitals`);
+    return `Next 2 hours — ${missionLine}:\n${steps.join("\n")}`;
+  }
+
+  if (isStudy) {
+    if (!mission.chapterId) return "No mission set. Go to Today → Set Mission and pick a chapter. Study that.";
+    const next = mastery.incompleteChapters.filter(c => c.id !== mission.chapterId)[0];
+    const lines = [`Today: ${missionLine}.`];
+    if (!mission.pillars.learn)    lines.push("Learn pillar not done — finish chapter content first.");
+    if (!mission.pillars.practice) lines.push(`Practice pillar not done — need Q${work.qCount}/V${work.vCount}/L${work.lCount} higher.`);
+    if (next) lines.push(`After today: ${next.name} (${next.section}).`);
+    return lines.join("\n");
+  }
+
+  if (isWeak) {
+    if (mastery.incompleteChapters.length === 0) return "No mastery data tracked yet. Open Map and start logging chapter pillars.";
+    const list = mastery.incompleteChapters.slice(0, 3).map(c =>
+      `• ${c.name} (${c.section}) — ${[!c.pillars.learn && "Learn", !c.pillars.practice && "Practice", !c.pillars.errorLog && "Error Log"].filter(Boolean).join(", ")} missing`
+    ).join("\n");
+    return `Chapters with incomplete pillars:\n${list}\n\nPick one and set it as tomorrow's mission.`;
+  }
+
+  if (isBacklog) {
+    const total = backlog.pendingVideos + backlog.pendingConcepts;
+    if (total === 0) return "No backlog pending. Clean slate — keep it that way.";
+    if (backlog.watchingEntry) return `Currently watching: ${backlog.watchingEntry.item.text || "item"}.\n${backlog.pendingVideos} videos + ${backlog.pendingConcepts} concepts pending.\nFinish what's in progress, then pick the next oldest item.`;
+    return `${backlog.pendingVideos} video${backlog.pendingVideos !== 1 ? "s" : ""} + ${backlog.pendingConcepts} concept${backlog.pendingConcepts !== 1 ? "s" : ""} pending. Open iQuanta Hub, mark one as watching, and clear it in a session gap today.`;
+  }
+
+  if (isErrors) {
+    if (errors.total === 0) return "No errors logged yet. Do 10 questions right now and log every wrong attempt in Error Log. That data is how you stop repeating mistakes.";
+    if (errors.retryNeeded > 0) return `${errors.retryNeeded} error${errors.retryNeeded > 1 ? "s" : ""} need retry. Open Error Log, filter 'Retry needed', and work through them before adding new errors.`;
+    if (errors.missionErrors > 0) return `${errors.missionErrors} open error${errors.missionErrors > 1 ? "s" : ""} for ${missionLine}. Retry those now.`;
+    return `${errors.openErrors} open errors, ${errors.fixedErrors} fixed. Do a sweep in Error Log — mark anything you've genuinely understood as fixed.`;
+  }
+
+  if (isDisc) {
+    const lines = [];
+    if (vitals.sleepDur === null) lines.push("Sleep not logged.");
+    else lines.push(vitals.sleepDur >= vitals.sleepTarget ? `Sleep: ${vitals.sleepDur.toFixed(1)}h ✓` : `Sleep: ${vitals.sleepDur.toFixed(1)}h — below ${vitals.sleepTarget}h target.`);
+    lines.push(vitals.gymDone ? "Gym: done ✓" : "Gym: not logged.");
+    lines.push(vitals.waterLiters >= 3 ? `Water: ${vitals.waterLiters}L ✓` : `Water: ${vitals.waterLiters}L — drink more.`);
+    lines.push(vitals.kcal > 0 ? `Food: ${vitals.kcal} kcal logged.` : "Food: not logged.");
+    lines.push(`Discipline score: ${discScore}/30. ${discScore >= 24 ? "Solid." : "Fix sleep and water — they're worth 10 points alone."}`);
+    return lines.join("\n");
+  }
+
+  if (isMock) {
+    const practiceTotal = work.qCount + work.vCount + work.lCount;
+    if (practiceTotal < 20) return `Daily practice is only ${practiceTotal} total. Build consistent daily practice first. Hit ${secLabel} every day for a week, then take a mock.`;
+    return `Practice looks decent (Q${work.qCount} V${work.vCount} L${work.lCount}). For mocks: strict timing, no peeking mid-set. Log every wrong answer in Error Log immediately after. Use Mastery Map to spot sectional gaps after the mock.`;
+  }
+
+  // Generic fallback
+  if (!mission.chapterId) return "Set a mission chapter first in Today. That is the foundation of everything else.";
+  return `Score: ${effortTotal}/100. Mission: ${missionLine}. Practice: Q${work.qCount} V${work.vCount} L${work.lCount}. Open errors: ${errors.openErrors}.\nNext: ${errors.retryNeeded > 0 ? `retry ${errors.retryNeeded} flagged error${errors.retryNeeded > 1 ? "s" : ""}` : practiceScore < 15 ? "more practice" : "complete mission pillars in Map"}.`;
+}
+
+function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mode, userInitials, userName, masteryProgress, errorLog, backlogVideos, backlogConcepts, academicNotes, setTab, sel, data, avatarGender, avatarSkin, avatarHair, avatarHairColor, avatarShirt, avatarGlasses, avatarBeard, avatarMustache }) {
   const [inp, setInp] = useState("")
-  const [placeholder, setPlaceholder] = useState("Ask Vikram anything...")
-  const [selectedQuickAction, setSelectedQuickAction] = useState("")
-  const [hoverQuickAction, setHoverQuickAction] = useState("")
-  const [pressedQuickAction, setPressedQuickAction] = useState("")
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+
+  const ctx = useMemo(() => buildMentorContext({
+    date: sel,
+    dayData: d,
+    masteryProgress,
+    errorLog,
+    backlogVideos,
+    backlogConcepts,
+    academicNotes,
+  }), [sel, d, masteryProgress, errorLog, backlogVideos, backlogConcepts, academicNotes])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [mentorMessages])
 
-  const blurInput = (mobileOnly = false) => {
-    if (mobileOnly && !isMobileKeyboardViewport()) return
-    setTimeout(() => inputRef.current?.blur(), 50)
-  }
-
-  const focusDoubt = () => {
-    setPlaceholder("Ask your CAT doubt...")
-    setSelectedQuickAction("Doubt")
-    setInp(prev => prev || "I have a doubt: ")
-    setTimeout(() => {
-      inputRef.current?.focus()
-      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-    }, 0)
-  }
-
-  const send = async ({ blur = false, mobileBlurOnly = false } = {}) => {
-    if (!inp.trim() || loading) return
-    const q = inp.trim()
+  const send = (text) => {
+    const q = (text || inp).trim()
+    if (!q || loading) return
     setInp("")
-    setSelectedQuickAction("")
-    if (blur) blurInput(mobileBlurOnly)
-    setMentorMessages(p => [...p, { r:"user", t:q }])
     setLoading(true)
-    const doFetch = async () => {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 55000)
-      try {
-        const res = await fetch("/api/chat", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            userId,
-            message: q,
-            daysLeft: dl, totals, dayNum, todayData: d, mode,
-            userName: userName || "", startDate: startDate || "", interviewDate: interviewDate || "",
-            catResult: catResult || "", catPercentile: catPercentile || "",
-            targetPercentile: targetPercentile || 0,
-            profile: {
-              category,
-              gender: avatarGender,
-              primaryDegree,
-              secondaryDegrees,
-              workExpYears,
-              workExpMonths,
-              workCompany,
-              workRole,
-              profileScore: calcResult?.profileScore,
-              hasMasters: calcResult?.hasMasters,
-              adjustedCutoffs: calcResult?.adjustedCutoffs,
-              targetPercentile: targetPercentile || 0,
-            },
-            messages: [...mentorMessages, {r:"user",t:q}]
-              .map(m => ({role: m.r==="user"?"user":"assistant", content: m.t}))
-          }),
-          signal: controller.signal
-        })
-        clearTimeout(timeout)
-        const data = await readChatResponse(res)
-        if (!res.ok) return { error: getApiErrorMessage(data, `Server error: ${res.status}`) }
-        return { reply: getMentorReply(data) }
-      } catch (err) {
-        clearTimeout(timeout)
-        if (err.name === "AbortError") {
-          setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:"Render is waking up. Send your message again in 10 seconds." }])
-          return null
-        }
-        throw err
-      }
-    }
-    setMentorMessages(p => [...p, { r: 'ai', t: '...', loading: true }])
-    const slowTimer = setTimeout(() => {
-      setMentorMessages(p => {
-        const last = p[p.length - 1]
-        if (last?.r === 'ai' && last?.loading) {
-          return [...p.slice(0, -1), { r: 'ai', t: 'Still thinking... Vikram does not rush.', loading: true }]
-        }
-        return p
-      })
-    }, 15000)
-    try {
-      let result = await doFetch()
-      if (result === null) return
-      if (!result.error && (result.reply.includes("system stumbled") || result.reply.includes("Load failed"))) {
-        await new Promise(r => setTimeout(r, 2000))
-        result = await doFetch()
-        if (result === null) return
-      }
-      if (result.error) {
-        setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:result.error }])
-      } else {
-        setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:result.reply }])
-      }
-    } catch (err) {
-      setMentorMessages(p => [...p.filter(m => !m.loading), { r:"ai", t:err.message || "Connection error. Is the server running?" }])
-    } finally {
-      clearTimeout(slowTimer)
-      setMentorMessages(p => p.filter(m => !m.loading))
+    setMentorMessages(p => [...p, { r: "user", t: q }])
+    setTimeout(() => {
+      const reply = getCATMentorReply(q, ctx)
+      setMentorMessages(p => [...p, { r: "ai", t: reply }])
       setLoading(false)
-    }
+    }, 320)
   }
+
+  // Suggested action priority
+  const suggestedAction = useMemo(() => {
+    const { mission, vitals, work, errors, backlog, effortBreakdown } = ctx
+    if (!mission.chapterId) return { label: "Set today's mission", hint: "Open Today and pick a chapter to focus on.", tab: "today" }
+    if (effortBreakdown.discipline < 12) return { label: "Fix discipline baseline", hint: `Discipline is ${effortBreakdown.discipline}/30. Log sleep, water, gym in Vitals.`, tab: "vitals" }
+    if (effortBreakdown.practice < 10) return { label: "Do practice for mission section", hint: `Practice is ${effortBreakdown.practice}/25. Open Work Log and hit practice targets.`, tab: "daily-work" }
+    if (errors.retryNeeded > 0) return { label: `Retry ${errors.retryNeeded} flagged error${errors.retryNeeded > 1 ? "s" : ""}`, hint: "Fix old mistakes before adding new ones.", tab: "error-log" }
+    if (backlog.pendingVideos + backlog.pendingConcepts > 0 && !backlog.watchingEntry) return { label: "Pick a backlog item", hint: `${backlog.pendingVideos + backlog.pendingConcepts} pending. Open iQuanta Hub and mark one watching.`, tab: "iquanta" }
+    return { label: `Continue mission: ${mission.chapterName}`, hint: `Score: ${ctx.effortTotal}/100. Complete chapter pillars in Map.`, tab: "mastery" }
+  }, [ctx])
+
+  const QUICK_PROMPTS = [
+    "What should I do now?",
+    "Why is my score low?",
+    "Plan next 2 hours",
+    "Review my weak points",
+    "Backlog plan",
+    "Discipline check",
+  ]
+
+  const { mission, work, errors, backlog } = ctx
 
   return (
-    <div className="mentor-page-shell" style={{
-      display:"flex", flexDirection:"column", overflow:"hidden"
-    }}>
-      <div style={{padding:"32px 40px 16px", flexShrink:0,
-        borderBottom:"1px solid var(--b1)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div className="mentor-avatar">
-            <MentorAvatar size={56}/>
-          </div>
-          <div style={{flex:1}}>
-            <div className="page-title" style={{fontSize:24}}>Vikram Anand</div>
-            <div style={{fontSize:11,color:"#f97316",marginTop:2,
-              letterSpacing:"0.06em"}}>99.99%ILE · IIM-A · YOUR MENTOR</div>
-          </div>
-          <UserAvatar size={56} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/>
-        </div>
+    <div className="mentor-page-shell" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+      {/* Header */}
+      <div style={{ padding: "20px 16px 12px", flexShrink: 0, borderBottom: "1px solid var(--b1)" }}>
+        <div className="page-title" style={{ fontSize: 20 }}>Mentor</div>
+        <div style={{ fontSize: 11, color: AC, letterSpacing: "0.06em", marginTop: 2 }}>CONTEXT-AWARE CAT COACH</div>
       </div>
 
-      <div className="mentor-page-messages" style={{flex:1, overflowY:"auto", padding:"20px 40px",
-        display:"flex", flexDirection:"column", gap:12}}>
-        {mentorMessages.length === 0 && (
-          <div style={{textAlign:"center",color:"var(--tt)",fontSize:13,
-            marginTop:40,lineHeight:1.8}}>
-            Vikram is watching.<br/>
-            <span style={{color:"var(--tt)"}}>Say something.</span>
-          </div>
-        )}
-        {mentorMessages.map((m, i) => (
-          <div key={i} style={{
-            display: "flex",
-            flexDirection: m.r === "user" ? "row-reverse" : "row",
-            alignItems: "flex-end",
-            gap: "8px",
-            marginBottom: "12px",
-            width: "100%",
-            boxSizing: "border-box"
-          }}>
-            {m.r === "user" && (
-              <div style={{flexShrink: 0}}><UserAvatar size={44} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>
-            )}
-            {m.r !== "user" && (
-              <div style={{flexShrink: 0}}><MentorAvatar size={44}/></div>
-            )}
-            <div className={`mentor-bubble ${m.r === "user" ? "user" : "ai"}`} style={{
-              maxWidth: "70%",
-              padding: "10px 14px",
-              borderRadius: m.r === "user"
-                ? "18px 18px 4px 18px"
-                : "18px 18px 18px 4px",
-              fontSize: "13px",
-              lineHeight: "1.65",
-              backgroundColor: m.r === "user" ? "#f97316" : "var(--s2)",
-              color: m.r === "user" ? "white" : "var(--tp)",
-              border: m.r === "user" ? "none" : "1px solid var(--b1)",
-              wordBreak: "break-word",
-              boxSizing: "border-box"
-            }}>
-              {renderMessage(m.t)}
+      {/* Scrollable area: snapshot + suggested action + messages */}
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+
+        {/* Coach Snapshot */}
+        <div style={{ padding: "12px 16px 0", flexShrink: 0 }}>
+          <div className="sec-label" style={{ marginBottom: 6 }}>Today Snapshot</div>
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div className="dw-snap-row" style={{ gap: 12, flexWrap: "wrap" }}>
+              <div className="dw-snap-stat">
+                <span className="dw-snap-val" style={{ color: ctx.effortTotal >= 70 ? "#30d158" : ctx.effortTotal >= 40 ? AC : "var(--tp)" }}>{ctx.effortTotal}/100</span>
+                <span className="dw-snap-key">effort</span>
+              </div>
+              <div className="dw-snap-stat">
+                <span className="dw-snap-val" style={{ fontSize: 12, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mission.chapterName || "—"}</span>
+                <span className="dw-snap-key">mission</span>
+              </div>
+              <div className="dw-snap-stat">
+                <span className="dw-snap-val">{work.qCount > 0 || work.vCount > 0 || work.lCount > 0 ? `${work.qCount}Q ${work.vCount}V ${work.lCount}L` : "—"}</span>
+                <span className="dw-snap-key">practice</span>
+              </div>
+              <div className="dw-snap-stat">
+                <span className="dw-snap-val" style={{ color: errors.openErrors > 0 ? AC : "var(--tp)" }}>{errors.openErrors > 0 ? errors.openErrors : "—"}</span>
+                <span className="dw-snap-key">open errors</span>
+              </div>
+              <div className="dw-snap-stat">
+                <span className="dw-snap-val">{backlog.pendingVideos + backlog.pendingConcepts > 0 ? backlog.pendingVideos + backlog.pendingConcepts : "—"}</span>
+                <span className="dw-snap-key">backlog</span>
+              </div>
+            </div>
+            <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {[
+                { lbl: `L:${ctx.effortBreakdown.learn}`, max: 30, v: ctx.effortBreakdown.learn },
+                { lbl: `P:${ctx.effortBreakdown.practice}`, max: 25, v: ctx.effortBreakdown.practice },
+                { lbl: `E:${ctx.effortBreakdown.errorLog}`, max: 15, v: ctx.effortBreakdown.errorLog },
+                { lbl: `D:${ctx.effortBreakdown.discipline}`, max: 30, v: ctx.effortBreakdown.discipline },
+              ].map(({ lbl, max, v }) => (
+                <div key={lbl} style={{ fontSize: 10, fontWeight: 700, color: v >= max * 0.7 ? "#30d158" : v >= max * 0.4 ? AC : "var(--ts)", letterSpacing: "0.04em" }}>{lbl}/{max}</div>
+              ))}
             </div>
           </div>
-        ))}
-        {loading && (
-          <div style={{display:"flex",alignItems:"center",gap:"8px",padding:"4px 0"}}>
-            <div style={{flexShrink:0}}><MentorAvatar size={44}/></div>
-            <div className="typing"><span/><span/><span/></div>
+        </div>
+
+        {/* Suggested Action */}
+        <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
+          <div className="sec-label" style={{ marginBottom: 6 }}>Suggested Action</div>
+          <div className="card" style={{ padding: "12px 14px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--tp)", marginBottom: 4 }}>{suggestedAction.label}</div>
+            <div style={{ fontSize: 12, color: "var(--ts)", lineHeight: 1.5, marginBottom: 10 }}>{suggestedAction.hint}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {suggestedAction.tab && (
+                <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab(suggestedAction.tab)}>
+                  Open {suggestedAction.tab === "today" ? "Today" : suggestedAction.tab === "vitals" ? "Vitals" : suggestedAction.tab === "daily-work" ? "Work Log" : suggestedAction.tab === "error-log" ? "Error Log" : suggestedAction.tab === "iquanta" ? "iQuanta Hub" : "Map"}
+                </button>
+              )}
+              <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab("today")}>Today</button>
+              <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab("error-log")}>Error Log</button>
+            </div>
           </div>
-        )}
-        <div ref={messagesEndRef}/>
+        </div>
+
+        {/* Chat messages */}
+        <div className="mentor-page-messages" style={{ flex: 1, padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {mentorMessages.length === 0 && (
+            <div style={{ textAlign: "center", color: "var(--tt)", fontSize: 13, marginTop: 24, lineHeight: 1.8 }}>
+              Ask me anything about your CAT prep.<br/>
+              <span style={{ color: "var(--tt)", fontSize: 12 }}>I only use your actual dashboard data.</span>
+            </div>
+          )}
+          {mentorMessages.map((m, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: m.r === "user" ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, width: "100%", boxSizing: "border-box" }}>
+              {m.r === "user" && <div style={{ flexShrink: 0 }}><UserAvatar size={36} gender={avatarGender} skinTone={avatarSkin} hairStyle={avatarHair} hairColor={avatarHairColor} shirtColor={avatarShirt} hasGlasses={avatarGlasses} hasBeard={avatarBeard} hasMustache={avatarMustache}/></div>}
+              {m.r !== "user" && <div style={{ flexShrink: 0 }}><MentorAvatar size={36}/></div>}
+              <div className={`mentor-bubble ${m.r === "user" ? "user" : "ai"}`} style={{
+                maxWidth: "78%", padding: "9px 13px",
+                borderRadius: m.r === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                fontSize: 13, lineHeight: 1.6,
+                backgroundColor: m.r === "user" ? AC : "var(--s2)",
+                color: m.r === "user" ? "white" : "var(--tp)",
+                border: m.r === "user" ? "none" : "1px solid var(--b1)",
+                wordBreak: "break-word", boxSizing: "border-box",
+                whiteSpace: "pre-wrap",
+              }}>
+                {m.t}
+              </div>
+            </div>
+          ))}
+          {loading && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+              <MentorAvatar size={36}/>
+              <div className="typing"><span/><span/><span/></div>
+            </div>
+          )}
+          <div ref={messagesEndRef}/>
+        </div>
       </div>
 
-      <div className="mentor-page-composer" style={{
-        padding:"16px 40px 24px",
-        borderTop:"1px solid var(--b1)",
-        background:"var(--s1)",
-        flexShrink:0
-      }}>
-        <div style={{display:"flex",gap:8,marginBottom:10}}>
-          {["Mock Interview","WAT Topic","Doubt"].map(label => {
-            const selected = selectedQuickAction === label;
-            const hovered = hoverQuickAction === label;
-            const pressed = pressedQuickAction === label;
-            const active = selected || hovered || pressed;
-            return (
+      {/* Composer */}
+      <div className="mentor-page-composer" style={{ padding: "10px 16px 16px", borderTop: "1px solid var(--b1)", background: "var(--s1)", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+          {QUICK_PROMPTS.map(label => (
             <button key={label} type="button"
-              className={`quick-action-btn${active ? " active" : ""}`}
-              onPointerEnter={() => setHoverQuickAction(label)}
-              onPointerDown={() => {
-                setPressedQuickAction(label)
-              }}
-              onPointerUp={() => setPressedQuickAction("")}
-              onPointerLeave={() => {
-                setHoverQuickAction("")
-                setPressedQuickAction("")
-              }}
-              onClick={() => {
-                const quickText = label==="Mock Interview"
-                  ? "Start a mock PI interview with me right now"
-                  : label==="WAT Topic"
-                    ? "Give me a WAT topic and evaluate my response"
-                    : "I have a doubt: ";
-                if (selectedQuickAction === label) {
-                  setSelectedQuickAction("")
-                  setInp(prev => prev === quickText ? "" : prev)
-                  return
-                }
-                if(label==="Doubt") {
-                  focusDoubt()
-                  return
-                }
-                setSelectedQuickAction(label)
-                setInp(quickText)
-              }}
-              style={{padding:"7px 13px",borderRadius:20,
-                border:`1px solid ${active ? "#f97316" : "var(--b2)"}`,
-                background:active ? "rgba(249,115,22,0.12)" : "var(--s2)",
-                color:active ? "var(--tp)" : "var(--ts)",
-                boxShadow:active ? "0 0 14px rgba(249,115,22,0.22)" : "none",
-                transform:pressed ? "translateY(1px) scale(0.98)" : active ? "translateY(-1px) scale(1.04)" : "none",
-                fontSize:11,cursor:"pointer",
-                fontFamily:"inherit",fontWeight:700,
-                transition:"transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease",
-                touchAction:"manipulation",WebkitTapHighlightColor:"transparent",
-                userSelect:"none"}}>
+              className="quick-action-btn"
+              onClick={() => send(label)}
+              style={{ padding: "6px 11px", borderRadius: 20, border: "1px solid var(--b2)", background: "var(--s2)", color: "var(--ts)", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.03em", touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}>
               {label}
             </button>
-          )})}
+          ))}
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder={placeholder}
+            placeholder="Ask about your score, mission, errors, backlog..."
             enterKeyHint="send"
             inputMode="text"
             value={inp}
             onChange={e => setInp(e.target.value)}
-            onFocus={() => {
-              setTimeout(() => {
-                inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
-                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-              }, 100)
-            }}
-            onKeyDown={e => {
-              if(e.key==="Enter" && !e.shiftKey){
-                e.preventDefault(); send({ blur: true, mobileBlurOnly: true })
-              }
-            }}
+            onFocus={() => { setTimeout(() => { inputRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, 100) }}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send() } }}
             rows={1}
-            style={{flex:1}}
+            style={{ flex: 1 }}
           />
-          <button className="send-btn" onClick={() => send({ blur: true })} disabled={loading} style={{opacity: loading ? 0.5 : 1}}>↑</button>
+          <button className="send-btn" onClick={() => send()} disabled={loading} style={{ opacity: loading ? 0.5 : 1 }}>↑</button>
         </div>
       </div>
     </div>
@@ -6981,7 +7084,10 @@ export default function App() {
   });
   const [notesSyncMessage, setNotesSyncMessage] = useState("");
   const [sel, setSel] = useState(() => localStorage.getItem("cat_sel_date") || todayKey());
-  const [mentorMessages, setMentorMessages] = useState([]);
+  const [mentorMessages, setMentorMessages] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("conquer_mentor_chat_v1") || "[]"); }
+    catch { return []; }
+  });
   const [mentorGreeted, setMentorGreeted] = useState(
     () => localStorage.getItem("mentor_greeted_today") ===
       new Date().toISOString().split("T")[0]
@@ -7189,6 +7295,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("conquer_error_log_v1", JSON.stringify(errorLog));
   }, [errorLog]);
+  useEffect(() => {
+    localStorage.setItem("conquer_mentor_chat_v1", JSON.stringify(mentorMessages));
+  }, [mentorMessages]);
   useEffect(() => {
     localStorage.setItem("conquer_backlog_videos", JSON.stringify(backlogVideos));
     localStorage.setItem("conquer_backlog_concepts", JSON.stringify(backlogConcepts));
@@ -8113,7 +8222,7 @@ export default function App() {
             onBack={() => setTab("academic-profile")}
           />
         )}
-        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} userId={userId} startDate={startDate} interviewDate={interviewDate} catResult={catResult} catPercentile={catPercentile} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} category={category} primaryDegree={primaryDegree} secondaryDegrees={secondaryDegrees} workExpYears={workExpYears} workExpMonths={workExpMonths} workCompany={workCompany} workRole={workRole} calcResult={calcResult} targetPercentile={targetPercentile} />}
+        {tab==="chat" && <ChatPage mentorMessages={mentorMessages} setMentorMessages={setMentorMessages} d={data[sel]||defaultDay()} totals={totals} dl={dl} dayNum={dn} mode={mode} userInitials={userInitials} userName={userName} masteryProgress={masteryProgress} errorLog={errorLog} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} academicNotes={academicNotes} setTab={setTab} sel={sel} data={data} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} />}
         {tab==="insta" && (
           <InstaCard
             dayNumber={dn}
