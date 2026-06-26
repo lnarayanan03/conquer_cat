@@ -1101,6 +1101,46 @@ function TodayPage({
         </div>
       </div>
       <div className="sections">
+        <div>
+          <div className="sec-label">Discipline</div>
+          <div className="card">
+            <div className="vitals-snap">
+              <div className="vs-chip">
+                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
+                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
+                </span>
+                <span className="vs-key">sleep</span>
+              </div>
+              <div className="vs-chip">
+                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
+                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
+                </span>
+                <span className="vs-key">gym</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
+                <span className="vs-key">water</span>
+              </div>
+              <div className="vs-chip">
+                <span className="vs-val">{(() => {
+                  const entries = d.foodEntries || [];
+                  const c = entries.length > 0
+                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
+                    : (d.calories||0);
+                  return c > 0 ? c : "—";
+                })()}</span>
+                <span className="vs-key">kcal</span>
+              </div>
+            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
+              Open Vitals
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         {/* Effort Score v2 */}
         <div>
           <div className="sec-label">Today's Effort</div>
@@ -1196,46 +1236,6 @@ function TodayPage({
             {!missionChapterObj && (
               <div className="mission-empty">Select section → unit → chapter to set your focus</div>
             )}
-          </div>
-        </div>
-
-        <div>
-          <div className="sec-label">Discipline</div>
-          <div className="card">
-            <div className="vitals-snap">
-              <div className="vs-chip">
-                <span className={`vs-val${sleepDurationValid ? " vs-ok" : ""}`}>
-                  {hasSleepDuration ? sleepDuration.toFixed(1)+"h" : "—"}
-                </span>
-                <span className="vs-key">sleep</span>
-              </div>
-              <div className="vs-chip">
-                <span className={`vs-val${d.gymDone ? " vs-ok" : ""}`}>
-                  {d.gymDone ? (d.gymMinutes ? d.gymMinutes+"m" : "✓") : "—"}
-                </span>
-                <span className="vs-key">gym</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(d.waterLiters||0) > 0 ? (d.waterLiters||0)+"L" : "—"}</span>
-                <span className="vs-key">water</span>
-              </div>
-              <div className="vs-chip">
-                <span className="vs-val">{(() => {
-                  const entries = d.foodEntries || [];
-                  const c = entries.length > 0
-                    ? entries.reduce((s,e) => s + (Number(e.calories)||0), 0)
-                    : (d.calories||0);
-                  return c > 0 ? c : "—";
-                })()}</span>
-                <span className="vs-key">kcal</span>
-              </div>
-            </div>
-            <button type="button" className="vs-open-btn" onClick={() => setTab("vitals")}>
-              Open Vitals
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
           </div>
         </div>
 
