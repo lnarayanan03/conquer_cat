@@ -26,20 +26,10 @@
  *   work_experience_years, work_experience_months,
  *   work_company, work_role, min_percentile
  *
- * daily_logs fields saved via /api/log/save:
- *   user_id, log_date,
- *   quant, varc, lrdi, vp_count,
- *   wake_time, sleep_time,
- *   live_class, afternoon_session, application_class, varc_passage,
- *   practice_hrs, practice_mins,
- *   iq_notes, notes, backlog
- *
- * daily_logs fields loaded via /api/log/all:
- *   quant→q, varc→v, lrdi→l, vp_count→vp_count,
- *   wake_time→wt, sleep_time→st,
- *   live_class→lc, afternoon_session→as, application_class→ap, varc_passage→vp,
- *   practice_hrs→ph, practice_mins→pm,
- *   iq_notes→iq, notes→n, backlog→backlog
+ * daily_logs fields saved/loaded via /api/log/save and /api/log/all:
+ *   Phase 1 now routes daily logs through server/mappers/conquerDailyLogMapper.js.
+ *   The mapper supports the current frontend day shape, daily_food_entries,
+ *   raw_day preservation, and a legacy sparse-column fallback.
  *
  * Fields fixed in this audit:
  *   - target_percentile: was never saved to Supabase from App.jsx
@@ -52,8 +42,9 @@
  *   ALTER TABLE public.users
  *     ADD COLUMN IF NOT EXISTS target_percentile numeric DEFAULT 0;
  *
- * All daily_logs fields (afternoon_session, application_class,
- * practice_hrs, practice_mins) confirmed present — no gaps found.
+ * Phase 1 daily log expansion:
+ *   See supabase/migrations/001_expand_conquer_cat_schema.sql and
+ *   SUPABASE_MIGRATION_PLAN.md for the current backend migration foundation.
  */
 
 import express from "express";
@@ -80,6 +71,10 @@ import {
   refillQuestionBank,
 } from "./src/mentor/questionGenerator.js";
 import { seedInitialBank, ingestFromTavily } from "./src/mentor/ingest.js";
+import {
+  fetchDailyLogsForUser,
+  upsertDailyLogWithFood,
+} from "./server/mappers/conquerDailyLogMapper.js";
 
 dotenv.config();
 const app = express();
@@ -668,40 +663,16 @@ app.post("/api/user/init", async (req, res) => {
 
 app.post("/api/log/save", async (req, res) => {
   if (!supabase) return res.json({ ok: true });
-  const { userId, date, dayData } = req.body;
+  const { userId, date, dayData, day, data: payloadData, ...rest } = req.body;
+  const logDay = dayData ?? day ?? payloadData ?? rest;
+  if (!userId || !date) {
+    return res.status(400).json({ error: "userId and date are required" });
+  }
   try {
-    await supabase.from("daily_logs").upsert(
-      {
-        user_id: userId,
-        log_date: date,
-        quant: dayData.q || 0,
-        varc: dayData.v || 0,
-        lrdi: dayData.l || 0,
-        vp_count: dayData.vp_count || 0,
-        sudoku_done: dayData.sk || false,
-        sudoku_mins: dayData.skm || 0,
-        sudoku_seconds: dayData.sks || 0,
-        sudoku_difficulty: dayData.skd || "medium",
-        vedic_math_done: dayData.vm || false,
-        vedic_math_topic: dayData.vmt || "",
-        cat_application_done: dayData.ca || false,
-        wake_time: dayData.wt || "",
-        sleep_time: dayData.st || "",
-        live_class: dayData.lc || false,
-        afternoon_session: dayData.as || false,
-        application_class: dayData.ap || false,
-        practice_hrs: dayData.ph || 0,
-        practice_mins: dayData.pm || 0,
-        varc_passage: dayData.vp || false,
-        iq_notes: dayData.iq || "",
-        notes: dayData.n || "",
-        backlog: dayData.backlog || [],
-      },
-      { onConflict: "user_id,log_date" }
-    );
-    res.json({ ok: true });
+    const result = await upsertDailyLogWithFood({ supabase, userId, date, day: logDay });
+    res.json(result);
   } catch (err) {
-    console.error("Log save DB error:", err.message);
+    console.error("Log save DB error:", err?.message || err);
     res.status(500).json({ error: "DB error" });
   }
 });
@@ -709,39 +680,7 @@ app.post("/api/log/save", async (req, res) => {
 app.get("/api/log/all/:userId", async (req, res) => {
   if (!supabase) return res.json({});
   try {
-    const { data, error } = await supabase
-      .from("daily_logs")
-      .select("*")
-      .eq("user_id", req.params.userId);
-    if (error) throw error;
-    const formatted = {};
-    (data || []).forEach(row => {
-      const { log_date } = row;
-      formatted[log_date] = {
-        q: row.quant || 0,
-        v: row.varc || 0,
-        l: row.lrdi || 0,
-        vp_count: row.vp_count || 0,
-        sk: row.sudoku_done || false,
-        skm: row.sudoku_mins || 0,
-        sks: row.sudoku_seconds || 0,
-        skd: row.sudoku_difficulty || "medium",
-        vm: row.vedic_math_done || false,
-        vmt: row.vedic_math_topic || "",
-        ca: row.cat_application_done || false,
-        wt: row.wake_time || "",
-        st: row.sleep_time || "",
-        lc: row.live_class || false,
-        as: row.afternoon_session || false,
-        ap: row.application_class || false,
-        ph: row.practice_hrs || 0,
-        pm: row.practice_mins || 0,
-        vp: row.varc_passage || false,
-        iq: row.iq_notes || "",
-        n: row.notes || "",
-        backlog: row.backlog || [],
-      };
-    });
+    const formatted = await fetchDailyLogsForUser({ supabase, userId: req.params.userId });
     console.log(
       "[log/all] sample day fields:",
       Object.values(formatted)[0]

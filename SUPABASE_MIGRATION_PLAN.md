@@ -1,6 +1,40 @@
 # Supabase Migration Plan
 
-This is a proposed plan only. No Supabase code or SQL was added in this patch.
+This plan now includes the Phase 1 backend migration foundation while keeping the frontend local-first.
+
+## Phase 1 Implemented
+
+Implemented after the frontend freeze audit:
+
+- Migration file: `supabase/migrations/001_expand_conquer_cat_schema.sql`
+- Mapper file: `server/mappers/conquerDailyLogMapper.js`
+- Validation script: `scripts/validateDailyLogMapper.mjs`
+- Package script: `npm test` now runs the mapper validation script.
+- `/api/log/save` now accepts the current full frontend day object and maps it to expanded `daily_logs` columns plus `daily_food_entries`.
+- `/api/log/all/:userId` now returns frontend-compatible day objects shaped like `defaultDay()`, including `foodEntries`.
+
+No frontend behavior was changed. `localStorage` remains active and the app is not backend-authoritative yet.
+
+Phase 1 route compatibility:
+
+- Existing sparse payloads are still accepted through `dayData`.
+- The save route also accepts `day`, `data`, or direct sparse day fields as a fallback.
+- If Supabase is not configured, the routes keep the previous fallback behavior.
+- If the expanded migration has not been applied yet, `/api/log/save` can fall back to the legacy daily log column subset.
+
+Manual SQL step:
+
+Run `supabase/migrations/001_expand_conquer_cat_schema.sql` in Supabase before expecting full-field persistence in production. The migration is additive and uses `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`, and safe index/constraint creation.
+
+Still not implemented in Phase 1:
+
+- Frontend backend-first reads.
+- Mastery progress APIs.
+- Error log APIs.
+- Backlog item APIs.
+- Mentor message persistence API changes.
+- Profile/auth/RLS migration.
+- Assessment route changes.
 
 ## Existing Backend Coverage
 
@@ -92,4 +126,3 @@ For every user-owned table:
 - For each feature: migrate local key -> backend, read backend, compare with local, then keep local fallback for one release.
 - Never delete local keys until the app can load the same data after refresh, device switch, and offline/failed backend responses.
 - Progress should not become backend-authoritative until the score version decision is made.
-
