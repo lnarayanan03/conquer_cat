@@ -3256,7 +3256,34 @@ function MasteryMapPage({ progress, setProgress }) {
     }),
     [progress]
   );
-  const pendingPillars = overall.total - overall.completed;
+
+  const [selectedSection, setSelectedSection] = useState("all");
+  const [expandedUnits, setExpandedUnits] = useState(() => new Set());
+
+  const getInitialExpanded = useCallback((sectionId) => {
+    if (sectionId === "all") return new Set();
+    const section = CAT_MASTERY_SYLLABUS.find(s => s.id === sectionId);
+    if (!section) return new Set();
+    const firstIncomplete = section.units.find(
+      unit => getMasteryAggregate(unit.chapters, progress).pct < 100
+    );
+    const target = firstIncomplete || section.units[0];
+    return target ? new Set([target.id]) : new Set();
+  }, [progress]);
+
+  const handleSelectSection = (sectionId) => {
+    setSelectedSection(sectionId);
+    setExpandedUnits(getInitialExpanded(sectionId));
+  };
+
+  const toggleUnit = (unitId) => {
+    setExpandedUnits(prev => {
+      const next = new Set(prev);
+      if (next.has(unitId)) next.delete(unitId);
+      else next.add(unitId);
+      return next;
+    });
+  };
 
   const updatePillar = (chapterId, pillarId, checked) => {
     setProgress(prev => {
@@ -3265,162 +3292,186 @@ function MasteryMapPage({ progress, setProgress }) {
         ...prev,
         [chapterId]: {
           ...current,
-          pillars: {
-            ...current.pillars,
-            [pillarId]: checked,
-          },
+          pillars: { ...current.pillars, [pillarId]: checked },
         },
       };
     });
   };
 
+  const SECTION_TABS = [
+    { id: "all", label: "All" },
+    { id: "quant", label: "Quant" },
+    { id: "lrdi", label: "LRDI" },
+    { id: "varc", label: "VARC" },
+  ];
+
+  const visibleSections = selectedSection === "all"
+    ? sections
+    : sections.filter(s => s.id === selectedSection);
+
   return (
     <div className="page mastery-page">
       <div className="page-header">
         <div className="page-title">Mastery Map</div>
-        <div className="page-sub">CAT 2026 syllabus / Learn, Practice, Error Log</div>
+        <div className="page-sub">CAT 2026 / Learn · Practice · Error Log</div>
       </div>
 
-      <div className="mastery-summary-grid">
-        <div className="card mastery-summary-card mastery-summary-wide">
-          <div className="mastery-summary-top">
-            <div>
-              <div className="sec-label">Overall mastery</div>
-              <div className="mastery-summary-title">{overall.pct}%</div>
-            </div>
-            <div className="mastery-summary-count">
-              {overall.completedChapters}/{overall.totalChapters} chapters
-            </div>
-          </div>
-          <div
-            className="bar-track mastery-large-bar"
-            role="progressbar"
-            aria-label="Overall mastery progress"
-            aria-valuenow={overall.pct}
-            aria-valuemin="0"
-            aria-valuemax="100"
-          >
-            <div className="bar-fill" style={{ width: `${overall.pct}%` }} />
-          </div>
+      <div className="mastery-overall">
+        <div className="mastery-overall-left">
+          <span className="mastery-overall-pct">{overall.pct}%</span>
+          <span className="mastery-overall-label">overall mastery</span>
         </div>
-        <div className="card mastery-summary-card">
-          <div className="mastery-metric">{overall.completed}</div>
-          <div className="mastery-metric-label">Pillars complete</div>
-        </div>
-        <div className="card mastery-summary-card">
-          <div className="mastery-metric">{pendingPillars}</div>
-          <div className="mastery-metric-label">Pillars pending</div>
-        </div>
+        <span className="mastery-overall-stats">
+          {overall.completedChapters}/{overall.totalChapters} ch · {overall.completed}/{overall.total} pillars
+        </span>
+      </div>
+      <div
+        className="bar-track mastery-overall-bar"
+        role="progressbar"
+        aria-label="Overall mastery"
+        aria-valuenow={overall.pct}
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div className="bar-fill" style={{ width: `${overall.pct}%` }} />
       </div>
 
-      <div className="mastery-sections">
-        {sections.map(section => (
-          <section key={section.id} className={`mastery-section mastery-section-${section.id}`}>
-            <div className="mastery-section-head">
-              <div>
-                <div className="sec-label">{section.label}</div>
-                <h2>{section.label}</h2>
-                <p>{section.units.length} units / {section.stats.totalChapters} chapters</p>
-              </div>
-              <div className="mastery-section-pct">{section.stats.pct}%</div>
-            </div>
-            <div
-              className="bar-track mastery-section-bar"
-              role="progressbar"
-              aria-label={`${section.label} mastery progress`}
-              aria-valuenow={section.stats.pct}
-              aria-valuemin="0"
-              aria-valuemax="100"
+      <div className="mastery-tabs" role="tablist" aria-label="Section filter">
+        {SECTION_TABS.map(tab => {
+          const sStats = tab.id !== "all" ? sections.find(s => s.id === tab.id)?.stats : null;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={selectedSection === tab.id}
+              className={`mastery-tab${selectedSection === tab.id ? " active" : ""}${tab.id !== "all" ? ` mastery-tab-${tab.id}` : ""}`}
+              onClick={() => handleSelectSection(tab.id)}
             >
-              <div className="bar-fill" style={{ width: `${section.stats.pct}%` }} />
-            </div>
+              {tab.label}
+              {sStats && <span className="mastery-tab-badge">{sStats.pct}%</span>}
+            </button>
+          );
+        })}
+      </div>
 
-            <div className="mastery-unit-list">
-              {section.units.map(unit => {
-                const unitStats = getMasteryAggregate(unit.chapters, progress);
+      {selectedSection === "all" && (
+        <div className="mastery-sec-cards">
+          {sections.map(section => (
+            <button
+              key={section.id}
+              type="button"
+              className={`mastery-sec-card mastery-sec-card-${section.id}`}
+              onClick={() => handleSelectSection(section.id)}
+            >
+              <div className="mastery-sec-card-row">
+                <span className="mastery-sec-card-name">{section.label}</span>
+                <span className="mastery-sec-card-pct">{section.stats.pct}%</span>
+              </div>
+              <div className="bar-track mastery-sec-bar">
+                <div className="bar-fill" style={{ width: `${section.stats.pct}%` }} />
+              </div>
+              <div className="mastery-sec-card-sub">
+                {section.stats.completedChapters}/{section.stats.totalChapters} chapters · {section.units.length} units →
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
-                return (
-                  <div key={unit.id} className="card mastery-unit-card">
-                    <div className="mastery-unit-head">
-                      <div>
-                        <h3>{unit.label}</h3>
-                        <p>{unitStats.completedChapters}/{unitStats.totalChapters} chapters mastered</p>
-                      </div>
-                      <div className="mastery-unit-pct">{unitStats.pct}%</div>
-                    </div>
-                    <div
-                      className="bar-track mastery-unit-bar"
-                      role="progressbar"
-                      aria-label={`${unit.label} progress`}
-                      aria-valuenow={unitStats.pct}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                    >
+      {selectedSection !== "all" && visibleSections.map(section => (
+        <div key={section.id} className={`mastery-acc mastery-acc-${section.id}`}>
+          {section.units.map(unit => {
+            const unitStats = getMasteryAggregate(unit.chapters, progress);
+            const isExpanded = expandedUnits.has(unit.id);
+            return (
+              <div key={unit.id} className={`mastery-acc-unit${unitStats.pct === 100 ? " complete" : ""}`}>
+                <button
+                  type="button"
+                  className="mastery-acc-hdr"
+                  aria-expanded={isExpanded}
+                  aria-controls={`uc-${unit.id}`}
+                  onClick={() => toggleUnit(unit.id)}
+                >
+                  <div className="mastery-acc-hdr-left">
+                    <span className="mastery-acc-unit-name">{unit.label}</span>
+                    <span className="mastery-acc-unit-sub">
+                      {unitStats.completedChapters}/{unitStats.totalChapters} ch
+                    </span>
+                  </div>
+                  <div className="mastery-acc-hdr-right">
+                    <div className="bar-track mastery-acc-unit-bar">
                       <div className="bar-fill" style={{ width: `${unitStats.pct}%` }} />
                     </div>
+                    <span className="mastery-acc-unit-pct">{unitStats.pct}%</span>
+                    <svg
+                      className={`mastery-chevron${isExpanded ? " open" : ""}`}
+                      width="14" height="14" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </button>
 
-                    <div className="mastery-chapter-list">
-                      {unit.chapters.map(chapter => {
-                        const chapterProgress = getChapterMastery(progress, chapter.id);
-                        const chapterStats = getChapterMasteryStats(progress, chapter.id);
-
-                        return (
-                          <div
-                            key={chapter.id}
-                            className={`mastery-chapter${chapterStats.pct === 100 ? " complete" : ""}`}
-                          >
-                            <div className="mastery-chapter-main">
-                              <div className="mastery-chapter-title">{chapter.label}</div>
-                              <div className="mastery-chapter-meta">
-                                <span>{chapterStats.status}</span>
-                                <span>{chapterStats.completed}/{chapterStats.total}</span>
-                              </div>
-                            </div>
-                            <div className="mastery-chapter-progress">
-                              <div
-                                className="bar-track mastery-chapter-bar"
-                                role="progressbar"
-                                aria-label={`${chapter.label} progress`}
-                                aria-valuenow={chapterStats.pct}
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div className="bar-fill" style={{ width: `${chapterStats.pct}%` }} />
-                              </div>
-                              <span>{chapterStats.pct}%</span>
-                            </div>
-                            <div className="mastery-pillars">
-                              {MASTERY_PILLARS.map(pillar => {
-                                const active = !!chapterProgress.pillars[pillar.id];
-                                return (
-                                  <button
-                                    key={pillar.id}
-                                    type="button"
-                                    className={`mastery-pillar-btn${active ? " active" : ""}`}
-                                    aria-pressed={active}
-                                    onClick={() => updatePillar(chapter.id, pillar.id, !active)}
-                                  >
-                                    <span className="mastery-pillar-check" aria-hidden="true">
-                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12" />
-                                      </svg>
-                                    </span>
-                                    {pillar.label}
-                                  </button>
-                                );
-                              })}
+                {isExpanded && (
+                  <div id={`uc-${unit.id}`} className="mastery-acc-body">
+                    {unit.chapters.map(chapter => {
+                      const chP = getChapterMastery(progress, chapter.id);
+                      const chS = getChapterMasteryStats(progress, chapter.id);
+                      return (
+                        <div key={chapter.id} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}`}>
+                          <div className="mastery-ch-top">
+                            <span className="mastery-ch-name">{chapter.label}</span>
+                            <span className={`mastery-ch-count${chS.pct === 100 ? " done" : chS.completed > 0 ? " partial" : ""}`}>
+                              {chS.completed}/{chS.total}
+                            </span>
+                          </div>
+                          <div className="mastery-ch-bar-wrap">
+                            <div
+                              className="bar-track mastery-ch-bar"
+                              role="progressbar"
+                              aria-label={chapter.label}
+                              aria-valuenow={chS.pct}
+                              aria-valuemin="0"
+                              aria-valuemax="100"
+                            >
+                              <div className="bar-fill" style={{ width: `${chS.pct}%` }} />
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <div className="mastery-ch-pillars">
+                            {MASTERY_PILLARS.map(pillar => {
+                              const active = !!chP.pillars[pillar.id];
+                              return (
+                                <button
+                                  key={pillar.id}
+                                  type="button"
+                                  className={`mastery-pill${active ? " active" : ""}`}
+                                  aria-pressed={active}
+                                  onClick={() => updatePillar(chapter.id, pillar.id, !active)}
+                                >
+                                  {active && (
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                  )}
+                                  {pillar.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
