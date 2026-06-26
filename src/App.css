@@ -713,6 +713,43 @@ select:focus { border-color: #f97316; }
 }
 .vs-open-btn:hover { background: rgba(249,115,22,0.06); }
 
+/* iQuanta Hub compact card (Today snapshot) */
+.hub-snap-card { padding: 0; overflow: hidden; }
+.hub-snap-body { padding: 12px 16px 10px; }
+.hub-snap-watch {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  margin-bottom: 4px;
+}
+.hub-snap-watch-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #30d158;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.hub-snap-watch-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tp);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-snap-watch--empty {
+  font-size: 13px;
+  color: var(--tt);
+  font-weight: 500;
+}
+.hub-snap-stats {
+  font-size: 11px;
+  color: var(--tt);
+}
+
 /* Water test tube */
 .vtube-row {
   display: flex;

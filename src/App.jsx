@@ -1503,131 +1503,6 @@ function TodayPage({
           </div>
         </div>
 
-        <div>
-          <div className="sec-label">iQuanta</div>
-          <div className="card">
-            <div className="card-row iquanta-backlog-card">
-              <button
-                type="button"
-                className="iquanta-backlog-top"
-                onClick={() => setTab("backlog")}
-              >
-                <span className="iquanta-backlog-title-btn">iQuanta Backlogs</span>
-                <svg width="16" height="16" viewBox="0 0 24 24"
-                  fill="none" stroke="var(--tt)" strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
-              </button>
-              {currentWatchingBacklog ? (
-                <button
-                  type="button"
-                  className="iquanta-watch-row"
-                  aria-label="Open currently watching backlog item"
-                  onClick={() => onOpenWatchingBacklog?.({
-                    kind: currentWatchingBacklog.type.toLowerCase(),
-                    id: currentWatchingBacklog.item.id
-                  })}
-                >
-                  <span className="iquanta-watch-main">
-                    Currently watching: {currentWatchingBacklog.item.text}
-                  </span>
-                  <span className="iquanta-watch-meta">
-                    {totalBacklog > 0
-                      ? `${backlogPending} pending · ${backlogCoverage}% covered`
-                      : "Log videos and concepts"}
-                  </span>
-                </button>
-              ) : (
-                <div className="iquanta-watch-empty">
-                  <div className="row-sub">
-                    Currently watching: None
-                  </div>
-                  <div className="row-sub">
-                    {totalBacklog > 0
-                      ? `${backlogPending} pending · ${backlogCoverage}% covered`
-                      : "Log videos and concepts"}
-                  </div>
-                </div>
-              )}
-            </div>
-            <button
-              className="card-row"
-              onClick={() => setTab("notes")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                background: "transparent",
-                border: "none",
-                borderTop: "1px solid var(--b1)",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <div>
-                <div className="row-label">Academic Notes</div>
-                <div className="row-sub">
-                  {notes?.length
-                    ? `${notes.length} note${notes.length === 1 ? "" : "s"} · ${getNotePreview(latestNote)}`
-                    : "Save formulas, mistakes, and class points"}
-                </div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="var(--tt)" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <div className="sec-label">Timetable & Assessment</div>
-          <div className="card">
-            <button
-              className="card-row"
-              onClick={() => setTab("timetable")}
-              style={{display:"flex",alignItems:"center",
-                justifyContent:"space-between",width:"100%",
-                background:"transparent",border:"none",
-                cursor:"pointer",fontFamily:"inherit"}}
-            >
-              <div>
-                <div className="row-label">Weekly Timetable</div>
-                <div className="row-sub">iQuanta live + application class schedule</div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="var(--tt)" strokeWidth="2"
-                strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-            <button
-              className="card-row"
-              onClick={() => setTab("assessment")}
-              style={{display:"flex",alignItems:"center",
-                justifyContent:"space-between",width:"100%",
-                background:"transparent",border:"none",
-                cursor:"pointer",fontFamily:"inherit",
-                borderTop:"1px solid var(--b1)"}}
-            >
-              <div>
-                <div className="row-label">
-                  {isSundayIST ? "Weekly Assessment" : "Daily Assessment"}
-                </div>
-                <div className="row-sub">
-                  {isSundayIST
-                    ? "10 questions total · Sunday calibre check"
-                    : "3 questions total · Daily calibre check"}
-                </div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="var(--tt)" strokeWidth="2"
-                strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          </div>
-        </div>
-
         {mode === "interview" ? (
           <div>
             <div className="sec-label">Interview Prep</div>
@@ -1759,8 +1634,28 @@ function TodayPage({
         </div>
 
         <div>
-          <div className="sec-label">Notes</div>
-          <div className="card"><textarea className="textarea" placeholder="iQuanta — topics covered, videos watched..." value={d.iq||""} onChange={e=>upd("iq",e.target.value)} rows={2} /></div>
+          <div className="sec-label">iQuanta Hub</div>
+          <div className="card hub-snap-card">
+            <div className="hub-snap-body">
+              {currentWatchingBacklog ? (
+                <div className="hub-snap-watch">
+                  <span className="hub-snap-watch-label">Watching</span>
+                  <span className="hub-snap-watch-text">{currentWatchingBacklog.item.text}</span>
+                </div>
+              ) : (
+                <div className="hub-snap-watch hub-snap-watch--empty">Nothing watching · backlogs, notes &amp; timetable inside</div>
+              )}
+              <div className="hub-snap-stats">
+                {totalBacklog > 0
+                  ? `${backlogPending} pending · ${backlogCoverage}% covered · ${totalBacklog} total`
+                  : "No backlogs logged yet"}
+              </div>
+            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta")}>
+              Open iQuanta Hub
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
         </div>
 
         <div>
@@ -4602,6 +4497,158 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
         </button>
       )}
     </>
+  );
+}
+
+function IQuantaHubPage({
+  backlogVideos, backlogConcepts, onOpenWatchingBacklog,
+  notes, iq, onIqChange, isSundayIST, setTab, onBack,
+}) {
+  const totalBacklog = backlogVideos.length + backlogConcepts.length;
+  const totalDone = backlogVideos.filter(i => i.checked).length + backlogConcepts.filter(i => i.checked).length;
+  const backlogPending = totalBacklog - totalDone;
+  const backlogCoverage = totalBacklog > 0 ? Math.round((totalDone / totalBacklog) * 100) : 0;
+  const currentWatchingBacklog = getCurrentWatchingBacklog(backlogVideos, backlogConcepts);
+  const latestNote = useMemo(() => {
+    return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)))[0] || null;
+  }, [notes]);
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button
+          onClick={onBack}
+          style={{
+            background: "transparent", border: "none",
+            color: "var(--ac)", fontSize: 15, cursor: "pointer",
+            fontFamily: "inherit", display: "flex",
+            alignItems: "center", gap: 4, padding: 0, marginBottom: 8,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          Today
+        </button>
+        <div className="page-title">iQuanta Hub</div>
+        <div className="page-sub">Classes · Backlogs · Notes · Timetable</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Currently Watching</div>
+          <div className="card">
+            {currentWatchingBacklog ? (
+              <button
+                type="button"
+                className="iquanta-watch-row"
+                style={{width:"100%",borderRadius:8}}
+                aria-label="Jump to currently watching backlog item"
+                onClick={() => onOpenWatchingBacklog?.({
+                  kind: currentWatchingBacklog.type.toLowerCase(),
+                  id: currentWatchingBacklog.item.id,
+                })}
+              >
+                <span className="iquanta-watch-main">{currentWatchingBacklog.item.text}</span>
+                <span className="iquanta-watch-meta">
+                  {currentWatchingBacklog.type} · {totalBacklog > 0 ? `${backlogPending} pending · ${backlogCoverage}% covered` : "No other items"}
+                </span>
+              </button>
+            ) : (
+              <div className="card-row">
+                <div>
+                  <div className="row-label">Nothing active</div>
+                  <div className="row-sub">Mark a backlog item as watching to track it here</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Backlogs</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("backlog")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}
+            >
+              <div>
+                <div className="row-label">iQuanta Backlogs</div>
+                <div className="row-sub">
+                  {totalBacklog > 0
+                    ? `${backlogPending} pending · ${backlogCoverage}% covered · ${totalBacklog} total`
+                    : "Log videos and concepts to track"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Schedule</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("timetable")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}
+            >
+              <div>
+                <div className="row-label">Weekly Timetable</div>
+                <div className="row-sub">iQuanta live + application class schedule</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button
+              className="card-row"
+              onClick={() => setTab("assessment")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",borderTop:"1px solid var(--b1)"}}
+            >
+              <div>
+                <div className="row-label">{isSundayIST ? "Weekly Assessment" : "Daily Assessment"}</div>
+                <div className="row-sub">
+                  {isSundayIST ? "10 questions total · Sunday calibre check" : "3 questions total · Daily calibre check"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Academic Notes</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("notes")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}
+            >
+              <div>
+                <div className="row-label">Notes</div>
+                <div className="row-sub">
+                  {notes?.length
+                    ? `${notes.length} note${notes.length === 1 ? "" : "s"} · ${getNotePreview(latestNote)}`
+                    : "Save formulas, mistakes, and class points"}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">iQuanta Notes</div>
+          <div className="card">
+            <textarea
+              className="textarea"
+              placeholder="Topics covered, videos watched, concepts to revisit..."
+              value={iq || ""}
+              onChange={e => onIqChange(e.target.value)}
+              rows={5}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -7785,6 +7832,22 @@ export default function App() {
             d={data[sel] || defaultDay()}
             upd={(f,v)=>upd(sel,f,v)}
             date={sel}
+            onBack={() => setTab("today")}
+          />
+        )}
+        {tab==="iquanta" && (
+          <IQuantaHubPage
+            backlogVideos={backlogVideos}
+            backlogConcepts={backlogConcepts}
+            onOpenWatchingBacklog={(target) => {
+              setBacklogFocusTarget(target);
+              setTab("backlog");
+            }}
+            notes={academicNotes}
+            iq={data[sel]?.iq || ""}
+            onIqChange={v => upd(sel, "iq", v)}
+            isSundayIST={isSundayIST}
+            setTab={setTab}
             onBack={() => setTab("today")}
           />
         )}
