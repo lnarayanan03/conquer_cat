@@ -897,6 +897,35 @@ function DdaySymbolIcon({ type, size = 22 }) {
   return <svg {...p}>{shapes[type] || shapes.star4}</svg>;
 }
 
+const IQUANTA_SESSION_DEFS = [
+  { field: "lc", naField: "lc_na", label: "Live Class", fallbackSub: "2 hrs - iQuanta live", minutes: 120 },
+  { field: "as", naField: "as_na", label: "Afternoon Session", fallbackSub: "40 min session", minutes: 40 },
+  { field: "ap", naField: "ap_na", label: "Application Class", fallbackSub: "10PM - 12AM - Application class", minutes: 120 },
+  { field: "vp", naField: "vp_na", label: "VARC Passage", fallbackSub: "20 min passage", minutes: 20 },
+];
+
+function formatStudyDuration(totalMins) {
+  const mins = Math.max(0, Number(totalMins) || 0);
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (hrs > 0 && rem > 0) return `${hrs}h ${rem}m`;
+  if (hrs > 0) return `${hrs}h`;
+  return `${rem}m`;
+}
+
+function getIQuantaSessionStats(day = {}) {
+  const available = IQUANTA_SESSION_DEFS.filter(s => !day[s.naField]);
+  const done = IQUANTA_SESSION_DEFS.filter(s => day[s.field] && !day[s.naField]);
+  const totalMins = done.reduce((sum, s) => sum + s.minutes, 0);
+  return {
+    available: available.length,
+    done: done.length,
+    total: IQUANTA_SESSION_DEFS.length,
+    totalMins,
+    timeLabel: formatStudyDuration(totalMins),
+  };
+}
+
 function TodayPage({
   date, d, upd, dl, start, totalDays, mode, setTab,
   backlogVideos, backlogConcepts, notes = [], onSave, data, totals, userName, userInitials,
@@ -950,18 +979,9 @@ function TodayPage({
     return day === 0 || day === 6 ? 8 : 5;
   })();
   const sleepDurationValid = hasSleepDuration && sleepDuration >= sleepTargetHours;
-  const totalMins =
-    (d.lc && !d.lc_na ? 120 : 0) +
-    (d.as && !d.as_na ? 40 : 0) +
-    (d.ap && !d.ap_na ? 120 : 0) +
-    (d.vp && !d.vp_na ? 20 : 0) +
-    ((+d.ph||0) * 60) +
-    (+d.pm||0);
-  const totalHrs = Math.floor(totalMins / 60);
-  const totalMinRem = totalMins % 60;
-  const totalDisplay = totalHrs > 0 && totalMinRem > 0
-    ? `${totalHrs}h ${totalMinRem}m`
-    : totalHrs > 0 ? `${totalHrs}h` : `${totalMinRem}m`;
+  const selfStudyMins = ((+d.ph||0) * 60) + (+d.pm||0);
+  const selfStudyDisplay = formatStudyDuration(selfStudyMins);
+  const iqSessionStats = getIQuantaSessionStats(d);
   const totalBacklog = backlogVideos.length + backlogConcepts.length;
   const totalDone = backlogVideos.filter(i=>i.checked).length +
                     backlogConcepts.filter(i=>i.checked).length;
@@ -1272,13 +1292,6 @@ function TodayPage({
           <div className="card hub-snap-card">
             <div className="hub-snap-body">
               <div className="dw-snap-row">
-                <div className="dw-snap-stat">
-                  <span className="dw-snap-val">
-                    {[d.lc&&!d.lc_na, d.as&&!d.as_na, d.ap&&!d.ap_na, d.vp&&!d.vp_na].filter(Boolean).length}
-                    /{[!d.lc_na, !d.as_na, !d.ap_na, !d.vp_na].filter(Boolean).length}
-                  </span>
-                  <span className="dw-snap-key">sessions</span>
-                </div>
                 {mode !== "interview" && (
                   <div className="dw-snap-stat">
                     <span className="dw-snap-val">
@@ -1289,10 +1302,16 @@ function TodayPage({
                     <span className="dw-snap-key">practice</span>
                   </div>
                 )}
-                {totalMins > 0 && (
+                {mode !== "interview" && (
                   <div className="dw-snap-stat">
-                    <span className="dw-snap-val">{totalDisplay}</span>
-                    <span className="dw-snap-key">studied</span>
+                    <span className="dw-snap-val">{(+d.vp_count||0) > 0 ? +d.vp_count||0 : "-"}</span>
+                    <span className="dw-snap-key">para read</span>
+                  </div>
+                )}
+                {selfStudyMins > 0 && (
+                  <div className="dw-snap-stat">
+                    <span className="dw-snap-val">{selfStudyDisplay}</span>
+                    <span className="dw-snap-key">self study</span>
                   </div>
                 )}
               </div>
@@ -1411,11 +1430,22 @@ function TodayPage({
                   ? `${backlogPending} pending · ${backlogCoverage}% covered · ${totalBacklog} total`
                   : "No backlogs logged yet"}
               </div>
+              <div className="hub-snap-stats">
+                {iqSessionStats.available > 0
+                  ? `${iqSessionStats.done}/${iqSessionStats.available} classes done${iqSessionStats.totalMins > 0 ? ` · ${iqSessionStats.timeLabel}` : ""}`
+                  : "No iQuanta sessions due"}
+              </div>
             </div>
-            <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta")}>
-              Open iQuanta Hub
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"0 12px 12px"}}>
+              <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta")} style={{flex:"1 1 150px",marginTop:0}}>
+                Open iQuanta Hub
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta-log")} style={{flex:"1 1 140px",marginTop:0}}>
+                Open iQuanta Log
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -4401,27 +4431,15 @@ function FloatingMentor({ daysLeft, totals, dayNum, todayData, mentorMessages, s
   );
 }
 
-function DailyWorkPage({ d, upd, mode, todayLiveLabel, todayAppLabel, onBack }) {
-  const totalMins =
-    (d.lc && !d.lc_na ? 120 : 0) +
-    (d.as && !d.as_na ? 40 : 0) +
-    (d.ap && !d.ap_na ? 120 : 0) +
-    (d.vp && !d.vp_na ? 20 : 0) +
-    ((+d.ph||0) * 60) +
-    (+d.pm||0);
-  const totalHrs = Math.floor(totalMins / 60);
-  const totalMinRem = totalMins % 60;
-  const totalDisplay = totalHrs > 0 && totalMinRem > 0
-    ? `${totalHrs}h ${totalMinRem}m`
-    : totalHrs > 0 ? `${totalHrs}h` : `${totalMinRem}m`;
-
-  const naBtn = (field, dependentField) => (
-    <button
-      onClick={() => { const n = !d[field]; upd(field, n); if (n) upd(dependentField, false); }}
-      className="dw-na-btn"
-      style={{ border: d[field] ? "1px solid var(--tt)" : "1px solid var(--b2)", background: d[field] ? "rgba(110,110,115,0.15)" : "transparent" }}
-    >N/A</button>
-  );
+function DailyWorkPage({ d, upd, mode, onBack }) {
+  const selfStudyMins = ((+d.ph||0) * 60) + (+d.pm||0);
+  const selfStudyDisplay = formatStudyDuration(selfStudyMins);
+  const practiceRows = [
+    {lbl:"Quant",sub:"Target: 10",f:"q",t:10},
+    {lbl:"VARC sets",sub:"Target: 5",f:"v",t:5},
+    {lbl:"LRDI sets",sub:"Target: 5",f:"l",t:5},
+    {lbl:"VARC Para Reading",sub:"Target: 1 passage",f:"vp_count",t:1},
+  ];
 
   return (
     <div className="page">
@@ -4434,96 +4452,15 @@ function DailyWorkPage({ d, upd, mode, todayLiveLabel, todayAppLabel, onBack }) 
           Today
         </button>
         <div className="page-title">Daily Work Log</div>
-        <div className="page-sub">Sessions · Practice · Study Time</div>
+        <div className="page-sub">Practice · Study Time</div>
       </div>
 
       <div className="sections">
-        <div>
-          <div className="sec-label">Sessions</div>
-          <div className="card">
-            <div className="dw-session-row">
-              {naBtn("lc_na", "lc")}
-              <div className="dw-session-info">
-                <div className="row-label">Live Class</div>
-                <div className="row-sub">{todayLiveLabel || "2 hrs · iQuanta live"}</div>
-              </div>
-              <div style={{ marginLeft:"auto", opacity: d.lc_na ? 0.35 : 1, pointerEvents: d.lc_na ? "none" : "auto" }}>
-                <Tog v={d.lc} onChange={v=>{upd("lc",v);if(v)upd("lc_na",false);}} />
-              </div>
-            </div>
-            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
-              {naBtn("as_na", "as")}
-              <div className="dw-session-info">
-                <div className="row-label">Afternoon Session</div>
-                <div className="row-sub">40 min session</div>
-              </div>
-              <div style={{ marginLeft:"auto", opacity: d.as_na ? 0.35 : 1, pointerEvents: d.as_na ? "none" : "auto" }}>
-                <Tog v={d.as} onChange={v=>{upd("as",v);if(v)upd("as_na",false);}} />
-              </div>
-            </div>
-            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
-              {naBtn("ap_na", "ap")}
-              <div className="dw-session-info">
-                <div className="row-label">Application Class</div>
-                <div className="row-sub">{todayAppLabel || "10PM - 12AM · Application class"}</div>
-              </div>
-              <div style={{ marginLeft:"auto", opacity: d.ap_na ? 0.35 : 1, pointerEvents: d.ap_na ? "none" : "auto" }}>
-                <Tog v={d.ap} onChange={v=>{upd("ap",v);if(v)upd("ap_na",false);}} />
-              </div>
-            </div>
-            <div className="dw-session-row" style={{borderTop:"1px solid var(--b1)"}}>
-              {naBtn("vp_na", "vp")}
-              <div className="dw-session-info">
-                <div className="row-label">VARC Passage</div>
-                <div className="row-sub">20 min passage</div>
-              </div>
-              <div style={{ marginLeft:"auto", opacity: d.vp_na ? 0.35 : 1, pointerEvents: d.vp_na ? "none" : "auto" }}>
-                <Tog v={d.vp} onChange={v=>{upd("vp",v);if(v)upd("vp_na",false);}} />
-              </div>
-            </div>
-            <div className="card-row" style={{borderTop:"1px solid var(--b1)"}}>
-              <div>
-                <div className="row-label">Personal practice</div>
-                <div className="row-sub">Additional self-study</div>
-              </div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <select className="time-select" value={d.ph||0} onChange={e=>upd("ph",Number(e.target.value))} style={{minWidth:52}}>
-                  {[0,1,2,3,4,5,6,7,8,9,10].map(h=><option key={h} value={h}>{h}h</option>)}
-                </select>
-                <select className="time-select" value={d.pm||0} onChange={e=>upd("pm",Number(e.target.value))} style={{minWidth:58}}>
-                  {[0,10,20,30,40,50].map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}m</option>)}
-                </select>
-              </div>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderTop:"1px solid var(--b1)"}}>
-              <span style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase"}}>Total Studied</span>
-              <span style={{fontSize:16,fontWeight:700,color:totalMins>=240?"#30d158":totalMins>=120?"#f97316":"var(--tp)"}}>{totalDisplay}</span>
-            </div>
-          </div>
-        </div>
-
-        {mode === "interview" ? (
-          <div>
-            <div className="sec-label">Interview Prep</div>
-            <div className="card">
-              <div className="card-row">
-                <div><div className="row-label">Mock PI done today</div><div className="row-sub">Simulate the real thing</div></div>
-                <Tog v={d.mockPI} onChange={v=>upd("mockPI",v)} />
-              </div>
-              <div className="card-row">
-                <div><div className="row-label">WAT practice done</div><div className="row-sub">Written Ability Test</div></div>
-                <Tog v={d.watDone} onChange={v=>upd("watDone",v)} />
-              </div>
-            </div>
-            <div style={{marginTop:10}} className="card">
-              <textarea className="textarea" placeholder="Topics revised today — acads, current affairs, SOP, hobbies..." value={d.topicsRevised||""} onChange={e=>upd("topicsRevised",e.target.value)} rows={3} />
-            </div>
-          </div>
-        ) : (
+        {mode !== "interview" && (
           <div>
             <div className="sec-label">Practice</div>
             <div className="card">
-              {[{lbl:"Quant",sub:"Target: 10",f:"q",t:10},{lbl:"VARC sets",sub:"Target: 5",f:"v",t:5},{lbl:"LRDI sets",sub:"Target: 5",f:"l",t:5},{lbl:"VARC Para Reading",sub:"Target: 1 passage",f:"vp_count",t:1}].map(r => {
+              {practiceRows.map(r => {
                 const val = +d[r.f] || 0;
                 const met = val >= r.t;
                 return (
@@ -4542,6 +4479,110 @@ function DailyWorkPage({ d, upd, mode, todayLiveLabel, todayAppLabel, onBack }) 
           </div>
         )}
 
+        <div>
+          <div className="sec-label">Self Study</div>
+          <div className="card">
+            <div className="card-row" style={{borderTop:"1px solid var(--b1)"}}>
+              <div>
+                <div className="row-label">Personal practice</div>
+                <div className="row-sub">Additional self-study</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <select className="time-select" value={d.ph||0} onChange={e=>upd("ph",Number(e.target.value))} style={{minWidth:52}}>
+                  {[0,1,2,3,4,5,6,7,8,9,10].map(h=><option key={h} value={h}>{h}h</option>)}
+                </select>
+                <select className="time-select" value={d.pm||0} onChange={e=>upd("pm",Number(e.target.value))} style={{minWidth:58}}>
+                  {[0,10,20,30,40,50].map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}m</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderTop:"1px solid var(--b1)"}}>
+              <span style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase"}}>Self Study</span>
+              <span style={{fontSize:16,fontWeight:700,color:selfStudyMins>=240?"#30d158":selfStudyMins>=120?"#f97316":"var(--tp)"}}>{selfStudyDisplay}</span>
+            </div>
+          </div>
+        </div>
+
+        {mode === "interview" && (
+          <div>
+            <div className="sec-label">Interview Prep</div>
+            <div className="card">
+              <div className="card-row">
+                <div><div className="row-label">Mock PI done today</div><div className="row-sub">Simulate the real thing</div></div>
+                <Tog v={d.mockPI} onChange={v=>upd("mockPI",v)} />
+              </div>
+              <div className="card-row">
+                <div><div className="row-label">WAT practice done</div><div className="row-sub">Written Ability Test</div></div>
+                <Tog v={d.watDone} onChange={v=>upd("watDone",v)} />
+              </div>
+            </div>
+            <div style={{marginTop:10}} className="card">
+              <textarea className="textarea" placeholder="Topics revised today — acads, current affairs, SOP, hobbies..." value={d.topicsRevised||""} onChange={e=>upd("topicsRevised",e.target.value)} rows={3} />
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+function IQuantaLogPage({ d, upd, todayLiveLabel, todayAppLabel, onBack }) {
+  const stats = getIQuantaSessionStats(d);
+  const sessionSub = (session) => {
+    if (session.field === "lc") return todayLiveLabel || session.fallbackSub;
+    if (session.field === "ap") return todayAppLabel || session.fallbackSub;
+    return session.fallbackSub;
+  };
+  const naBtn = (field, dependentField) => (
+    <button
+      onClick={() => { const n = !d[field]; upd(field, n); if (n) upd(dependentField, false); }}
+      className="dw-na-btn"
+      style={{ border: d[field] ? "1px solid var(--tt)" : "1px solid var(--b2)", background: d[field] ? "rgba(110,110,115,0.15)" : "transparent" }}
+    >N/A</button>
+  );
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <button
+          onClick={onBack}
+          style={{ background:"transparent", border:"none", color:"var(--ac)", fontSize:15, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:4, padding:0, marginBottom:8 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          iQuanta Hub
+        </button>
+        <div className="page-title">iQuanta Log</div>
+        <div className="page-sub">Classes · Sessions</div>
+      </div>
+
+      <div className="sections">
+        <div>
+          <div className="sec-label">Today&apos;s iQuanta Work</div>
+          <div className="card">
+            {IQUANTA_SESSION_DEFS.map((session, idx) => (
+              <div key={session.field} className="dw-session-row" style={{borderTop: idx ? "1px solid var(--b1)" : "none"}}>
+                {naBtn(session.naField, session.field)}
+                <div className="dw-session-info">
+                  <div className="row-label">{session.label}</div>
+                  <div className="row-sub">{sessionSub(session)}</div>
+                </div>
+                <div style={{ marginLeft:"auto", opacity: d[session.naField] ? 0.35 : 1, pointerEvents: d[session.naField] ? "none" : "auto" }}>
+                  <Tog v={!!d[session.field]} onChange={v=>{upd(session.field,v);if(v)upd(session.naField,false);}} />
+                </div>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"12px 16px",borderTop:"1px solid var(--b1)",flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase"}}>Session Summary</span>
+              <span style={{fontSize:16,fontWeight:700,color:stats.done>=stats.available&&stats.available>0?"#30d158":stats.done>0?"#f97316":"var(--tp)"}}>
+                {stats.available > 0 ? `${stats.done}/${stats.available} done` : "No sessions due"}
+                {stats.totalMins > 0 ? ` · ${stats.timeLabel}` : ""}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" className="save-btn" onClick={onBack}>Back to iQuanta Hub</button>
       </div>
     </div>
   );
@@ -4774,13 +4815,16 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
 
 function IQuantaHubPage({
   backlogVideos, backlogConcepts, onOpenWatchingBacklog,
-  notes, iq, onIqChange, isSundayIST, setTab, onBack,
+  notes, d = {}, todayLiveLabel, todayAppLabel, isSundayIST, setTab, onBack,
 }) {
   const totalBacklog = backlogVideos.length + backlogConcepts.length;
   const totalDone = backlogVideos.filter(i => i.checked).length + backlogConcepts.filter(i => i.checked).length;
   const backlogPending = totalBacklog - totalDone;
   const backlogCoverage = totalBacklog > 0 ? Math.round((totalDone / totalBacklog) * 100) : 0;
   const currentWatchingBacklog = getCurrentWatchingBacklog(backlogVideos, backlogConcepts);
+  const stats = getIQuantaSessionStats(d);
+  const liveDone = d.lc_na ? "N/A" : d.lc ? "Done" : "Pending";
+  const appDone = d.ap_na ? "N/A" : d.ap ? "Done" : "Pending";
   const latestNote = useMemo(() => {
     return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)))[0] || null;
   }, [notes]);
@@ -4832,6 +4876,35 @@ function IQuantaHubPage({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">iQuanta Log</div>
+          <div className="card">
+            <button
+              className="card-row"
+              onClick={() => setTab("iquanta-log")}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit"}}
+            >
+              <div style={{flex:1,minWidth:0}}>
+                <div className="row-label">Today's Classes</div>
+                <div className="row-sub">
+                  {stats.available > 0
+                    ? `${stats.done}/${stats.available} done${stats.totalMins > 0 ? ` · ${stats.timeLabel}` : ""}`
+                    : "No iQuanta sessions due"}
+                </div>
+                <div className="row-sub" style={{marginTop:4}}>
+                  Live: {liveDone} · App: {appDone}
+                </div>
+                {(todayLiveLabel || todayAppLabel) && (
+                  <div className="row-sub" style={{marginTop:4}}>
+                    {[todayLiveLabel, todayAppLabel].filter(Boolean).join(" · ")}
+                  </div>
+                )}
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tt)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
         </div>
 
@@ -4912,7 +4985,8 @@ function IQuantaHubPage({
   );
 }
 
-function VitalsPage({ d, upd, date, onBack }) {
+function VitalsPage({ d, upd, date, onBack, onSave }) {
+  const [saved, setSaved] = useState(false);
   const water = Number(d.waterLiters) || 0;
   const foodEntries = Array.isArray(d.foodEntries) ? d.foodEntries : [];
   const sleepDuration = getSleepDuration(d.st, d.wt);
@@ -4945,6 +5019,11 @@ function VitalsPage({ d, upd, date, onBack }) {
   const fmt = date
     ? new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long" })
     : "";
+  const handleSaveVitals = async () => {
+    await onSave?.();
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   return (
     <div className="page vitals-page">
@@ -5146,6 +5225,10 @@ function VitalsPage({ d, upd, date, onBack }) {
           </div>
         </div>
       )}
+
+      <button type="button" className={`save-btn${saved?" saved":""}`} onClick={handleSaveVitals}>
+        {saved ? "Vitals saved" : "Save Vitals"}
+      </button>
     </div>
   );
 }
@@ -5156,6 +5239,9 @@ function ProfilePage({
   appTheme, setAppTheme,
   targetPercentile, setTargetPercentile,
   setSharedCalcResult,
+  selectedDate,
+  selectedDayData,
+  masteryProgress = {},
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   category, setCategory,
@@ -5169,6 +5255,21 @@ function ProfilePage({
   const [calcResult, setCalcResult] = useState(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showEffortSplit, setShowEffortSplit] = useState(false);
+  const profileEffort = useMemo(
+    () => calculateEffortScoreV2({
+      dayData: selectedDayData || defaultDay(),
+      masteryProgress,
+      date: selectedDate,
+    }),
+    [selectedDayData, masteryProgress, selectedDate]
+  );
+  const effortRows = [
+    { label:"Learn", val:profileEffort.breakdown.learn, max:30, copy:"Mission selected, chapter Learn pillar, and configured class completion." },
+    { label:"Practice", val:profileEffort.breakdown.practice, max:25, copy:"Quant, VARC, and LRDI practice counts weighted by today's mission section." },
+    { label:"Error Log", val:profileEffort.breakdown.errorLog, max:15, copy:"Mission chapter error count and Error Log pillar completion." },
+    { label:"Discipline", val:profileEffort.breakdown.discipline, max:30, copy:"Sleep target, office, gym, water, food, content, and editing discipline." },
+  ];
   const categories = ["General", "OBC-NCL", "SC", "ST", "EWS", "PWD"];
   const chipStyle = (active) => ({
     padding:"6px 14px", borderRadius:20,
@@ -5286,6 +5387,63 @@ function ProfilePage({
               </span>
               <span>{appTheme === "light" ? "Light" : "Dark"}</span>
             </button>
+          </div>
+        </div>
+
+        <div>
+          <div className="sec-label">Effort</div>
+          <div className="card" style={{padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="row-label">Effort Score Calculation</div>
+                <div className="row-sub">
+                  {selectedDate
+                    ? new Date(selectedDate + "T00:00:00").toLocaleDateString("en-IN", { day:"numeric", month:"short", weekday:"short" })
+                    : "Selected day"} · v2 split-up
+                </div>
+              </div>
+              <button
+                type="button"
+                className="vs-open-btn"
+                onClick={() => setShowEffortSplit(v => !v)}
+                style={{marginTop:0,width:"auto",flex:"0 1 auto"}}
+              >
+                {showEffortSplit ? "Hide Split-up" : "Calculate / View Split-up"}
+              </button>
+            </div>
+
+            {showEffortSplit && (
+              <div style={{marginTop:14,borderTop:"1px solid var(--b1)",paddingTop:14}}>
+                <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:12,marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.08em",textTransform:"uppercase",fontWeight:800}}>Total Score</div>
+                    <div style={{fontSize:34,fontWeight:900,color:"var(--tp)",lineHeight:1}}>
+                      {profileEffort.total}<span style={{fontSize:15,color:"var(--tt)",fontWeight:700}}>/100</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:12,color:profileEffort.total>=80?"#30d158":profileEffort.total>=50?"var(--ac)":profileEffort.total>=25?"#f59e0b":"var(--tt)",fontWeight:800}}>
+                    {profileEffort.total>=80?"Excellent":profileEffort.total>=50?"Solid":profileEffort.total>=25?"Building":"Needs action"}
+                  </div>
+                </div>
+                <div className="bar-track es2-bar">
+                  <div className="bar-fill" style={{width:`${profileEffort.total}%`,background:profileEffort.total>=80?"#30d158":profileEffort.total>=50?"var(--ac)":profileEffort.total>=25?"#f59e0b":"var(--ts)"}}/>
+                </div>
+                <div style={{display:"grid",gap:10,marginTop:12}}>
+                  {effortRows.map(row => (
+                    <div key={row.label} style={{display:"grid",gap:5}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}>
+                        <div style={{fontSize:13,fontWeight:800,color:"var(--tp)"}}>{row.label}</div>
+                        <div style={{fontSize:13,fontWeight:900,color:"var(--tp)",fontVariantNumeric:"tabular-nums"}}>{row.val}/{row.max}</div>
+                      </div>
+                      <div className="bar-track" style={{height:6}}>
+                        <div className="bar-fill" style={{width:`${Math.min(100, Math.round((row.val / row.max) * 100))}%`,background:"var(--ac)"}}/>
+                      </div>
+                      <div style={{fontSize:11,color:"var(--tt)",lineHeight:1.45}}>{row.copy}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -7768,6 +7926,52 @@ export default function App() {
     }
   };
 
+  const saveSelectedDay = async () => {
+    const dayData = data[sel] || defaultDay();
+    try {
+      await fetch("/api/log/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, date: sel, dayData })
+      });
+    } catch (err) {
+      console.error("Log save failed:", err.message);
+    }
+
+    const v2 = calculateEffortScoreV2({ dayData, masteryProgress, date: sel });
+    const score = v2.total;
+    upd(sel, "effortScore", v2.total);
+    upd(sel, "effortBreakdownV2", v2.breakdown);
+    const totalMins =
+      ((dayData.lc || dayData.lc_na) ? 120 : 0) +
+      ((dayData.as || dayData.as_na) ? 40 : 0) +
+      ((dayData.ap || dayData.ap_na) ? 120 : 0) +
+      ((dayData.vp || dayData.vp_na) ? 20 : 0) +
+      ((+dayData.ph || 0) * 60) + (+dayData.pm || 0);
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    const scheduledLiveClass = todayClass.topic !== "None";
+    const missedLiveClass = scheduledLiveClass && !dayData.lc && !dayData.lc_na;
+    const backlogAdded = missedLiveClass ? addMissedLiveClassToBacklog(todayClass, sel) : "";
+    const selDayNum = Math.max(1, Math.floor((new Date(sel + "T00:00:00") - START) / 86400000) + 1);
+
+    const autoMsg = [
+      `Day ${selDayNum} saved. Effort score: ${score}/100.`,
+      `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
+      `Total study time: ${timeStr}.`,
+      isApplicationWindow(sel) ? `CAT application: ${dayData.ca ? "submitted" : "pending"}.` : "",
+      dayData.sk ? `Sudoku: solved ${dayData.skd || "medium"} in ${dayData.skm || 0}m ${dayData.sks || 0}s.` : "",
+      dayData.vm ? `Vedic Math: ${dayData.vmt?.trim() || "topic not specified"}.` : "",
+      missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
+      backlogAdded ? `Moved to video backlog: ${backlogAdded}.` : "",
+      dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",
+      dayData.n?.trim() ? `Journal: ${dayData.n.trim()}` : "",
+    ].filter(Boolean).join(" ");
+
+    await sendToVikram(autoMsg);
+  };
+
   const saveAcademicNote = async ({ id, noteText }) => {
     if (!userId) throw new Error("Missing user ID");
     const text = noteText?.trim();
@@ -7999,51 +8203,7 @@ export default function App() {
         {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} onOpenWatchingBacklog={(target) => {
           setBacklogFocusTarget(target);
           setTab("backlog");
-        }} onSave={async () => {
-          const dayData = data[sel] || defaultDay();
-          try {
-            await fetch("/api/log/save", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId, date: sel, dayData })
-            });
-          } catch (err) {
-            console.error("Log save failed:", err.message);
-          }
-
-          const v2 = calculateEffortScoreV2({ dayData, masteryProgress, date: sel });
-          const score = v2.total;
-          upd(sel, "effortScore", v2.total);
-          upd(sel, "effortBreakdownV2", v2.breakdown);
-          const totalMins =
-            ((dayData.lc || dayData.lc_na) ? 120 : 0) +
-            ((dayData.as || dayData.as_na) ? 40 : 0) +
-            ((dayData.ap || dayData.ap_na) ? 120 : 0) +
-            ((dayData.vp || dayData.vp_na) ? 20 : 0) +
-            ((+dayData.ph || 0) * 60) + (+dayData.pm || 0);
-          const hrs = Math.floor(totalMins / 60);
-          const mins = totalMins % 60;
-          const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-          const scheduledLiveClass = todayClass.topic !== "None";
-          const missedLiveClass = scheduledLiveClass && !dayData.lc && !dayData.lc_na;
-          const backlogAdded = missedLiveClass ? addMissedLiveClassToBacklog(todayClass, sel) : "";
-          const selDayNum = Math.max(1, Math.floor((new Date(sel + "T00:00:00") - START) / 86400000) + 1);
-
-          const autoMsg = [
-            `Day ${selDayNum} saved. Effort score: ${score}/100.`,
-            `Quant: ${dayData.q || 0}/10 | VARC: ${dayData.v || 0}/5 | LRDI: ${dayData.l || 0}/5 | Para: ${dayData.vp_count || 0}/1.`,
-            `Total study time: ${timeStr}.`,
-            isApplicationWindow(sel) ? `CAT application: ${dayData.ca ? "submitted" : "pending"}.` : "",
-            dayData.sk ? `Sudoku: solved ${dayData.skd || "medium"} in ${dayData.skm || 0}m ${dayData.sks || 0}s.` : "",
-            dayData.vm ? `Vedic Math: ${dayData.vmt?.trim() || "topic not specified"}.` : "",
-            missedLiveClass ? `Missed scheduled live class: ${todayLiveLabel}.` : "",
-            backlogAdded ? `Moved to video backlog: ${backlogAdded}.` : "",
-            dayData.iq?.trim() ? `iQuanta notes: ${dayData.iq.trim()}` : "",
-            dayData.n?.trim() ? `Journal: ${dayData.n.trim()}` : "",
-          ].filter(Boolean).join(" ");
-
-          await sendToVikram(autoMsg);
-        }} />}
+        }} onSave={saveSelectedDay} />}
         {tab === "backlog" && (
           <BacklogPage
             videos={backlogVideos}
@@ -8107,6 +8267,7 @@ export default function App() {
             upd={(f,v)=>upd(sel,f,v)}
             date={sel}
             onBack={() => setTab("today")}
+            onSave={saveSelectedDay}
           />
         )}
         {tab==="daily-work" && (
@@ -8114,8 +8275,6 @@ export default function App() {
             d={data[sel] || defaultDay()}
             upd={(f,v) => upd(sel,f,v)}
             mode={mode}
-            todayLiveLabel={todayLiveLabel}
-            todayAppLabel={todayAppLabel}
             onBack={() => setTab("today")}
           />
         )}
@@ -8128,11 +8287,21 @@ export default function App() {
               setTab("backlog");
             }}
             notes={academicNotes}
-            iq={data[sel]?.iq || ""}
-            onIqChange={v => upd(sel, "iq", v)}
+            d={data[sel] || defaultDay()}
+            todayLiveLabel={todayLiveLabel}
+            todayAppLabel={todayAppLabel}
             isSundayIST={isSundayIST}
             setTab={setTab}
             onBack={() => setTab("today")}
+          />
+        )}
+        {tab==="iquanta-log" && (
+          <IQuantaLogPage
+            d={data[sel] || defaultDay()}
+            upd={(f,v) => upd(sel,f,v)}
+            todayLiveLabel={todayLiveLabel}
+            todayAppLabel={todayAppLabel}
+            onBack={() => setTab("iquanta")}
           />
         )}
         {tab==="error-log" && (
@@ -8162,6 +8331,9 @@ export default function App() {
             targetPercentile={targetPercentile}
             setTargetPercentile={setTargetPercentile}
             setSharedCalcResult={setCalcResult}
+            selectedDate={sel}
+            selectedDayData={data[sel] || defaultDay()}
+            masteryProgress={masteryProgress}
             avatarGender={avatarGender}
             avatarSkin={avatarSkin}
             avatarHair={avatarHair}
