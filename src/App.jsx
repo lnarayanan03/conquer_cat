@@ -1122,19 +1122,14 @@ function TodayPage({
   return (
     <div className="page">
       <div className="page-header">
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12}}>
-          <div>
-            <div className="page-title">{greet}</div>
-            <div className="page-sub">{fmt} · Day {dn} of {totalDays}</div>
-            <div style={{fontSize:12,color:"#f97316",opacity:0.8,fontStyle:"italic",marginTop:8}}>{todayQuote}</div>
-            {showFinalPush && (
-              <div className="final-push-note">
-                You are close now. Stay boring, stay calm, and let the paper meet the version of you that refused to quit.
-              </div>
-            )}
+        <div className="page-title">{greet}</div>
+        <div className="page-sub">{fmt} · Day {dn} of {totalDays}</div>
+        <div style={{fontSize:12,color:"#f97316",opacity:0.8,fontStyle:"italic",marginTop:6}}>{todayQuote}</div>
+        {showFinalPush && (
+          <div className="final-push-note">
+            You are close now. Stay boring, stay calm, and let the paper meet the version of you that refused to quit.
           </div>
-          <div className="badge"><span>{dl}d left</span></div>
-        </div>
+        )}
       </div>
       <div className="sections">
         <div>
@@ -1423,29 +1418,19 @@ function TodayPage({
                   <span className="hub-snap-watch-text">{currentWatchingBacklog.item.text}</span>
                 </div>
               ) : (
-                <div className="hub-snap-watch hub-snap-watch--empty">Nothing watching · backlogs, notes &amp; timetable inside</div>
+                <div className="hub-snap-watch hub-snap-watch--empty">No item watching</div>
               )}
-              <div className="hub-snap-stats">
-                {totalBacklog > 0
-                  ? `${backlogPending} pending · ${backlogCoverage}% covered · ${totalBacklog} total`
-                  : "No backlogs logged yet"}
-              </div>
-              <div className="hub-snap-stats">
+              <div className="hub-snap-stats" style={{marginTop:3}}>
                 {iqSessionStats.available > 0
-                  ? `${iqSessionStats.done}/${iqSessionStats.available} classes done${iqSessionStats.totalMins > 0 ? ` · ${iqSessionStats.timeLabel}` : ""}`
-                  : "No iQuanta sessions due"}
+                  ? `${iqSessionStats.done}/${iqSessionStats.available} classes`
+                  : "No sessions due"}
+                {totalBacklog > 0 ? ` · ${backlogPending} backlog pending` : ""}
               </div>
             </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"0 12px 12px"}}>
-              <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta")} style={{flex:"1 1 150px",marginTop:0}}>
-                Open iQuanta Hub
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-              <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta-log")} style={{flex:"1 1 140px",marginTop:0}}>
-                Open iQuanta Log
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
+            <button type="button" className="vs-open-btn" onClick={() => setTab("iquanta")}>
+              Open iQuanta Hub
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
           </div>
         </div>
 
