@@ -224,6 +224,8 @@ const defaultDay = () => ({
   contentPosted:false, editingUnder1Hr:false,
   calories:0, protein:0, carbs:0, fat:0,
   foodEntries:[],
+  missionSectionId:"", missionUnitId:"", missionChapterId:"",
+  effortScore:0, effortBreakdownV2:null,
 });
 
 const MASTERY_PROGRESS_STORAGE_KEY = "conquer_mastery_progress_v1";
@@ -619,6 +621,86 @@ const effortScore = (day, backlogVideos = day?.backlog || [], backlogConcepts = 
   return Math.min(100, Math.round(q + v + l + vp + hrs + lc + passage + sleepScore + backlogScore + sudokuScore + vedicScore + catApplicationScore));
 };
 
+const EV2_PRACTICE_MAIN_TARGET = 10;
+const EV2_PRACTICE_OTHER_TARGET = 5;
+
+function calculateEffortScoreV2({ dayData, masteryProgress = {}, date }) {
+  const day = dayData || defaultDay();
+
+  /* ── LEARN  (30 pts) ── */
+  const missionChapterId = day.missionChapterId || "";
+  let learnScore = 0;
+  if (missionChapterId) {
+    learnScore += 5; // mission selected
+    const chP = getChapterMastery(masteryProgress, missionChapterId);
+    if (chP.pillars.learn) learnScore += 15;
+    const cfg = chP.config;
+    if (cfg.learnLiveConceptTotal > 0) {
+      learnScore += Math.round((Math.min(cfg.learnLiveConceptDone, cfg.learnLiveConceptTotal) / cfg.learnLiveConceptTotal) * 10);
+    } else {
+      learnScore += chP.pillars.learn ? 5 : 0;
+    }
+  }
+  learnScore = Math.min(learnScore, 30);
+
+  /* ── PRACTICE  (25 pts) ── */
+  const mainSec = day.missionSectionId || "";
+  const quant = +day.q || 0;
+  const varc = +day.v || 0;
+  const lrdi = +day.l || 0;
+  const MT = EV2_PRACTICE_MAIN_TARGET;
+  const OT = EV2_PRACTICE_OTHER_TARGET;
+  let mainP = 0, oth1P = 0, oth2P = 0;
+  if (mainSec === "quant") {
+    mainP = Math.min(quant / MT, 1) * 10;
+    oth1P = Math.min(varc / OT, 1) * 7.5;
+    oth2P = Math.min(lrdi / OT, 1) * 7.5;
+  } else if (mainSec === "varc") {
+    mainP = Math.min(varc / MT, 1) * 10;
+    oth1P = Math.min(quant / OT, 1) * 7.5;
+    oth2P = Math.min(lrdi / OT, 1) * 7.5;
+  } else if (mainSec === "lrdi") {
+    mainP = Math.min(lrdi / MT, 1) * 10;
+    oth1P = Math.min(quant / OT, 1) * 7.5;
+    oth2P = Math.min(varc / OT, 1) * 7.5;
+  } else {
+    mainP = Math.min(Math.max(quant, varc, lrdi) / MT, 1) * 10;
+    oth1P = Math.min((quant + varc) / (OT * 2), 1) * 7.5;
+    oth2P = Math.min(lrdi / OT, 1) * 7.5;
+  }
+  const practiceScore = Math.min(Math.round(mainP + oth1P + oth2P), 25);
+
+  /* ── ERROR LOG  (15 pts) ── */
+  let errorLogScore = 0;
+  if (missionChapterId) {
+    const chP = getChapterMastery(masteryProgress, missionChapterId);
+    const errCount = chP.config.errorLogCount;
+    if (errCount > 0) errorLogScore += Math.min(errCount * 2, 10);
+    if (chP.pillars.errorLog) errorLogScore += 5;
+  }
+  errorLogScore = Math.min(errorLogScore, 15);
+
+  /* ── DISCIPLINE  (30 pts) ── */
+  const sleepDay = date ? new Date(date + "T00:00:00").getDay() : new Date().getDay();
+  const sleepTarget = (sleepDay === 0 || sleepDay === 6) ? 8 : 5;
+  const sleepDur = getSleepDuration(day.st, day.wt);
+  const sleepScore = (sleepDur !== null && isFinite(sleepDur) && sleepDur >= sleepTarget) ? 6 : 0;
+  const officeScore = day.officeBefore10 ? 5 : 0;
+  const gymScore = day.gymDone ? 5 : 0;
+  const waterScore = Math.min(Math.round(((+day.waterLiters || 0) / 4) * 4), 4);
+  const entries = Array.isArray(day.foodEntries) ? day.foodEntries : [];
+  const foodScore = (entries.length > 0 || (+day.calories || 0) > 0) ? 4 : 0;
+  const contentScore = day.contentPosted ? 3 : 0;
+  const editingScore = day.editingUnder1Hr ? 3 : 0;
+  const disciplineScore = Math.min(sleepScore + officeScore + gymScore + waterScore + foodScore + contentScore + editingScore, 30);
+
+  const total = Math.min(learnScore + practiceScore + errorLogScore + disciplineScore, 100);
+  return {
+    total,
+    breakdown: { learn: learnScore, practice: practiceScore, errorLog: errorLogScore, discipline: disciplineScore },
+  };
+}
+
 function calcMinPercentile(category) {
   const cutoffs = {
     "General": { oldIIM: 99.5, babyIIM: 97.0, newIIM: 95.0 },
@@ -805,6 +887,7 @@ function TodayPage({
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   todayLiveLabel, todayAppLabel, isSundayIST, theme, onOpenWatchingBacklog,
+  masteryProgress = {},
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -880,7 +963,16 @@ function TodayPage({
   const isExamDay = date === EXAM_DATE_KEY;
   const showApplicationToggle = isApplicationWindow(date);
   const showFinalPush = isFinalPushDate(date);
-  const todayScore = effortScore(d, backlogVideos, backlogConcepts);
+  const v2Score = useMemo(
+    () => calculateEffortScoreV2({ dayData: d, masteryProgress, date }),
+    [d, masteryProgress, date]
+  );
+  const missionSection = CAT_MASTERY_SYLLABUS.find(s => s.id === (d.missionSectionId || ""));
+  const missionUnit = missionSection?.units.find(u => u.id === (d.missionUnitId || ""));
+  const missionChapterObj = missionUnit?.chapters.find(c => c.id === (d.missionChapterId || ""));
+  const missionChP = d.missionChapterId
+    ? getChapterMastery(masteryProgress, d.missionChapterId)
+    : null;
   const latestNote = useMemo(() => {
     return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)))[0] || null;
   }, [notes]);
@@ -1009,41 +1101,101 @@ function TodayPage({
         </div>
       </div>
       <div className="sections">
-        {/* Today's Effort Score — top of page, visible without scrolling */}
+        {/* Effort Score v2 */}
         <div>
           <div className="sec-label">Today's Effort</div>
           <div className="card effort-score-card">
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div className="es2-header">
               <div>
-                <div style={{fontSize:11,color:"var(--tt)",letterSpacing:"0.06em",textTransform:"uppercase",fontWeight:700}}>Effort Score</div>
-                <div style={{display:"flex",alignItems:"baseline",gap:4,marginTop:4}}>
-                  <span style={{fontSize:38,fontWeight:900,color:"var(--ac)",fontVariantNumeric:"tabular-nums",lineHeight:1,letterSpacing:"-0.03em"}}>{todayScore}</span>
-                  <span style={{fontSize:15,color:"var(--tt)",fontWeight:600}}>/100</span>
+                <div className="es2-label">Effort Score</div>
+                <div className="es2-score-row">
+                  <span className="es2-total">{v2Score.total}</span>
+                  <span className="es2-denom">/100</span>
                 </div>
               </div>
-              <div style={{textAlign:"right"}}>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}>
-                  {todayScore>=80
-                    ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#30d158" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="9,12 11,14 15,10"/></svg>
-                    : todayScore>=50
-                      ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--ac)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><path d="M8 6l4 6 4-6"/><path d="M6 14h12"/></svg>
-                      : todayScore>=25
-                        ? <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="3,17 8,12 13,14 21,6"/><polyline points="15,6 21,6 21,12"/></svg>
-                        : null
-                  }
-                </div>
-                <div style={{fontSize:11,fontWeight:700,color:todayScore>=80?"#30d158":todayScore>=50?"var(--ac)":todayScore>=25?"#f59e0b":"var(--tt)"}}>
-                  {todayScore>=80?"Excellent day!":todayScore>=50?"Good progress":todayScore>=25?"Keep going":"Let's get started"}
-                </div>
+              <div className={`es2-status${v2Score.total>=80?" great":v2Score.total>=50?" good":v2Score.total>=25?" ok":""}`}>
+                {v2Score.total>=80?"Excellent day!":v2Score.total>=50?"Good progress":v2Score.total>=25?"Keep going":"Let's start"}
               </div>
             </div>
-            <div className="bar-track" style={{height:6,margin:0}}>
-              <div className="bar-fill" style={{width:`${todayScore}%`,background:todayScore>=80?"#30d158":todayScore>=50?"var(--ac)":todayScore>=25?"#f59e0b":"var(--ts)"}}/>
+            <div className="bar-track es2-bar">
+              <div className="bar-fill" style={{width:`${v2Score.total}%`,background:v2Score.total>=80?"#30d158":v2Score.total>=50?"var(--ac)":v2Score.total>=25?"#f59e0b":"var(--ts)"}}/>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",marginTop:6,fontSize:10,color:"var(--tt)"}}>
-              <span>0</span>
-              <span>100</span>
+            <div className="es2-chips">
+              {[
+                {key:"Learn",    val:v2Score.breakdown.learn,    max:30},
+                {key:"Practice", val:v2Score.breakdown.practice, max:25},
+                {key:"Err Log",  val:v2Score.breakdown.errorLog, max:15},
+                {key:"Discipline",val:v2Score.breakdown.discipline,max:30},
+              ].map(c=>(
+                <div key={c.key} className="es2-chip">
+                  <span className="es2-chip-val">{c.val}</span>
+                  <span className="es2-chip-max">/{c.max}</span>
+                  <span className="es2-chip-key">{c.key}</span>
+                </div>
+              ))}
             </div>
+          </div>
+        </div>
+
+        {/* Today Mission */}
+        <div>
+          <div className="sec-label">Today's Mission</div>
+          <div className="card">
+            <div className="mission-selectors">
+              <select
+                className="mission-select"
+                value={d.missionSectionId||""}
+                onChange={e=>{upd("missionSectionId",e.target.value);upd("missionUnitId","");upd("missionChapterId","");}}
+              >
+                <option value="">Section...</option>
+                {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+              <select
+                className="mission-select"
+                value={d.missionUnitId||""}
+                onChange={e=>{upd("missionUnitId",e.target.value);upd("missionChapterId","");}}
+                disabled={!missionSection}
+              >
+                <option value="">Unit...</option>
+                {(missionSection?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
+              </select>
+              <select
+                className="mission-select"
+                value={d.missionChapterId||""}
+                onChange={e=>upd("missionChapterId",e.target.value)}
+                disabled={!missionUnit}
+              >
+                <option value="">Chapter...</option>
+                {(missionUnit?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </div>
+            {missionChapterObj && missionChP && (
+              <div className="mission-summary">
+                <div className="mission-ch-name">{missionChapterObj.label}</div>
+                <div className="mission-unit-name">{missionUnit?.label}</div>
+                <div className="mission-pillars">
+                  {[
+                    {id:"learn",lbl:"Learn"},
+                    {id:"practice",lbl:"Practice"},
+                    {id:"errorLog",lbl:"Err Log"},
+                  ].map(p=>(
+                    <div key={p.id} className={`mission-pillar${missionChP.pillars[p.id]?" done":""}`}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                        {missionChP.pillars[p.id]
+                          ? <polyline points="20,6 9,17 4,12"/>
+                          : <circle cx="12" cy="12" r="8"/>
+                        }
+                      </svg>
+                      {p.lbl}
+                    </div>
+                  ))}
+                </div>
+                <div className="mission-cfg">{getChapterConfigSummary(missionChP.config)}</div>
+              </div>
+            )}
+            {!missionChapterObj && (
+              <div className="mission-empty">Select section → unit → chapter to set your focus</div>
+            )}
           </div>
         </div>
 
@@ -1642,7 +1794,7 @@ function TodayPage({
             userName={userName}
             userInitials={userInitials}
             theme={theme}
-            effortScore={effortScore(d, backlogVideos, backlogConcepts)}
+            effortScore={v2Score.total}
             avatarGender={avatarGender}
             avatarSkin={avatarSkin}
             avatarHair={avatarHair}
@@ -7523,7 +7675,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} onOpenWatchingBacklog={(target) => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} onOpenWatchingBacklog={(target) => {
           setBacklogFocusTarget(target);
           setTab("backlog");
         }} onSave={async () => {
@@ -7538,7 +7690,10 @@ export default function App() {
             console.error("Log save failed:", err.message);
           }
 
-          const score = effortScore(dayData, backlogVideos, backlogConcepts);
+          const v2 = calculateEffortScoreV2({ dayData, masteryProgress, date: sel });
+          const score = v2.total;
+          upd(sel, "effortScore", v2.total);
+          upd(sel, "effortBreakdownV2", v2.breakdown);
           const totalMins =
             ((dayData.lc || dayData.lc_na) ? 120 : 0) +
             ((dayData.as || dayData.as_na) ? 40 : 0) +
