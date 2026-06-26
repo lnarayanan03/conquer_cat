@@ -1205,6 +1205,13 @@ function TodayPage({
                 </div>
               ))}
             </div>
+            <div style={{borderTop:"1px solid var(--b1)",padding:"9px 16px",display:"flex",justifyContent:"flex-end"}}>
+              <button type="button"
+                onClick={() => onOpenErrorLog?.({sectionId:"", unitId:"", chapterId:""})}
+                style={{background:"transparent",border:"none",color:"var(--ts)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:0,letterSpacing:"0.02em"}}>
+                Review Error Log →
+              </button>
+            </div>
           </div>
         </div>
 
@@ -4046,14 +4053,17 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
           <div className="card" style={{ padding: "12px 14px" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--tp)", marginBottom: 4 }}>{suggestedAction.label}</div>
             <div style={{ fontSize: 12, color: "var(--ts)", lineHeight: 1.5, marginBottom: 10 }}>{suggestedAction.hint}</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {suggestedAction.tab && (
                 <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab(suggestedAction.tab)}>
-                  Open {suggestedAction.tab === "today" ? "Today" : suggestedAction.tab === "vitals" ? "Vitals" : suggestedAction.tab === "daily-work" ? "Work Log" : suggestedAction.tab === "error-log" ? "Error Log" : suggestedAction.tab === "iquanta" ? "iQuanta Hub" : "Map"}
+                  {suggestedAction.tab === "today" ? "Go to Today" : suggestedAction.tab === "vitals" ? "Open Vitals" : suggestedAction.tab === "daily-work" ? "Open Work Log" : suggestedAction.tab === "error-log" ? "Review Error Log" : suggestedAction.tab === "iquanta" ? "Open iQuanta Hub" : "Open Map"}
                 </button>
               )}
-              <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab("today")}>Today</button>
-              <button type="button" className="vs-open-btn" style={{ fontSize: 11, padding: "6px 12px" }} onClick={() => setTab("error-log")}>Error Log</button>
+              {suggestedAction.tab !== "today" && (
+                <button type="button" onClick={() => setTab("today")} style={{ background: "transparent", border: "none", color: "var(--tt)", fontSize: 11, cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}>
+                  Back to Today
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -8068,10 +8078,6 @@ export default function App() {
             : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           }
         </button>
-        <div className="mobile-days-pill" aria-label={`${dl} days to CAT`}>
-          <span>{dl}</span>
-          <small>DAYS</small>
-        </div>
       </header>
 
       <button
@@ -8137,10 +8143,6 @@ export default function App() {
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </button>
-        <div className="days-pill">
-          <div className="dp-num">{dl}</div>
-          <div className="dp-lab">days to CAT</div>
-        </div>
         <div className="mobile-started">
           <button
             onClick={() => {
