@@ -3041,7 +3041,7 @@ function useMediaQuery(query) {
   return matches;
 }
 
-function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, backlogConcepts }) {
+function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, backlogConcepts, setTab }) {
   const isPhone = useMediaQuery("(max-width: 767px)");
   const subj = [
     {id:"quant",lbl:"Quant",tar:2000,act:totals.quant,dailyTarget:10},
@@ -3238,6 +3238,23 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
             </div>
           ))}
         </div>
+
+        {setTab && (
+          <button type="button" className="progress-insta-btn" onClick={() => setTab("insta")}>
+            <div className="progress-insta-btn-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17" cy="7" r="1"/>
+              </svg>
+            </div>
+            <div className="progress-insta-btn-text">
+              <div className="progress-insta-btn-label">Share Progress Card</div>
+              <div className="progress-insta-btn-sub">Generate your Insta-ready CAT card</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -6796,7 +6813,6 @@ export default function App() {
     {id:"progress", lbl:"Progress"},
     {id:"calendar", lbl:"Calendar"},
     {id:"chat",     lbl:"Mentor"},
-    {id:"insta",    lbl:"Insta"},
     {id:"profile",  lbl:"Profile"},
   ];
   const mobileActiveIdx = mobileTabs.findIndex(t => t.id === tab);
@@ -7075,7 +7091,7 @@ export default function App() {
           />
         )}
         {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} />}
-        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}
+        {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} setTab={setTab} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="profile" && (
           <ProfilePage
