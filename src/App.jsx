@@ -220,6 +220,211 @@ const defaultDay = () => ({
   iq:"", n:"", backlog:[]
 });
 
+const MASTERY_PROGRESS_STORAGE_KEY = "conquer_mastery_progress_v1";
+const MASTERY_PILLARS = [
+  { id: "learn", label: "Learn" },
+  { id: "practice", label: "Practice" },
+  { id: "errorLog", label: "Error Log" },
+];
+const MASTERY_PILLAR_DEFAULTS = {
+  learn: false,
+  practice: false,
+  errorLog: false,
+};
+const MASTERY_CONFIG_DEFAULTS = {
+  learnLiveConceptClasses: 0,
+  applicationClasses: 0,
+  assignments: 0,
+  totalPracticeQuestions: 0,
+  questionsCompleted: 0,
+  errorLogCount: 0,
+};
+
+const makeMasteryId = (...parts) => parts
+  .join(" ")
+  .toLowerCase()
+  .replace(/&/g, "and")
+  .replace(/[^a-z0-9]+/g, "-")
+  .replace(/^-+|-+$/g, "");
+
+const makeMasteryUnit = (sectionId, unitLabel, chapters) => ({
+  id: makeMasteryId(sectionId, unitLabel),
+  label: unitLabel,
+  chapters: chapters.map(chapterLabel => ({
+    id: makeMasteryId(sectionId, unitLabel, chapterLabel),
+    label: chapterLabel,
+  })),
+});
+
+const CAT_MASTERY_SYLLABUS = [
+  {
+    id: "quant",
+    label: "Quant",
+    units: [
+      makeMasteryUnit("quant", "Number System", [
+        "Classification of Numbers",
+        "Factors and its Properties",
+        "Divisibility",
+        "Remainder",
+        "Last Digit and Misc Concepts",
+        "HCF and LCM",
+      ]),
+      makeMasteryUnit("quant", "Arithmetic", [
+        "Percentage",
+        "Profit and Loss",
+        "Simple and Compound Interest",
+        "Ratio and Proportion",
+        "Averages, Mixtures and Alligation",
+        "Time and Work",
+        "TSD",
+      ]),
+      makeMasteryUnit("quant", "Algebra", [
+        "Linear Equations",
+        "Quadratic Equations",
+        "Algebraic Identities and Polynomials",
+        "Surds and Indices",
+        "Progression and Series",
+        "Logarithms",
+        "Inequalities",
+        "Modulus",
+        "Maxima and Minima",
+        "Functions and Graphs",
+      ]),
+      makeMasteryUnit("quant", "Geometry", [
+        "Lines and Angles",
+        "Triangles",
+        "Quadrilaterals",
+        "Circle",
+        "Polygon",
+        "3D Mensuration",
+        "Coordinate Geometry",
+      ]),
+      makeMasteryUnit("quant", "Modern Maths", [
+        "Permutation and Combination",
+        "Probability",
+      ]),
+    ],
+  },
+  {
+    id: "lrdi",
+    label: "LRDI",
+    units: [
+      makeMasteryUnit("lrdi", "Logical Reasoning", [
+        "Linear Arrangement",
+        "Circular Arrangement",
+        "Binary Logic",
+        "Selection",
+        "Distribution",
+        "Ranking and Ordering",
+        "Games and Tournament",
+        "Cubes",
+        "Routes and Network",
+        "Scheduling",
+        "Quant-Based Reasoning",
+        "Venn Diagram",
+      ]),
+      makeMasteryUnit("lrdi", "Data Interpretation", [
+        "Tables",
+        "Bar Chart",
+        "Line Chart",
+        "Pie Chart",
+        "Special Chart",
+        "Reasoning-Based DI",
+        "Caselets",
+      ]),
+    ],
+  },
+  {
+    id: "varc",
+    label: "VARC",
+    units: [
+      makeMasteryUnit("varc", "Reading Comprehension", [
+        "Intro to RC and Types of Questions",
+        "Process of Elimination",
+        "Critical Reasoning",
+        "Philosophy, Sociology and Psychology",
+        "Society, Culture and Politics",
+        "Science and Environment",
+        "Business and Economics",
+        "Technology and AI",
+        "History",
+        "Arts and Literature",
+      ]),
+      makeMasteryUnit("varc", "Verbal Ability", [
+        "Para Summary",
+        "Para Jumbles",
+        "Para Completion / Fill in the Blanks",
+        "Odd One Out",
+      ]),
+    ],
+  },
+];
+
+function defaultChapterMastery() {
+  return {
+    pillars: { ...MASTERY_PILLAR_DEFAULTS },
+    config: { ...MASTERY_CONFIG_DEFAULTS },
+  };
+}
+
+function normalizeChapterMastery(value) {
+  const base = defaultChapterMastery();
+  return {
+    pillars: { ...base.pillars, ...(value?.pillars || {}) },
+    config: { ...base.config, ...(value?.config || {}) },
+  };
+}
+
+function readMasteryProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MASTERY_PROGRESS_STORAGE_KEY) || "{}");
+    return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+function getChapterMastery(progress, chapterId) {
+  return normalizeChapterMastery(progress?.[chapterId]);
+}
+
+function getChapterMasteryStats(progress, chapterId) {
+  const chapterProgress = getChapterMastery(progress, chapterId);
+  const completed = MASTERY_PILLARS.reduce(
+    (sum, pillar) => sum + (chapterProgress.pillars[pillar.id] ? 1 : 0),
+    0
+  );
+  const total = MASTERY_PILLARS.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const status = completed === 0
+    ? "Not started"
+    : completed === total
+      ? "Mastered"
+      : `${completed}/${total} pillars`;
+
+  return { completed, total, pct, status };
+}
+
+function getMasteryAggregate(chapters, progress) {
+  const total = chapters.length * MASTERY_PILLARS.length;
+  const completed = chapters.reduce(
+    (sum, chapter) => sum + getChapterMasteryStats(progress, chapter.id).completed,
+    0
+  );
+  const completedChapters = chapters.reduce(
+    (sum, chapter) => sum + (getChapterMasteryStats(progress, chapter.id).pct === 100 ? 1 : 0),
+    0
+  );
+
+  return {
+    completed,
+    total,
+    pct: total > 0 ? Math.round((completed / total) * 100) : 0,
+    completedChapters,
+    totalChapters: chapters.length,
+  };
+}
+
 function getCurrentWatchingBacklog(videos = [], concepts = []) {
   const video = videos.find(item => item?.watching);
   if (video) return { type: "Video", item: video };
@@ -505,6 +710,7 @@ function NavIcon({ id }) {
   const icons = {
     today: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>,
     progress: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>,
+    mastery: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>,
     calendar: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
     chat: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
     profile: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
@@ -3032,6 +3238,188 @@ function ProgressPage({ data, totals, dl, dn, start, totalDays, backlogVideos, b
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MasteryMapPage({ progress, setProgress }) {
+  const allChapters = useMemo(
+    () => CAT_MASTERY_SYLLABUS.flatMap(section => section.units.flatMap(unit => unit.chapters)),
+    []
+  );
+  const overall = useMemo(() => getMasteryAggregate(allChapters, progress), [allChapters, progress]);
+  const sections = useMemo(
+    () => CAT_MASTERY_SYLLABUS.map(section => {
+      const chapters = section.units.flatMap(unit => unit.chapters);
+      return { ...section, stats: getMasteryAggregate(chapters, progress) };
+    }),
+    [progress]
+  );
+  const pendingPillars = overall.total - overall.completed;
+
+  const updatePillar = (chapterId, pillarId, checked) => {
+    setProgress(prev => {
+      const current = normalizeChapterMastery(prev?.[chapterId]);
+      return {
+        ...prev,
+        [chapterId]: {
+          ...current,
+          pillars: {
+            ...current.pillars,
+            [pillarId]: checked,
+          },
+        },
+      };
+    });
+  };
+
+  return (
+    <div className="page mastery-page">
+      <div className="page-header">
+        <div className="page-title">Mastery Map</div>
+        <div className="page-sub">CAT 2026 syllabus / Learn, Practice, Error Log</div>
+      </div>
+
+      <div className="mastery-summary-grid">
+        <div className="card mastery-summary-card mastery-summary-wide">
+          <div className="mastery-summary-top">
+            <div>
+              <div className="sec-label">Overall mastery</div>
+              <div className="mastery-summary-title">{overall.pct}%</div>
+            </div>
+            <div className="mastery-summary-count">
+              {overall.completedChapters}/{overall.totalChapters} chapters
+            </div>
+          </div>
+          <div
+            className="bar-track mastery-large-bar"
+            role="progressbar"
+            aria-label="Overall mastery progress"
+            aria-valuenow={overall.pct}
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div className="bar-fill" style={{ width: `${overall.pct}%` }} />
+          </div>
+        </div>
+        <div className="card mastery-summary-card">
+          <div className="mastery-metric">{overall.completed}</div>
+          <div className="mastery-metric-label">Pillars complete</div>
+        </div>
+        <div className="card mastery-summary-card">
+          <div className="mastery-metric">{pendingPillars}</div>
+          <div className="mastery-metric-label">Pillars pending</div>
+        </div>
+      </div>
+
+      <div className="mastery-sections">
+        {sections.map(section => (
+          <section key={section.id} className={`mastery-section mastery-section-${section.id}`}>
+            <div className="mastery-section-head">
+              <div>
+                <div className="sec-label">{section.label}</div>
+                <h2>{section.label}</h2>
+                <p>{section.units.length} units / {section.stats.totalChapters} chapters</p>
+              </div>
+              <div className="mastery-section-pct">{section.stats.pct}%</div>
+            </div>
+            <div
+              className="bar-track mastery-section-bar"
+              role="progressbar"
+              aria-label={`${section.label} mastery progress`}
+              aria-valuenow={section.stats.pct}
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <div className="bar-fill" style={{ width: `${section.stats.pct}%` }} />
+            </div>
+
+            <div className="mastery-unit-list">
+              {section.units.map(unit => {
+                const unitStats = getMasteryAggregate(unit.chapters, progress);
+
+                return (
+                  <div key={unit.id} className="card mastery-unit-card">
+                    <div className="mastery-unit-head">
+                      <div>
+                        <h3>{unit.label}</h3>
+                        <p>{unitStats.completedChapters}/{unitStats.totalChapters} chapters mastered</p>
+                      </div>
+                      <div className="mastery-unit-pct">{unitStats.pct}%</div>
+                    </div>
+                    <div
+                      className="bar-track mastery-unit-bar"
+                      role="progressbar"
+                      aria-label={`${unit.label} progress`}
+                      aria-valuenow={unitStats.pct}
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    >
+                      <div className="bar-fill" style={{ width: `${unitStats.pct}%` }} />
+                    </div>
+
+                    <div className="mastery-chapter-list">
+                      {unit.chapters.map(chapter => {
+                        const chapterProgress = getChapterMastery(progress, chapter.id);
+                        const chapterStats = getChapterMasteryStats(progress, chapter.id);
+
+                        return (
+                          <div
+                            key={chapter.id}
+                            className={`mastery-chapter${chapterStats.pct === 100 ? " complete" : ""}`}
+                          >
+                            <div className="mastery-chapter-main">
+                              <div className="mastery-chapter-title">{chapter.label}</div>
+                              <div className="mastery-chapter-meta">
+                                <span>{chapterStats.status}</span>
+                                <span>{chapterStats.completed}/{chapterStats.total}</span>
+                              </div>
+                            </div>
+                            <div className="mastery-chapter-progress">
+                              <div
+                                className="bar-track mastery-chapter-bar"
+                                role="progressbar"
+                                aria-label={`${chapter.label} progress`}
+                                aria-valuenow={chapterStats.pct}
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                              >
+                                <div className="bar-fill" style={{ width: `${chapterStats.pct}%` }} />
+                              </div>
+                              <span>{chapterStats.pct}%</span>
+                            </div>
+                            <div className="mastery-pillars">
+                              {MASTERY_PILLARS.map(pillar => {
+                                const active = !!chapterProgress.pillars[pillar.id];
+                                return (
+                                  <button
+                                    key={pillar.id}
+                                    type="button"
+                                    className={`mastery-pillar-btn${active ? " active" : ""}`}
+                                    aria-pressed={active}
+                                    onClick={() => updatePillar(chapter.id, pillar.id, !active)}
+                                  >
+                                    <span className="mastery-pillar-check" aria-hidden="true">
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                    </span>
+                                    {pillar.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
@@ -5616,6 +6004,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [appTheme, setAppTheme] = useState(() => localStorage.getItem("conquer_theme") || "dark");
   const [data, setData] = useState(() => { try { return JSON.parse(localStorage.getItem("cat_prep_data") || "{}") } catch { return {} } });
+  const [masteryProgress, setMasteryProgress] = useState(readMasteryProgress);
   const [backlogVideos, setBacklogVideos] = useState(() => {
     try {
       const old = JSON.parse(localStorage.getItem("conquer_backlog") || "[]");
@@ -5755,6 +6144,9 @@ export default function App() {
   };
 
   useEffect(() => { localStorage.setItem("cat_prep_data", JSON.stringify(data)) }, [data]);
+  useEffect(() => {
+    localStorage.setItem(MASTERY_PROGRESS_STORAGE_KEY, JSON.stringify(masteryProgress));
+  }, [masteryProgress]);
   useEffect(() => {
     const theme = appTheme === "light" ? "light" : "dark";
     localStorage.setItem("conquer_theme", theme);
@@ -6340,15 +6732,23 @@ export default function App() {
     setNotesSyncMessage("");
   };
 
-  const nav = [{id:"today",lbl:"Today"},{id:"progress",lbl:"Progress"},{id:"calendar",lbl:"Calendar"},{id:"chat",lbl:"Mentor"}];
+  const nav = [
+    {id:"today",lbl:"Today"},
+    {id:"mastery",lbl:"Mastery Map"},
+    {id:"progress",lbl:"Progress"},
+    {id:"calendar",lbl:"Calendar"},
+    {id:"chat",lbl:"Mentor"}
+  ];
   const mobileTabs = [
     {id:"today",    lbl:"Today"},
+    {id:"mastery",  lbl:"Map"},
     {id:"progress", lbl:"Progress"},
     {id:"calendar", lbl:"Calendar"},
     {id:"chat",     lbl:"Mentor"},
     {id:"insta",    lbl:"Insta"},
     {id:"profile",  lbl:"Profile"},
   ];
+  const mobileActiveIdx = mobileTabs.findIndex(t => t.id === tab);
 
   return (
     <div className={`app theme-${appTheme === "light" ? "light" : "dark"}`}>
@@ -6623,6 +7023,7 @@ export default function App() {
             onAutoSend={sendToVikram}
           />
         )}
+        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="profile" && (
@@ -6736,8 +7137,12 @@ export default function App() {
       </main>
 
       <nav
-        className="ios-bottom-nav"
-        style={{"--active-idx": Math.max(0, mobileTabs.findIndex(t => t.id === tab))}}
+        className={`ios-bottom-nav${mobileActiveIdx < 0 ? " inactive" : ""}`}
+        style={{
+          "--active-idx": mobileActiveIdx,
+          "--tab-count": mobileTabs.length,
+          "--tab-gap-total": `${(mobileTabs.length - 1) * 4}px`
+        }}
         aria-label="Mobile primary navigation"
       >
         {mobileTabs.map(item => (
