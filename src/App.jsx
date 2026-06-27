@@ -932,7 +932,7 @@ function TodayPage({
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   todayLiveLabel, todayAppLabel, isSundayIST, theme, onOpenWatchingBacklog,
-  masteryProgress = {}, onOpenErrorLog, errorLog = [],
+  masteryProgress = {}, onOpenErrorLog, errorLog = [], onShowFocusInMap,
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
@@ -1226,7 +1226,7 @@ function TodayPage({
           <div className="card">
             {missionChapterObj ? (
               <div className="cl-selected">
-                <button type="button" className="cl-focus-nav-row" onClick={()=>setTab("mastery")} aria-label="Open Mastery Map">
+                <button type="button" className="cl-focus-nav-row" onClick={onShowFocusInMap || (()=>setTab("mastery"))} aria-label="Open Mastery Map">
                   <span className="cl-focus-breadcrumb">
                     {missionSection?.label} → {missionUnit?.label} → {missionChapterObj.label}
                   </span>
@@ -3355,7 +3355,7 @@ function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateC
   );
 }
 
-function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, todayFocus = {}, onSetTodayFocus }) {
+function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, todayFocus = {}, onSetTodayFocus, pendingMapFocusJump = false, onMapFocusJumpConsumed }) {
   const allChapters = useMemo(
     () => CAT_MASTERY_SYLLABUS.flatMap(section => section.units.flatMap(unit => unit.chapters)),
     []
@@ -3369,8 +3369,15 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
     [progress]
   );
 
-  const [selectedSection, setSelectedSection] = useState("all");
-  const [expandedUnits, setExpandedUnits] = useState(() => new Set());
+  // Initialise to focused section/unit so there's no flash of "All" on mount
+  const [selectedSection, setSelectedSection] = useState(() => {
+    const fSec = todayFocus?.missionSectionId || "";
+    return ["quant","lrdi","varc"].includes(fSec) ? fSec : "all";
+  });
+  const [expandedUnits, setExpandedUnits] = useState(() => {
+    const uid = todayFocus?.missionUnitId;
+    return uid ? new Set([uid]) : new Set();
+  });
   const [workspaceTarget, setWorkspaceTarget] = useState(null);
   const [showFocusSelector, setShowFocusSelector] = useState(false);
   const [focusDraft, setFocusDraft] = useState({ sectionId:"", unitId:"", chapterId:"" });
@@ -3386,6 +3393,22 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
   const hasFocus         = !!(focusChapterObj);
   const draftSectionObj  = CAT_MASTERY_SYLLABUS.find(s => s.id === focusDraft.sectionId) || null;
   const draftUnitObj     = draftSectionObj?.units.find(u => u.id === focusDraft.unitId) || null;
+
+  // When user clicks "Current Learning" on Today, jump & highlight in catalogue
+  useEffect(() => {
+    if (!pendingMapFocusJump) return;
+    onMapFocusJumpConsumed?.();
+    if (!focusSectionId || !focusUnitId || !focusChapterId) return;
+    setSelectedSection(focusSectionId);
+    setExpandedUnits(prev => new Set([...prev, focusUnitId]));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById(`chapter-card-${focusChapterId}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedChapterId(focusChapterId);
+      setTimeout(() => setHighlightedChapterId(null), 1800);
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMapFocusJump]);
 
   const getInitialExpanded = useCallback((sectionId) => {
     if (sectionId === "all") return new Set();
@@ -3600,7 +3623,7 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
               type="button"
               role="tab"
               aria-selected={selectedSection === tab.id}
-              className={`mastery-tab${selectedSection === tab.id ? " active" : ""}${tab.id !== "all" ? ` mastery-tab-${tab.id}` : ""}`}
+              className={`mastery-tab${selectedSection === tab.id ? " active" : ""}${tab.id === focusSectionId && tab.id !== "all" ? " current-focus-section" : ""}${tab.id !== "all" ? ` mastery-tab-${tab.id}` : ""}`}
               onClick={() => handleSelectSection(tab.id)}
             >
               {tab.label}
@@ -3640,7 +3663,7 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
             const unitStats = getMasteryAggregate(unit.chapters, progress);
             const isExpanded = expandedUnits.has(unit.id);
             return (
-              <div key={unit.id} className={`mastery-acc-unit${unitStats.pct === 100 ? " complete" : ""}`}>
+              <div key={unit.id} className={`mastery-acc-unit${unitStats.pct === 100 ? " complete" : ""}${unit.id === focusUnitId ? " current-focus-unit" : ""}`}>
                 <button
                   type="button"
                   className="mastery-acc-hdr"
@@ -3648,26 +3671,28 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
                   aria-controls={`uc-${unit.id}`}
                   onClick={() => toggleUnit(unit.id)}
                 >
-                  <div className="mastery-acc-hdr-left">
-                    <span className="mastery-acc-unit-name">{unit.label}</span>
-                    <span className="mastery-acc-unit-sub">
-                      {unitStats.completedChapters}/{unitStats.totalChapters} ch
-                    </span>
-                  </div>
-                  <div className="mastery-acc-hdr-right">
-                    <div className="bar-track mastery-acc-unit-bar">
-                      <div className="bar-fill" style={{ width: `${unitStats.pct}%` }} />
+                  <div className="mastery-acc-hdr-top">
+                    <div className="mastery-acc-hdr-left">
+                      <span className="mastery-acc-unit-name">{unit.label}</span>
+                      <span className="mastery-acc-unit-sub">
+                        {unitStats.completedChapters}/{unitStats.totalChapters} ch
+                      </span>
                     </div>
-                    <span className="mastery-acc-unit-pct">{unitStats.pct}%</span>
-                    <svg
-                      className={`mastery-chevron${isExpanded ? " open" : ""}`}
-                      width="14" height="14" viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor" strokeWidth="2.5"
-                      strokeLinecap="round" strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    <div className="mastery-acc-hdr-right">
+                      <span className="mastery-acc-unit-pct">{unitStats.pct}%</span>
+                      <svg
+                        className={`mastery-chevron${isExpanded ? " open" : ""}`}
+                        width="14" height="14" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" strokeWidth="2.5"
+                        strokeLinecap="round" strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="bar-track mastery-acc-unit-bar-full">
+                    <div className="bar-fill" style={{ width: `${unitStats.pct}%` }} />
                   </div>
                 </button>
 
@@ -3677,9 +3702,10 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, today
                       const chP = getChapterMastery(progress, chapter.id);
                       const chS = getChapterMasteryStats(progress, chapter.id);
                       return (
-                        <div key={chapter.id} id={`chapter-card-${chapter.id}`} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}${highlightedChapterId === chapter.id ? " chapter-card-focus-pulse" : ""}`}>
+                        <div key={chapter.id} id={`chapter-card-${chapter.id}`} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}${chapter.id === focusChapterId ? " current-focus-chapter" : ""}${highlightedChapterId === chapter.id ? " chapter-card-focus-pulse" : ""}`}>
                           <div className="mastery-ch-top">
                             <span className="mastery-ch-name">{chapter.label}</span>
+                            {chapter.id === focusChapterId && <span className="ch-now-badge" aria-label="Current focus">Now</span>}
                             <div className="mastery-ch-actions">
                               <span className={`mastery-ch-count${chS.pct === 100 ? " done" : chS.completed > 0 ? " partial" : ""}`}>
                                 {chS.completed}/{chS.total}
@@ -7414,6 +7440,7 @@ export default function App() {
     catch { return []; }
   });
   const [errorLogPrefill, setErrorLogPrefill] = useState(null);
+  const [pendingMapFocusJump, setPendingMapFocusJump] = useState(false);
   const [academicNotes, setAcademicNotes] = useState(() => {
     return readLocalAcademicNotes();
   });
@@ -8363,7 +8390,7 @@ export default function App() {
         {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} onOpenWatchingBacklog={(target) => {
           setBacklogFocusTarget(target);
           setTab("backlog");
-        }} onSave={saveSelectedDay} />}
+        }} onShowFocusInMap={() => { setTab("mastery"); setPendingMapFocusJump(true); }} onSave={saveSelectedDay} />}
         {tab === "backlog" && (
           <BacklogPage
             videos={backlogVideos}
@@ -8474,7 +8501,7 @@ export default function App() {
             onDelete={id => setErrorLog(prev => prev.filter(e => e.id !== id))}
           />
         )}
-        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} todayFocus={data[todayKey()] || defaultDay()} onSetTodayFocus={(sectionId, unitId, chapterId, mode) => { const tk = todayKey(); upd(tk,"missionSectionId",sectionId); upd(tk,"missionUnitId",unitId); upd(tk,"missionChapterId",chapterId); if (mode !== undefined) upd(tk,"currentMode",mode||""); }} />}
+        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} todayFocus={data[todayKey()] || defaultDay()} onSetTodayFocus={(sectionId, unitId, chapterId, mode) => { const tk = todayKey(); upd(tk,"missionSectionId",sectionId); upd(tk,"missionUnitId",unitId); upd(tk,"missionChapterId",chapterId); if (mode !== undefined) upd(tk,"currentMode",mode||""); }} pendingMapFocusJump={pendingMapFocusJump} onMapFocusJumpConsumed={() => setPendingMapFocusJump(false)} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} setTab={setTab} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="profile" && (

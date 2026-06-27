@@ -3879,11 +3879,274 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .app.theme-light .map-focus-errors-btn,
 .app.theme-light .map-focus-choose-btn { background: #f5f5f7; border-color: #d1d1d6; color: #3c3c43; }
 
-/* Chapter card focus-pulse highlight */
+/* Chapter card focus-pulse highlight (transient — from Find in Map) */
 .mastery-ch-row.chapter-card-focus-pulse {
   border-radius: 6px;
   outline: 2px solid rgba(249,115,22,0.65);
   outline-offset: 2px;
   background: rgba(249,115,22,0.06);
   transition: outline 0.2s, background 0.2s;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mastery Map — Current Focus permanent highlight (Tasks 1 & 2)
+══════════════════════════════════════════════════════════ */
+
+/* Section tab: "I live here" accent even when viewing another section */
+.mastery-tab.current-focus-section:not(.active) {
+  border-color: rgba(249,115,22,0.42);
+  color: rgba(249,115,22,0.9);
+  background: rgba(249,115,22,0.06);
+}
+.app.theme-light .mastery-tab.current-focus-section:not(.active) {
+  border-color: rgba(234,88,12,0.4);
+  color: rgba(194,65,12,0.9);
+  background: rgba(249,115,22,0.07);
+}
+
+/* Unit accordion: stronger orange left edge + subtle header tint */
+.mastery-acc-unit.current-focus-unit {
+  border-color: rgba(249,115,22,0.42);
+}
+.mastery-acc-unit.current-focus-unit .mastery-acc-hdr {
+  background: rgba(249,115,22,0.05);
+}
+/* Override the section-coloured left border with a stronger orange on focused unit */
+.mastery-acc-quant .mastery-acc-unit.current-focus-unit,
+.mastery-acc-lrdi  .mastery-acc-unit.current-focus-unit,
+.mastery-acc-varc  .mastery-acc-unit.current-focus-unit {
+  border-left: 3px solid rgba(249,115,22,0.72);
+}
+.app.theme-light .mastery-acc-unit.current-focus-unit {
+  border-color: rgba(234,88,12,0.32);
+}
+
+/* Chapter row: inset left stripe + warm tinted background (permanent) */
+.mastery-ch-row.current-focus-chapter {
+  background: rgba(249,115,22,0.07);
+  box-shadow: inset 3px 0 0 rgba(249,115,22,0.68);
+}
+.mastery-ch-row.current-focus-chapter:hover { background: rgba(249,115,22,0.11); }
+.mastery-ch-row.current-focus-chapter .mastery-ch-name {
+  font-weight: 800;
+  color: var(--tp);
+}
+.app.theme-light .mastery-ch-row.current-focus-chapter {
+  background: rgba(249,115,22,0.07);
+  box-shadow: inset 3px 0 0 rgba(234,88,12,0.72);
+}
+
+/* "Now" pill badge next to the focused chapter name */
+.ch-now-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mastery Map — Visual lift (Task 7 + Extra Task)
+══════════════════════════════════════════════════════════ */
+
+/* Chapter rows: more breathing room */
+.mastery-ch-row { padding: 10px 14px; }
+
+/* Chapter names: slightly more readable */
+.mastery-ch-name { font-size: 13px; }
+
+/* Section tabs: slightly taller for iOS feel */
+.mastery-tab { height: 33px; padding: 0 16px; }
+
+/* Unit header: a touch more padding */
+.mastery-acc-hdr { padding: 12px 14px; }
+
+/* Overall bar: slightly thicker */
+.mastery-overall-bar { height: 6px; }
+
+/* Section-coloured gradient fills — bars feel alive, not flat grey */
+.mastery-acc-quant .bar-fill {
+  background: linear-gradient(90deg, rgba(249,115,22,0.82), rgba(251,146,60,0.96));
+}
+.mastery-acc-lrdi .bar-fill {
+  background: linear-gradient(90deg, rgba(59,130,246,0.82), rgba(96,165,250,0.96));
+}
+.mastery-acc-varc .bar-fill {
+  background: linear-gradient(90deg, rgba(48,209,88,0.82), rgba(74,222,128,0.96));
+}
+.mastery-sec-card-quant .bar-fill {
+  background: linear-gradient(90deg, rgba(249,115,22,0.82), rgba(251,146,60,0.96));
+}
+.mastery-sec-card-lrdi .bar-fill {
+  background: linear-gradient(90deg, rgba(59,130,246,0.82), rgba(96,165,250,0.96));
+}
+.mastery-sec-card-varc .bar-fill {
+  background: linear-gradient(90deg, rgba(48,209,88,0.82), rgba(74,222,128,0.96));
+}
+.mastery-overall-bar .bar-fill {
+  background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+/* Light theme: slightly deeper gradient for contrast */
+.app.theme-light .mastery-acc-quant .bar-fill {
+  background: linear-gradient(90deg, rgba(234,88,12,0.82), rgba(249,115,22,0.96));
+}
+.app.theme-light .mastery-acc-lrdi .bar-fill {
+  background: linear-gradient(90deg, rgba(37,99,235,0.82), rgba(59,130,246,0.96));
+}
+.app.theme-light .mastery-acc-varc .bar-fill {
+  background: linear-gradient(90deg, rgba(22,163,74,0.82), rgba(34,197,94,0.96));
+}
+.app.theme-light .mastery-overall-bar .bar-fill {
+  background: linear-gradient(90deg, #ea580c, #f97316);
+}
+
+/* Mastery pills: slightly more comfortable height */
+.mastery-pill { height: 24px; padding: 0 10px; }
+
+/* ══════════════════════════════════════════════════════════
+   Typography & spacing consistency — Mastery + general
+══════════════════════════════════════════════════════════ */
+
+/* Consistent line-height on sub-labels */
+.mastery-overall-label,
+.mastery-acc-unit-sub,
+.mastery-tab-badge,
+.mastery-sec-card-sub { line-height: 1.2; letter-spacing: 0.04em; }
+
+/* Config summary: allow two lines so full context shows */
+.mastery-ch-config-summary {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: clip;
+  line-height: 1.4;
+}
+
+/* Unit name: slightly less heavy so page feels lighter */
+.mastery-acc-unit-name { font-weight: 750; }
+
+/* Gap between unit accordions */
+.mastery-acc { gap: 8px; }
+
+/* Consistent spacing between section tab bar and accordion */
+.mastery-tabs { margin-bottom: 14px; }
+
+/* Cards across all pages: consistent body line-height */
+.card { line-height: 1.45; }
+
+/* Today / Progress / Mastery label micro-text: consistent */
+.section-label,
+.effort-section-label,
+.cl-mode-label,
+.map-focus-label {
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   Unit accordion header — restructured layout (bar full-width)
+══════════════════════════════════════════════════════════ */
+
+/* Header is now a column: top row + full-width bar */
+.mastery-acc-hdr {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 12px 14px 0;
+  justify-content: flex-start;
+}
+
+/* Top row inside the header: name+sub on left, pct+chevron on right */
+.mastery-acc-hdr-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+/* Full-width bar sits at the bottom of the header — acts as visual bottom padding */
+.mastery-acc-unit-bar-full {
+  width: 100%;
+  height: 3px;
+  margin: 0 0 12px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--b2);
+}
+/* Safety: hide old narrow bar if still rendered */
+.mastery-acc-unit-bar { display: none; }
+
+/* Section-specific % text colours */
+.mastery-acc-quant .mastery-acc-unit-pct { color: #f97316; }
+.mastery-acc-lrdi  .mastery-acc-unit-pct { color: #3b82f6; }
+.mastery-acc-varc  .mastery-acc-unit-pct { color: #30d158; }
+
+/* Section-specific subtle header tint */
+.mastery-acc-quant .mastery-acc-hdr { background: rgba(249,115,22,0.03); }
+.mastery-acc-lrdi  .mastery-acc-hdr { background: rgba(59,130,246,0.03); }
+.mastery-acc-varc  .mastery-acc-hdr { background: rgba(48,209,88,0.03); }
+.mastery-acc-quant .mastery-acc-hdr:hover { background: rgba(249,115,22,0.07); }
+.mastery-acc-lrdi  .mastery-acc-hdr:hover { background: rgba(59,130,246,0.07); }
+.mastery-acc-varc  .mastery-acc-hdr:hover { background: rgba(48,209,88,0.07); }
+
+/* Current-focus unit: much stronger accent for each section */
+.mastery-acc-quant .mastery-acc-unit.current-focus-unit { border-left: 3px solid rgba(249,115,22,0.8); }
+.mastery-acc-lrdi  .mastery-acc-unit.current-focus-unit { border-left: 3px solid rgba(59,130,246,0.8); }
+.mastery-acc-varc  .mastery-acc-unit.current-focus-unit { border-left: 3px solid rgba(48,209,88,0.8); }
+.mastery-acc-quant .mastery-acc-unit.current-focus-unit .mastery-acc-hdr { background: rgba(249,115,22,0.09); }
+.mastery-acc-lrdi  .mastery-acc-unit.current-focus-unit .mastery-acc-hdr { background: rgba(59,130,246,0.09); }
+.mastery-acc-varc  .mastery-acc-unit.current-focus-unit .mastery-acc-hdr { background: rgba(48,209,88,0.09); }
+.mastery-acc-unit.current-focus-unit .mastery-acc-unit-name { font-weight: 800; }
+
+/* ══════════════════════════════════════════════════════════
+   Section-specific chapter focus glow
+══════════════════════════════════════════════════════════ */
+
+/* LRDI: blue glow */
+.mastery-acc-lrdi .mastery-ch-row.current-focus-chapter {
+  background: rgba(59,130,246,0.08);
+  box-shadow: inset 3px 0 0 rgba(59,130,246,0.72);
+}
+.mastery-acc-lrdi .mastery-ch-row.current-focus-chapter:hover { background: rgba(59,130,246,0.13); }
+.mastery-acc-lrdi .mastery-ch-row.current-focus-chapter .mastery-ch-name { color: #93c5fd; }
+
+/* VARC: green glow */
+.mastery-acc-varc .mastery-ch-row.current-focus-chapter {
+  background: rgba(48,209,88,0.08);
+  box-shadow: inset 3px 0 0 rgba(48,209,88,0.72);
+}
+.mastery-acc-varc .mastery-ch-row.current-focus-chapter:hover { background: rgba(48,209,88,0.13); }
+.mastery-acc-varc .mastery-ch-row.current-focus-chapter .mastery-ch-name { color: #86efac; }
+
+/* "Now" badge: section-coloured */
+.mastery-acc-lrdi .ch-now-badge { background: #3b82f6; }
+.mastery-acc-varc .ch-now-badge { background: #22c55e; color: #052e16; }
+
+/* Section-specific focus unit border: override the previous combined rule */
+.mastery-acc-lrdi .mastery-acc-unit.current-focus-unit { border-color: rgba(59,130,246,0.42); }
+.mastery-acc-varc .mastery-acc-unit.current-focus-unit { border-color: rgba(48,209,88,0.42); }
+
+/* Light theme chapter focus glow */
+.app.theme-light .mastery-acc-lrdi .mastery-ch-row.current-focus-chapter {
+  background: rgba(59,130,246,0.07);
+  box-shadow: inset 3px 0 0 rgba(37,99,235,0.72);
+}
+.app.theme-light .mastery-acc-varc .mastery-ch-row.current-focus-chapter {
+  background: rgba(22,163,74,0.07);
+  box-shadow: inset 3px 0 0 rgba(22,163,74,0.72);
 }
