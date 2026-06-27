@@ -164,13 +164,10 @@ function getMentorReply(data) {
 async function readChatResponse(res) {
   try {
     const data = await res.clone().json()
-    console.log("CHAT_RESPONSE", data)
     return data
   } catch {
     const text = await res.text()
-    const data = { error: text || `Server error: ${res.status}` }
-    console.log("CHAT_RESPONSE", data)
-    return data
+    return { error: text || `Server error: ${res.status}` }
   }
 }
 
@@ -225,6 +222,7 @@ const defaultDay = () => ({
   calories:0, protein:0, carbs:0, fat:0,
   foodEntries:[],
   missionSectionId:"", missionUnitId:"", missionChapterId:"",
+  currentMode:"",
   effortScore:0, effortBreakdownV2:null,
 });
 
@@ -698,11 +696,13 @@ function calculateEffortScoreV2({ dayData, masteryProgress = {}, date }) {
 
   /* ── DISCIPLINE  (30 pts) ── */
   const sleepDay = date ? new Date(date + "T00:00:00").getDay() : new Date().getDay();
-  const sleepTarget = (sleepDay === 0 || sleepDay === 6) ? 8 : 5;
+  const isWeekend = sleepDay === 0 || sleepDay === 6;
+  const sleepTarget = isWeekend ? 8 : 5;
   const sleepDur = getSleepDuration(day.st, day.wt);
   const sleepScore = (sleepDur !== null && isFinite(sleepDur) && sleepDur >= sleepTarget) ? 6 : 0;
-  const officeScore = day.officeBefore10 ? 5 : 0;
-  const gymScore = day.gymDone ? 5 : 0;
+  // Office irrelevant on weekends; those 5pts roll to gym so discipline max stays 30
+  const officeScore = (!isWeekend && day.officeBefore10) ? 5 : 0;
+  const gymScore = day.gymDone ? (isWeekend ? 10 : 5) : 0;
   const waterScore = Math.min(Math.round(((+day.waterLiters || 0) / 4) * 4), 4);
   const entries = Array.isArray(day.foodEntries) ? day.foodEntries : [];
   const foodScore = (entries.length > 0 || (+day.calories || 0) > 0) ? 4 : 0;
@@ -932,10 +932,11 @@ function TodayPage({
   avatarGender, avatarSkin, avatarHair, avatarHairColor,
   avatarShirt, avatarGlasses, avatarBeard, avatarMustache,
   todayLiveLabel, todayAppLabel, isSundayIST, theme, onOpenWatchingBacklog,
-  masteryProgress = {}, onOpenErrorLog,
+  masteryProgress = {}, onOpenErrorLog, errorLog = [],
 }) {
   const [saved, setSaved] = useState(false);
   const [showInstaCard, setShowInstaCard] = useState(false);
+  const [showFocusSelectors, setShowFocusSelectors] = useState(false);
   const h = new Date().getHours();
   const greet = h < 12 ? "Good morning." : h < 17 ? "Good afternoon." : "Good evening.";
   const fmt = new Date(date + "T00:00:00").toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long" });
@@ -978,6 +979,7 @@ function TodayPage({
     const day = new Date(date + "T00:00:00").getDay();
     return day === 0 || day === 6 ? 8 : 5;
   })();
+  const isWeekend = sleepTargetHours === 8;
   const sleepDurationValid = hasSleepDuration && sleepDuration >= sleepTargetHours;
   const selfStudyMins = ((+d.ph||0) * 60) + (+d.pm||0);
   const selfStudyDisplay = formatStudyDuration(selfStudyMins);
@@ -1006,9 +1008,6 @@ function TodayPage({
   const missionSection = CAT_MASTERY_SYLLABUS.find(s => s.id === (d.missionSectionId || ""));
   const missionUnit = missionSection?.units.find(u => u.id === (d.missionUnitId || ""));
   const missionChapterObj = missionUnit?.chapters.find(c => c.id === (d.missionChapterId || ""));
-  const missionChP = d.missionChapterId
-    ? getChapterMastery(masteryProgress, d.missionChapterId)
-    : null;
   const latestNote = useMemo(() => {
     return [...notes].sort((a, b) => new Date(getNoteUpdatedAt(b)) - new Date(getNoteUpdatedAt(a)))[0] || null;
   }, [notes]);
@@ -1120,7 +1119,7 @@ function TodayPage({
   }
 
   return (
-    <div className="page">
+    <div className="page today-pg">
       <div className="page-header">
         <div className="page-title">{greet}</div>
         <div className="page-sub">{fmt} · Day {dn} of {totalDays}</div>
@@ -1133,7 +1132,7 @@ function TodayPage({
       </div>
       <div className="sections">
         <div>
-          <div className="sec-label">Discipline</div>
+          <div className="sec-label">Discipline{isWeekend ? " · Weekend" : ""}</div>
           <div className="card">
             <div className="vitals-snap">
               <div className="vs-chip">
@@ -1193,9 +1192,9 @@ function TodayPage({
             </div>
             <div className="es2-chips">
               {[
-                {key:"Learn",    val:v2Score.breakdown.learn,    max:30},
-                {key:"Practice", val:v2Score.breakdown.practice, max:25},
-                {key:"Err Log",  val:v2Score.breakdown.errorLog, max:15},
+                {key:"Learn",     val:v2Score.breakdown.learn,     max:30},
+                {key:"Practice",  val:v2Score.breakdown.practice,  max:25},
+                {key:"Errors",    val:v2Score.breakdown.errorLog,  max:15},
                 {key:"Discipline",val:v2Score.breakdown.discipline,max:30},
               ].map(c=>(
                 <div key={c.key} className="es2-chip">
@@ -1205,7 +1204,13 @@ function TodayPage({
                 </div>
               ))}
             </div>
-            <div style={{borderTop:"1px solid var(--b1)",padding:"9px 16px",display:"flex",justifyContent:"flex-end"}}>
+            <div style={{borderTop:"1px solid var(--b1)",padding:"9px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              {(() => {
+                const open = errorLog.filter(e => !e.fixed).length;
+                return open > 0
+                  ? <span style={{fontSize:10,color:"#ff453a",fontWeight:600}}>{open} open error{open===1?"":"s"}</span>
+                  : <span/>;
+              })()}
               <button type="button"
                 onClick={() => onOpenErrorLog?.({sectionId:"", unitId:"", chapterId:""})}
                 style={{background:"transparent",border:"none",color:"var(--ts)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:0,letterSpacing:"0.02em"}}>
@@ -1215,76 +1220,81 @@ function TodayPage({
           </div>
         </div>
 
-        {/* Today Mission */}
+        {/* Current Learning */}
         <div>
-          <div className="sec-label">Today's Mission</div>
+          <div className="sec-label">Current Learning</div>
           <div className="card">
-            <div className="mission-selectors">
-              <select
-                className="mission-select"
-                value={d.missionSectionId||""}
-                onChange={e=>{upd("missionSectionId",e.target.value);upd("missionUnitId","");upd("missionChapterId","");}}
-              >
-                <option value="">Section...</option>
-                {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-              <select
-                className="mission-select"
-                value={d.missionUnitId||""}
-                onChange={e=>{upd("missionUnitId",e.target.value);upd("missionChapterId","");}}
-                disabled={!missionSection}
-              >
-                <option value="">Unit...</option>
-                {(missionSection?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
-              </select>
-              <select
-                className="mission-select"
-                value={d.missionChapterId||""}
-                onChange={e=>upd("missionChapterId",e.target.value)}
-                disabled={!missionUnit}
-              >
-                <option value="">Chapter...</option>
-                {(missionUnit?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
-            </div>
-            {missionChapterObj && missionChP && (
-              <div className="mission-summary">
-                <div className="mission-ch-name">{missionChapterObj.label}</div>
-                <div className="mission-unit-name">{missionUnit?.label}</div>
-                <div className="mission-pillars">
-                  {[
-                    {id:"learn",lbl:"Learn"},
-                    {id:"practice",lbl:"Practice"},
-                    {id:"errorLog",lbl:"Err Log"},
-                  ].map(p=>(
-                    <div key={p.id} className={`mission-pillar${missionChP.pillars[p.id]?" done":""}`}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-                        {missionChP.pillars[p.id]
-                          ? <polyline points="20,6 9,17 4,12"/>
-                          : <circle cx="12" cy="12" r="8"/>
-                        }
-                      </svg>
-                      {p.lbl}
-                    </div>
-                  ))}
-                </div>
-                <div className="mission-cfg">{getChapterConfigSummary(missionChP.config)}</div>
-                <button
-                  type="button"
-                  className="mission-errlog-btn"
-                  onClick={() => onOpenErrorLog?.({
-                    sectionId: d.missionSectionId || "",
-                    unitId: d.missionUnitId || "",
-                    chapterId: d.missionChapterId || "",
-                  })}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Add Error
+            {missionChapterObj ? (
+              <div className="cl-selected">
+                <button type="button" className="cl-focus-nav-row" onClick={()=>setTab("mastery")} aria-label="Open Mastery Map">
+                  <span className="cl-focus-breadcrumb">
+                    {missionSection?.label} → {missionUnit?.label} → {missionChapterObj.label}
+                  </span>
+                  <svg className="cl-nav-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
+                {showFocusSelectors ? (
+                  <>
+                    <div className="mission-selectors">
+                      <select className="mission-select" value={d.missionSectionId||""} onChange={e=>{upd("missionSectionId",e.target.value);upd("missionUnitId","");upd("missionChapterId","");}}>
+                        <option value="">Section...</option>
+                        {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                      </select>
+                      <select className="mission-select" value={d.missionUnitId||""} onChange={e=>{upd("missionUnitId",e.target.value);upd("missionChapterId","");}} disabled={!missionSection}>
+                        <option value="">Unit...</option>
+                        {(missionSection?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
+                      </select>
+                      <select className="mission-select" value={d.missionChapterId||""} onChange={e=>{upd("missionChapterId",e.target.value);if(e.target.value)setShowFocusSelectors(false);}} disabled={!missionUnit}>
+                        <option value="">Chapter...</option>
+                        {(missionUnit?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                    </div>
+                    <button type="button" className="cl-change-focus-link" onClick={()=>setShowFocusSelectors(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <button type="button" className="cl-change-focus-link" onClick={()=>setShowFocusSelectors(true)}>Change Focus</button>
+                )}
+                <div className="cl-mode-section">
+                  <div className="cl-mode-label">Doing now</div>
+                  <div className="cl-mode-chips">
+                    {[
+                      {id:"learning",     lbl:"Learning"},
+                      {id:"practice",     lbl:"Practicing"},
+                      {id:"error-review", lbl:"Reviewing Errors"},
+                    ].map(m=>(
+                      <button key={m.id} type="button" className={`cl-mode-chip${(d.currentMode||"")===m.id?" active":""}`} onClick={()=>upd("currentMode",(d.currentMode||"")===m.id?"":m.id)}>
+                        {m.lbl}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="cl-actions">
+                  <button type="button" className="mission-errlog-btn" onClick={()=>onOpenErrorLog?.({sectionId:d.missionSectionId||"",unitId:d.missionUnitId||"",chapterId:d.missionChapterId||""})}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Error
+                  </button>
+                  <button type="button" className="cl-map-link" onClick={()=>setTab("mastery")}>
+                    Mark completion in Map →
+                  </button>
+                </div>
               </div>
-            )}
-            {!missionChapterObj && (
-              <div className="mission-empty">Select section → unit → chapter to set your focus</div>
+            ) : (
+              <>
+                <div className="mission-selectors">
+                  <select className="mission-select" value={d.missionSectionId||""} onChange={e=>{upd("missionSectionId",e.target.value);upd("missionUnitId","");upd("missionChapterId","");}}>
+                    <option value="">Section...</option>
+                    {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={d.missionUnitId||""} onChange={e=>{upd("missionUnitId",e.target.value);upd("missionChapterId","");}} disabled={!missionSection}>
+                    <option value="">Unit...</option>
+                    {(missionSection?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={d.missionChapterId||""} onChange={e=>upd("missionChapterId",e.target.value)} disabled={!missionUnit}>
+                    <option value="">Chapter...</option>
+                    {(missionUnit?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div className="mission-empty">No focus selected</div>
+              </>
             )}
           </div>
         </div>
@@ -1293,30 +1303,21 @@ function TodayPage({
           <div className="sec-label">Daily Work</div>
           <div className="card hub-snap-card">
             <div className="hub-snap-body">
-              <div className="dw-snap-row">
-                {mode !== "interview" && (
-                  <div className="dw-snap-stat">
-                    <span className="dw-snap-val">
-                      {(+d.q||0) > 0 || (+d.v||0) > 0 || (+d.l||0) > 0
-                        ? `${+d.q||0}Q ${+d.v||0}V ${+d.l||0}L`
-                        : "—"}
-                    </span>
-                    <span className="dw-snap-key">practice</span>
+              {(() => {
+                const hasWork = mode !== "interview" && ((+d.q||0)+(+d.v||0)+(+d.l||0) > 0 || (+d.vp_count||0) > 0 || selfStudyMins > 0);
+                if (!hasWork && mode !== "interview") {
+                  return <div className="dw-snap-empty">No work logged yet.</div>;
+                }
+                return (
+                  <div className="dw-snap-row">
+                    {mode !== "interview" && (+d.q||0) > 0 && <div className="dw-snap-stat"><span className="dw-snap-val">{+d.q}</span><span className="dw-snap-key">Quant</span></div>}
+                    {mode !== "interview" && (+d.v||0) > 0 && <div className="dw-snap-stat"><span className="dw-snap-val">{+d.v}</span><span className="dw-snap-key">VARC</span></div>}
+                    {mode !== "interview" && (+d.l||0) > 0 && <div className="dw-snap-stat"><span className="dw-snap-val">{+d.l}</span><span className="dw-snap-key">LRDI</span></div>}
+                    {mode !== "interview" && (+d.vp_count||0) > 0 && <div className="dw-snap-stat"><span className="dw-snap-val">{+d.vp_count}</span><span className="dw-snap-key">Passages</span></div>}
+                    {selfStudyMins > 0 && <div className="dw-snap-stat"><span className="dw-snap-val">{selfStudyDisplay}</span><span className="dw-snap-key">Self-study</span></div>}
                   </div>
-                )}
-                {mode !== "interview" && (
-                  <div className="dw-snap-stat">
-                    <span className="dw-snap-val">{(+d.vp_count||0) > 0 ? +d.vp_count||0 : "-"}</span>
-                    <span className="dw-snap-key">para read</span>
-                  </div>
-                )}
-                {selfStudyMins > 0 && (
-                  <div className="dw-snap-stat">
-                    <span className="dw-snap-val">{selfStudyDisplay}</span>
-                    <span className="dw-snap-key">self study</span>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
             <button type="button" className="vs-open-btn" onClick={() => setTab("daily-work")}>
               Open Work Log
@@ -3200,7 +3201,7 @@ function MasteryWorkspaceBlock({ title, status, pillarActive, onTogglePillar, ch
           aria-pressed={pillarActive}
           onClick={onTogglePillar}
         >
-          {pillarActive ? "Done" : "Mark done"}
+          {pillarActive ? "✓ Completed" : "Mark complete"}
         </button>
       </div>
       {children}
@@ -3249,7 +3250,7 @@ function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateC
 
         <h2 id="mastery-workspace-title">{target.chapter.label}</h2>
         <div className="mastery-workspace-sub">
-          Updates save immediately to this device.
+          Use after finishing chapter work.
         </div>
 
         <div className="mastery-workspace-content">
@@ -3354,7 +3355,7 @@ function ChapterWorkspace({ target, progress, onClose, onUpdatePillar, onUpdateC
   );
 }
 
-function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
+function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog, todayFocus = {}, onSetTodayFocus }) {
   const allChapters = useMemo(
     () => CAT_MASTERY_SYLLABUS.flatMap(section => section.units.flatMap(unit => unit.chapters)),
     []
@@ -3371,6 +3372,20 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
   const [selectedSection, setSelectedSection] = useState("all");
   const [expandedUnits, setExpandedUnits] = useState(() => new Set());
   const [workspaceTarget, setWorkspaceTarget] = useState(null);
+  const [showFocusSelector, setShowFocusSelector] = useState(false);
+  const [focusDraft, setFocusDraft] = useState({ sectionId:"", unitId:"", chapterId:"" });
+  const [highlightedChapterId, setHighlightedChapterId] = useState(null);
+
+  const focusSectionId = todayFocus?.missionSectionId || "";
+  const focusUnitId    = todayFocus?.missionUnitId    || "";
+  const focusChapterId = todayFocus?.missionChapterId || "";
+  const focusCurrentMode = todayFocus?.currentMode    || "";
+  const focusSectionObj  = focusSectionId ? CAT_MASTERY_SYLLABUS.find(s => s.id === focusSectionId) : null;
+  const focusUnitObj     = focusSectionObj?.units.find(u => u.id === focusUnitId) || null;
+  const focusChapterObj  = focusUnitObj?.chapters.find(c => c.id === focusChapterId) || null;
+  const hasFocus         = !!(focusChapterObj);
+  const draftSectionObj  = CAT_MASTERY_SYLLABUS.find(s => s.id === focusDraft.sectionId) || null;
+  const draftUnitObj     = draftSectionObj?.units.find(u => u.id === focusDraft.unitId) || null;
 
   const getInitialExpanded = useCallback((sectionId) => {
     if (sectionId === "all") return new Set();
@@ -3394,6 +3409,20 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
       if (next.has(unitId)) next.delete(unitId);
       else next.add(unitId);
       return next;
+    });
+  };
+
+  const handleFindInMap = () => {
+    if (!focusSectionId || !focusUnitId || !focusChapterId) return;
+    setSelectedSection(focusSectionId);
+    setExpandedUnits(prev => new Set([...prev, focusUnitId]));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`chapter-card-${focusChapterId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedChapterId(focusChapterId);
+        setTimeout(() => setHighlightedChapterId(null), 1800);
+      });
     });
   };
 
@@ -3439,6 +3468,107 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
       <div className="page-header">
         <div className="page-title">Mastery Map</div>
         <div className="page-sub">CAT 2026 / Learn · Practice · Error Log</div>
+      </div>
+
+      {/* ── Current Focus card ── */}
+      <div className="card map-focus-card">
+        <div className="map-focus-label">Current Focus</div>
+        {hasFocus ? (
+          showFocusSelector ? (
+            <>
+              <div className="mission-selectors" style={{marginTop:8}}>
+                <select className="mission-select" value={focusDraft.sectionId} onChange={e=>setFocusDraft({sectionId:e.target.value,unitId:"",chapterId:""})}>
+                  <option value="">Section...</option>
+                  {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+                <select className="mission-select" value={focusDraft.unitId} onChange={e=>setFocusDraft(p=>({...p,unitId:e.target.value,chapterId:""}))} disabled={!draftSectionObj}>
+                  <option value="">Unit...</option>
+                  {(draftSectionObj?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
+                </select>
+                <select className="mission-select" value={focusDraft.chapterId} onChange={e=>{
+                  const cid=e.target.value, sid=focusDraft.sectionId, uid=focusDraft.unitId;
+                  setFocusDraft(p=>({...p,chapterId:cid}));
+                  if(cid&&sid&&uid){onSetTodayFocus?.(sid,uid,cid,"");setShowFocusSelector(false);}
+                }} disabled={!draftUnitObj}>
+                  <option value="">Chapter...</option>
+                  {(draftUnitObj?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <button type="button" className="cl-change-focus-link" style={{marginTop:6}} onClick={()=>setShowFocusSelector(false)}>Cancel</button>
+            </>
+          ) : (
+            <>
+              <button type="button" className="map-focus-show-row" onClick={handleFindInMap} aria-label="Show chapter in catalogue">
+                <span className="map-focus-chapter">
+                  {focusSectionObj.label} → {focusUnitObj.label} → {focusChapterObj.label}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <div className="cl-mode-section">
+                <div className="cl-mode-label">Doing now</div>
+                <div className="cl-mode-chips">
+                  {[
+                    {id:"learning",     lbl:"Learning"},
+                    {id:"practice",     lbl:"Practicing"},
+                    {id:"error-review", lbl:"Reviewing Errors"},
+                  ].map(m=>(
+                    <button key={m.id} type="button"
+                      className={`cl-mode-chip${focusCurrentMode===m.id?" active":""}`}
+                      onClick={()=>onSetTodayFocus?.(focusSectionId,focusUnitId,focusChapterId,focusCurrentMode===m.id?"":m.id)}>
+                      {m.lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="map-focus-actions">
+                <button type="button" className="map-focus-resume-btn"
+                  onClick={()=>setWorkspaceTarget({section:focusSectionObj,unit:focusUnitObj,chapter:focusChapterObj})}>
+                  Resume Focus
+                </button>
+                <button type="button" className="map-focus-change-btn"
+                  onClick={()=>{setFocusDraft({sectionId:focusSectionId,unitId:focusUnitId,chapterId:focusChapterId});setShowFocusSelector(true);}}>
+                  Change Focus
+                </button>
+                <button type="button" className="map-focus-errors-btn"
+                  onClick={()=>onOpenErrorLog?.({sectionId:focusSectionId,unitId:focusUnitId,chapterId:focusChapterId})}>
+                  Review Errors
+                </button>
+              </div>
+            </>
+          )
+        ) : (
+          <>
+            <div className="map-focus-empty">No current focus set</div>
+            {showFocusSelector ? (
+              <>
+                <div className="mission-selectors" style={{marginTop:8}}>
+                  <select className="mission-select" value={focusDraft.sectionId} onChange={e=>setFocusDraft({sectionId:e.target.value,unitId:"",chapterId:""})}>
+                    <option value="">Section...</option>
+                    {CAT_MASTERY_SYLLABUS.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={focusDraft.unitId} onChange={e=>setFocusDraft(p=>({...p,unitId:e.target.value,chapterId:""}))} disabled={!draftSectionObj}>
+                    <option value="">Unit...</option>
+                    {(draftSectionObj?.units||[]).map(u=><option key={u.id} value={u.id}>{u.label}</option>)}
+                  </select>
+                  <select className="mission-select" value={focusDraft.chapterId} onChange={e=>{
+                    const cid=e.target.value, sid=focusDraft.sectionId, uid=focusDraft.unitId;
+                    setFocusDraft(p=>({...p,chapterId:cid}));
+                    if(cid&&sid&&uid){onSetTodayFocus?.(sid,uid,cid,"");setShowFocusSelector(false);}
+                  }} disabled={!draftUnitObj}>
+                    <option value="">Chapter...</option>
+                    {(draftUnitObj?.chapters||[]).map(c=><option key={c.id} value={c.id}>{c.label}</option>)}
+                  </select>
+                </div>
+                <button type="button" className="cl-change-focus-link" style={{marginTop:6}} onClick={()=>setShowFocusSelector(false)}>Cancel</button>
+              </>
+            ) : (
+              <button type="button" className="map-focus-choose-btn"
+                onClick={()=>{setFocusDraft({sectionId:"",unitId:"",chapterId:""});setShowFocusSelector(true);}}>
+                Choose Focus
+              </button>
+            )}
+          </>
+        )}
       </div>
 
       <div className="mastery-overall">
@@ -3547,7 +3677,7 @@ function MasteryMapPage({ progress, setProgress, onOpenErrorLog, errorLog }) {
                       const chP = getChapterMastery(progress, chapter.id);
                       const chS = getChapterMasteryStats(progress, chapter.id);
                       return (
-                        <div key={chapter.id} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}`}>
+                        <div key={chapter.id} id={`chapter-card-${chapter.id}`} className={`mastery-ch-row${chS.pct === 100 ? " done" : ""}${highlightedChapterId === chapter.id ? " chapter-card-focus-pulse" : ""}`}>
                           <div className="mastery-ch-top">
                             <span className="mastery-ch-name">{chapter.label}</span>
                             <div className="mastery-ch-actions">
@@ -3666,7 +3796,7 @@ function CalendarPage({ data, sel, onSel, start, totalDays }) {
       for (let i = 0; i < visibleStart.getDay(); i++) cells.push(null);
       for (let d = new Date(visibleStart); d <= visibleEnd; d.setDate(d.getDate() + 1)) {
         const meta = dayMeta.get(toLocalDateKey(d));
-        if (meta) cells.push({...meta, dateNum: d.getDate()});
+        cells.push(meta ? {...meta, dateNum: d.getDate()} : null);
       }
       months.push({ key: monthKey, label: monthLabel, state, cells });
     }
@@ -4022,7 +4152,7 @@ function ChatPage({ mentorMessages, setMentorMessages, d, totals, dl, dayNum, mo
                 <span className="dw-snap-key">mission</span>
               </div>
               <div className="dw-snap-stat">
-                <span className="dw-snap-val">{work.qCount > 0 || work.vCount > 0 || work.lCount > 0 ? `${work.qCount}Q ${work.vCount}V ${work.lCount}L` : "—"}</span>
+                <span className="dw-snap-val" style={{fontSize:11}}>{work.qCount > 0 || work.vCount > 0 || work.lCount > 0 ? [work.qCount>0?`Quant ${work.qCount}`:null,work.vCount>0?`VARC ${work.vCount}`:null,work.lCount>0?`LRDI ${work.lCount}`:null].filter(Boolean).join(' · ') : "—"}</span>
                 <span className="dw-snap-key">practice</span>
               </div>
               <div className="dw-snap-stat">
@@ -4598,7 +4728,7 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
     fixed: false,
   }), [prefill]);
 
-  const [showForm, setShowForm] = useState(!!(prefill?.chapterId) || entries.length === 0);
+  const [showForm, setShowForm] = useState(!!(prefill?.chapterId));
   const [form, setForm] = useState(makeBlankForm);
   const [editId, setEditId] = useState(null);
   const [sectionFilter, setSectionFilter] = useState(prefill?.sectionId || "");
@@ -4668,12 +4798,12 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
           Today
         </button>
         <div className="page-title">Error Log</div>
-        <div className="page-sub">Weak points · Retry · Fix</div>
+        <div className="page-sub">Track errors, fixes, and reviews.</div>
       </div>
 
       <div className="sections">
         <div className="el-top-row">
-          <span className="el-count-lbl">{entries.length} total · {entries.filter(e=>e.fixed).length} fixed</span>
+          <span className="el-count-lbl">{entries.length} total · {entries.filter(e=>!e.fixed).length} open · {entries.filter(e=>e.fixed).length} fixed</span>
           <button type="button" className="el-add-toggle" onClick={() => showForm ? handleCancel() : setShowForm(true)}>
             {showForm ? "Cancel" : "+ Add Error"}
           </button>
@@ -4716,17 +4846,17 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
                   </select>
                   <label className="el-fixed-row">
                     <Tog v={form.fixed} onChange={v => sf("fixed", v)} />
-                    <span className="el-fixed-lbl">Fixed</span>
+                    <span className="el-fixed-lbl">Fixed / Reviewed</span>
                   </label>
                 </div>
 
                 <div className="el-field">
-                  <div className="el-field-lbl">My mistake *</div>
+                  <div className="el-field-lbl">What went wrong *</div>
                   <textarea className="textarea" required value={form.myMistake} onChange={e => sf("myMistake", e.target.value)} rows={2} placeholder="What went wrong..." />
                 </div>
                 <div className="el-field">
-                  <div className="el-field-lbl">Correct approach</div>
-                  <textarea className="textarea" value={form.correctApproach} onChange={e => sf("correctApproach", e.target.value)} rows={2} placeholder="The right method..." />
+                  <div className="el-field-lbl">Correct method</div>
+                  <textarea className="textarea" value={form.correctApproach} onChange={e => sf("correctApproach", e.target.value)} rows={2} placeholder="The right approach..." />
                 </div>
                 <div className="el-field">
                   <div className="el-field-lbl">Takeaway</div>
@@ -4743,33 +4873,40 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
           </div>
         )}
 
-        <div>
-          <div className="sec-label">Filter</div>
-          <div className="card el-filters-card">
-            <input className="el-search" type="text" placeholder="Search mistakes, takeaways..." value={search} onChange={e => setSearch(e.target.value)} />
-            <div className="el-filter-row">
-              <select className="mission-select" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
-                <option value="">All sections</option>
-                {CAT_MASTERY_SYLLABUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-              </select>
-              <select className="mission-select" value={fixedFilter} onChange={e => setFixedFilter(e.target.value)}>
-                <option value="all">Fixed: All</option>
-                <option value="open">Open</option>
-                <option value="fixed">Fixed ✓</option>
-              </select>
-              <select className="mission-select" value={retryFilter} onChange={e => setRetryFilter(e.target.value)}>
-                <option value="all">Retry: All</option>
-                {EL_RETRY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
+        {entries.length === 0 && !showForm && (
+          <div className="card el-empty">No errors logged yet.</div>
+        )}
+
+        {entries.length > 0 && (
+          <div>
+            <div className="sec-label">Filter</div>
+            <div className="card el-filters-card">
+              <input className="el-search" type="text" placeholder="Search errors, takeaways..." value={search} onChange={e => setSearch(e.target.value)} />
+              <div className="el-filter-row">
+                <select className="mission-select" value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
+                  <option value="">All sections</option>
+                  {CAT_MASTERY_SYLLABUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+                <select className="mission-select" value={fixedFilter} onChange={e => setFixedFilter(e.target.value)}>
+                  <option value="all">Fixed: All</option>
+                  <option value="open">Open</option>
+                  <option value="fixed">Fixed ✓</option>
+                </select>
+                <select className="mission-select" value={retryFilter} onChange={e => setRetryFilter(e.target.value)}>
+                  <option value="all">Retry: All</option>
+                  {EL_RETRY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div>
-          <div className="sec-label">Entries ({filtered.length})</div>
-          {filtered.length === 0 ? (
-            <div className="card el-empty">{entries.length === 0 ? "No errors logged yet. Add one above." : "No entries match the current filters."}</div>
-          ) : (
+        {entries.length > 0 && (
+          <div>
+            <div className="sec-label">Entries ({filtered.length})</div>
+            {filtered.length === 0 ? (
+              <div className="card el-empty">No entries match the current filters.</div>
+            ) : (
             <div className="el-list">
               {[...filtered].reverse().map(entry => (
                 <div key={entry.id} className={`card el-card${entry.fixed ? " el-card-fixed" : ""}`}>
@@ -4802,7 +4939,8 @@ function ErrorLogPage({ entries, onAdd, onUpdate, onDelete, prefill, onBack }) {
               ))}
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -4989,8 +5127,9 @@ function VitalsPage({ d, upd, date, onBack, onSave }) {
     const day = new Date(date + "T00:00:00").getDay();
     return day === 0 || day === 6 ? 8 : 5;
   })();
+  const isWeekend = sleepTargetHours === 8;
   const sleepValid = sleepDuration !== null && sleepDuration >= sleepTargetHours;
-  const sleepTargetLabel = sleepTargetHours === 8 ? "Target: 8h (weekend)" : "Target: 5h (weekday)";
+  const sleepTargetLabel = isWeekend ? "Target: 8h (weekend)" : "Target: 5h (weekday)";
 
   const totalMacros = useMemo(() => {
     if (foodEntries.length > 0) {
@@ -5074,17 +5213,19 @@ function VitalsPage({ d, upd, date, onBack, onSave }) {
 
       <div className="sec-label">Habits</div>
       <div className="card">
-        <div className="card-row">
-          <div>
-            <div className="row-label">Office before 10 AM</div>
-            <div className="row-sub">Punctuality streak</div>
+        {!isWeekend && (
+          <div className="card-row">
+            <div>
+              <div className="row-label">Office before 10 AM</div>
+              <div className="row-sub">Punctuality streak</div>
+            </div>
+            <Tog v={!!d.officeBefore10} onChange={v=>upd("officeBefore10",v)} />
           </div>
-          <Tog v={!!d.officeBefore10} onChange={v=>upd("officeBefore10",v)} />
-        </div>
+        )}
         <div className="card-row">
           <div>
             <div className="row-label">Gym</div>
-            <div className="row-sub">Physical training</div>
+            <div className="row-sub">{isWeekend ? "Physical training · Weekend (+10pts)" : "Physical training"}</div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {!!d.gymDone && (
@@ -5204,17 +5345,19 @@ function VitalsPage({ d, upd, date, onBack, onSave }) {
       {(foodEntries.length > 0 || totalMacros.calories > 0 || totalMacros.protein > 0) && (
         <div className="card macro-total-card">
           <div className="macro-total-head">Daily Totals</div>
+          <div style={{fontSize:10,color:"var(--ts)",marginBottom:8,letterSpacing:"0.03em",textTransform:"uppercase"}}>Body recomposition targets (vegetarian)</div>
           <div className="macro-grid">
             {[
-              {lbl:"Calories",unit:"kcal",val:totalMacros.calories},
-              {lbl:"Protein",unit:"g",val:totalMacros.protein},
-              {lbl:"Carbs",unit:"g",val:totalMacros.carbs},
-              {lbl:"Fat",unit:"g",val:totalMacros.fat},
+              {lbl:"Calories",unit:"kcal",val:totalMacros.calories, tgt:"2700 kcal"},
+              {lbl:"Protein", unit:"g",  val:totalMacros.protein,  tgt:"220g"},
+              {lbl:"Carbs",   unit:"g",  val:totalMacros.carbs,    tgt:"270–300g"},
+              {lbl:"Fat",     unit:"g",  val:totalMacros.fat,      tgt:"70–75g"},
             ].map(m => (
               <div key={m.lbl} className="macro-cell">
                 <div style={{fontSize:16,fontWeight:900,color:"var(--tp)",fontVariantNumeric:"tabular-nums",lineHeight:1}}>{m.val}</div>
                 <div className="macro-name">{m.lbl}</div>
                 <div className="macro-unit">{m.unit}</div>
+                <div style={{fontSize:9,color:"var(--ts)",marginTop:3,lineHeight:1.2}}>tgt {m.tgt}</div>
               </div>
             ))}
           </div>
@@ -7275,7 +7418,12 @@ export default function App() {
     return readLocalAcademicNotes();
   });
   const [notesSyncMessage, setNotesSyncMessage] = useState("");
-  const [sel, setSel] = useState(() => localStorage.getItem("cat_sel_date") || todayKey());
+  const [sel, setSel] = useState(() => {
+    const saved = localStorage.getItem("cat_sel_date");
+    const today = todayKey();
+    // Don't carry a past date into a new session; always open on today if stored date is past
+    return saved && saved >= today ? saved : today;
+  });
   const [mentorMessages, setMentorMessages] = useState(() => {
     try { return JSON.parse(localStorage.getItem("conquer_mentor_chat_v1") || "[]"); }
     catch { return []; }
@@ -7354,7 +7502,7 @@ export default function App() {
     const exam = new Date(EXAM_DATE);
     exam.setHours(0, 0, 0, 0);
     const diff = Math.ceil((exam - start) / 86400000);
-    return Math.max(1, Math.min(diff, 300));
+    return Math.max(1, diff);
   }, [startDate]);
   const _start = startDate ? new Date(startDate + "T00:00:00") : _today
   _start.setHours(0, 0, 0, 0)
@@ -8194,10 +8342,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="days-pill">
-          <div className="dp-num">{dl}</div>
-          <div className="dp-lab">days to CAT</div>
-        </div>
         <button
           onClick={() => {
             localStorage.removeItem("cat_start_date")
@@ -8216,7 +8360,7 @@ export default function App() {
       </aside>
 
       <main className={`main${tab==="chat" ? " mentor-main" : ""}`}>
-        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} onOpenWatchingBacklog={(target) => {
+        {tab==="today" && <TodayPage date={sel} d={data[sel]||defaultDay()} upd={(f,v)=>upd(sel,f,v)} dl={dl} start={START} totalDays={totalDays} mode={mode} setTab={setTab} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} notes={academicNotes} data={data} totals={totals} userName={userName} userInitials={userInitials} theme={appTheme} avatarGender={avatarGender} avatarSkin={avatarSkin} avatarHair={avatarHair} avatarHairColor={avatarHairColor} avatarShirt={avatarShirt} avatarGlasses={avatarGlasses} avatarBeard={avatarBeard} avatarMustache={avatarMustache} todayLiveLabel={todayLiveLabel} todayAppLabel={todayAppLabel} isSundayIST={isSundayIST} masteryProgress={masteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} onOpenWatchingBacklog={(target) => {
           setBacklogFocusTarget(target);
           setTab("backlog");
         }} onSave={saveSelectedDay} />}
@@ -8330,7 +8474,7 @@ export default function App() {
             onDelete={id => setErrorLog(prev => prev.filter(e => e.id !== id))}
           />
         )}
-        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} />}
+        {tab==="mastery" && <MasteryMapPage progress={masteryProgress} setProgress={setMasteryProgress} errorLog={errorLog} onOpenErrorLog={(prefill) => { setErrorLogPrefill(prefill); setTab("error-log"); }} todayFocus={data[todayKey()] || defaultDay()} onSetTodayFocus={(sectionId, unitId, chapterId, mode) => { const tk = todayKey(); upd(tk,"missionSectionId",sectionId); upd(tk,"missionUnitId",unitId); upd(tk,"missionChapterId",chapterId); if (mode !== undefined) upd(tk,"currentMode",mode||""); }} />}
         {tab==="progress" && <ProgressPage data={data} totals={totals} dl={dl} dn={dn} start={START} totalDays={totalDays} backlogVideos={backlogVideos} backlogConcepts={backlogConcepts} setTab={setTab} />}
         {tab==="calendar" && <CalendarPage data={data} sel={sel} onSel={d=>{setSel(d);setTab("today");}} start={START} totalDays={totalDays} />}
         {tab==="profile" && (

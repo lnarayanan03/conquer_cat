@@ -681,18 +681,6 @@ app.get("/api/log/all/:userId", async (req, res) => {
   if (!supabase) return res.json({});
   try {
     const formatted = await fetchDailyLogsForUser({ supabase, userId: req.params.userId });
-    console.log(
-      "[log/all] sample day fields:",
-      Object.values(formatted)[0]
-        ? {
-            lc: Object.values(formatted)[0].lc,
-            as: Object.values(formatted)[0].as,
-            ap: Object.values(formatted)[0].ap,
-            ph: Object.values(formatted)[0].ph,
-            pm: Object.values(formatted)[0].pm,
-          }
-        : "no days found"
-    );
     res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: "DB error" });
